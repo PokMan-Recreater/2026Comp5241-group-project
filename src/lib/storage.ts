@@ -39,15 +39,28 @@ export function writeJSON(key: string, value: unknown): void {
 
 export function readString(key: string, fallback: string | null = null): string | null {
   if (!hasStorage()) return fallback;
-  return window.localStorage.getItem(key) ?? fallback;
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    // Blocked (private mode): behave as if nothing was stored.
+    return fallback;
+  }
 }
 
 export function writeString(key: string, value: string): void {
   if (!hasStorage()) return;
-  window.localStorage.setItem(key, value);
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage full or blocked (private mode): the app still works in-memory.
+  }
 }
 
 export function removeKey(key: string): void {
   if (!hasStorage()) return;
-  window.localStorage.removeItem(key);
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Nothing to do: the key simply stays behind.
+  }
 }
