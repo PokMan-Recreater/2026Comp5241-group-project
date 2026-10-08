@@ -109,7 +109,10 @@ src/
 
 ## Testing
 
-`npm test` runs 14 Vitest suites covering:
+`npm test` runs 14 Vitest suites. `npm run coverage` runs the same suites behind a coverage ratchet -
+currently 90% statements, 80% branches, 88% functions and 92% lines, measured over `src/lib` and
+`src/content`, the layers that have a unit-test harness - and that is the step the gate uses, so an
+untested new module fails the build. Between them they cover:
 
 - progress rules: XP idempotence, streak day maths, best-quiz scoring, levels, badges
 - the topic matcher, including false-positive guards (`html` must not match `ml`)
@@ -135,9 +138,9 @@ src/
 `.github/workflows/ci.yml` has two jobs.
 
 **`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run audit`,
-`npm run test` and `npm run build` on Node 24 - the same five checks as `npm run verify` - for every
-pull request into `main` or `dev`, and for every push to either branch. A failing run shows up as a
-red cross on the pull request. The `audit` step only inspects production dependencies
+`npm run coverage` and `npm run build` on Node 24 - the same five checks as `npm run verify` - for
+every pull request into `main` or `dev`, and for every push to either branch. A failing run shows up
+as a red cross on the pull request. The `audit` step only inspects production dependencies
 (`npm audit --omit=dev`), so a vulnerability in build tooling cannot block a release while one in
 shipped code can.
 

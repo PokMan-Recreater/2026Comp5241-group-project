@@ -15,7 +15,8 @@
     "audit": "npm audit --omit=dev --audit-level=high",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run lint && npm run audit && npm run test && npm run build",
+    "coverage": "vitest run --coverage",
+    "verify": "npm run typecheck && npm run lint && npm run audit && npm run coverage && npm run build",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
