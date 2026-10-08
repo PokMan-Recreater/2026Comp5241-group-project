@@ -14,7 +14,10 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The scripts the pipeline is built out of. */
-const GATE_SCRIPTS = ["typecheck", "lint", "audit", "test", "build", "verify"] as const;
+const GATE_SCRIPTS = ["typecheck", "lint", "audit", "coverage", "test", "build", "verify"] as const;
+
+/** The steps the gate runs, in order. `verify` chains exactly these. */
+const GATE_STEPS = ["typecheck", "lint", "audit", "coverage", "build"] as const;
 
 function readText(relativePath: string): string {
   const absolute = resolve(REPO_ROOT, relativePath);
@@ -45,12 +48,21 @@ describe("CI integrity", () => {
     expect(workflow).toMatch(/branches:\s*\[?\s*main\b/);
 
     // ...and it must actually run each check, not just build.
-    for (const script of ["typecheck", "lint", "audit", "test", "build"] as const) {
+    for (const script of GATE_STEPS) {
       expect(workflow, `ci.yml never runs "npm run ${script}"`).toContain(`npm run ${script}`);
     }
 
     // A clean, lockfile-exact install, as opposed to a mutating `npm install`.
     expect(workflow).toContain("npm ci");
+  });
+
+  it("keeps `npm run verify` running exactly the steps CI runs", () => {
+    const pkg = readJson<{ scripts: Record<string, string> }>("package.json");
+    const verify = pkg.scripts.verify ?? "";
+
+    for (const script of GATE_STEPS) {
+      expect(verify, `npm run verify never runs "${script}"`).toContain(`npm run ${script}`);
+    }
   });
 
   it("gates the production deploy behind the verify job", () => {

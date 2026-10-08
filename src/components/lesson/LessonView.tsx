@@ -60,6 +60,8 @@ export function LessonView({
   const [quizStats, setQuizStats] = useState({ correct: 0, total: 0 });
 
   // Derived, cheap to recompute: sentence offsets used for narration highlighting.
+  // (Deliberately not memoised - the repo's React Compiler lint rules reject a
+  // manual memo whose dependency cannot be proven stable.)
   const segments = sourceLesson ? buildNarrationSegments(sourceLesson.blocks) : [];
   const script = segments.flatMap((segment) => segment.sentences).join(" ");
 

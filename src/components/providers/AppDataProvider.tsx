@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -65,34 +66,68 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [customCourses, setCustomCourses] = useState<Course[]>([]);
   const [activePathId, setActivePathId] = useState<string | null>(null);
 
+  /**
+   * The exact values hydration just read. `localStorage` writes are synchronous
+   * and block the main thread, and `paths` can hold an entire generated course,
+   * so re-serialising a value that has not changed since it was read is pure
+   * waste. Comparing by reference is enough because every update path in this
+   * provider builds a new object rather than mutating one.
+   */
+  const hydratedRef = useRef<{
+    profile: LearnerProfile | null;
+    progress: ProgressState;
+    paths: LearningPath[];
+    customCourses: Course[];
+    activePathId: string | null;
+  } | null>(null);
+
   // Hydrate once, on the client. This is a deliberate one-time read of a
   // browser-only store: the server has no localStorage, so the state has to be
   // adopted after mount rather than during render.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage */
-    setProfileState(readJSON<LearnerProfile | null>(STORAGE_KEYS.profile, null));
-    setProgress(readJSON<ProgressState>(STORAGE_KEYS.progress, emptyProgress()));
-    setPaths(readJSON<LearningPath[]>(STORAGE_KEYS.paths, []));
-    setCustomCourses(readJSON<Course[]>(STORAGE_KEYS.customCourses, []));
-    setActivePathId(readString(STORAGE_KEYS.activePath));
+    const storedProfile = readJSON<LearnerProfile | null>(STORAGE_KEYS.profile, null);
+    const storedProgress = readJSON<ProgressState>(STORAGE_KEYS.progress, emptyProgress());
+    const storedPaths = readJSON<LearningPath[]>(STORAGE_KEYS.paths, []);
+    const storedCourses = readJSON<Course[]>(STORAGE_KEYS.customCourses, []);
+    const storedActivePath = readString(STORAGE_KEYS.activePath);
+
+    setProfileState(storedProfile);
+    setProgress(storedProgress);
+    setPaths(storedPaths);
+    setCustomCourses(storedCourses);
+    setActivePathId(storedActivePath);
+    hydratedRef.current = {
+      profile: storedProfile,
+      progress: storedProgress,
+      paths: storedPaths,
+      customCourses: storedCourses,
+      activePathId: storedActivePath,
+    };
     setReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
-    if (ready) writeJSON(STORAGE_KEYS.profile, profile);
+    if (ready && hydratedRef.current?.profile !== profile) writeJSON(STORAGE_KEYS.profile, profile);
   }, [ready, profile]);
   useEffect(() => {
-    if (ready) writeJSON(STORAGE_KEYS.progress, progress);
+    if (ready && hydratedRef.current?.progress !== progress) {
+      writeJSON(STORAGE_KEYS.progress, progress);
+    }
   }, [ready, progress]);
   useEffect(() => {
-    if (ready) writeJSON(STORAGE_KEYS.paths, paths);
+    if (ready && hydratedRef.current?.paths !== paths) writeJSON(STORAGE_KEYS.paths, paths);
   }, [ready, paths]);
   useEffect(() => {
-    if (ready) writeJSON(STORAGE_KEYS.customCourses, customCourses);
+    if (ready && hydratedRef.current?.customCourses !== customCourses) {
+      writeJSON(STORAGE_KEYS.customCourses, customCourses);
+    }
   }, [ready, customCourses]);
   useEffect(() => {
-    if (ready && activePathId) writeString(STORAGE_KEYS.activePath, activePathId);
+    if (ready && activePathId && hydratedRef.current?.activePathId !== activePathId) {
+      writeString(STORAGE_KEYS.activePath, activePathId);
+    }
   }, [ready, activePathId]);
 
   const setProfile = useCallback((next: LearnerProfile | null) => {

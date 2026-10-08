@@ -53,8 +53,8 @@ jobs:
       - name: Audit production dependencies
         run: npm run audit
 
-      - name: Test
-        run: npm run test
+      - name: Test with coverage
+        run: npm run coverage
 
       - name: Build
         run: npm run build
