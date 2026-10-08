@@ -109,13 +109,20 @@ src/
 
 ## Testing
 
-`npm test` runs 8 Vitest suites covering:
+`npm test` runs 14 Vitest suites covering:
 
 - progress rules: XP idempotence, streak day maths, best-quiz scoring, levels, badges
 - the topic matcher, including false-positive guards (`html` must not match `ml`)
 - path generation: weekly budget compliance, no duplicate lessons, step caps, custom-course
   synthesis and level-based trimming
 - the interview rubric: strong vs vague answers, filler penalty, missing vocabulary
+- the AI provider abstraction: prompts round-trip their payload, the offline engine is
+  deterministic, provider selection honours the environment, and a failing remote call degrades to
+  the offline engine - driven through a stubbed `fetch`, so no network is used
+- the interface dictionaries: every locale carries the same keys, placeholders interpolate, and
+  browser language tags map to the right locale
+- the browser-facing helpers (`storage`, `speech`) degrade safely when there is no `localStorage`
+  or Web Speech API
 - content integrity: unique ids, valid quiz answers, every referenced simulation / challenge /
   scenario exists, and every lab and challenge is used by some lesson
 - **every reference challenge solution is executed against its own tests**, and every starter code
@@ -127,10 +134,12 @@ src/
 
 `.github/workflows/ci.yml` has two jobs.
 
-**`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run test` and
-`npm run build` on Node 24 - the same four checks as `npm run verify` - for every pull request into
-`main` or `dev`, and for every push to either branch. A failing run shows up as a red cross on the
-pull request.
+**`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run audit`,
+`npm run test` and `npm run build` on Node 24 - the same five checks as `npm run verify` - for every
+pull request into `main` or `dev`, and for every push to either branch. A failing run shows up as a
+red cross on the pull request. The `audit` step only inspects production dependencies
+(`npm audit --omit=dev`), so a vulnerability in build tooling cannot block a release while one in
+shipped code can.
 
 **`deploy`** promotes `main` to production on Vercel with `vercel deploy --prod`. It runs *only* on a
 push to `main` (never on a pull request, never on `dev`) and it declares `needs: verify`, so a red
