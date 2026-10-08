@@ -20,6 +20,8 @@ ones that are not in the catalogue.
 | **Coding challenges** | 7 challenges with real tests, executed inside a **sandboxed iframe** (`allow-scripts`, opaque origin, 4s timeout). Learner code never leaves the browser. |
 | **Role-play / mock interviews** | 5 scenarios (frontend screen, behavioural, stakeholder explanation, data case, ML deep dive) scored by a deterministic rubric: structure, concrete evidence, domain vocabulary, ownership, length, clarity. Optional AI coaching on top. |
 | **AI narration** | Every lesson can be read aloud with the Web Speech API, with sentence-level highlighting as it speaks. No audio files, no API keys. |
+| **Explain simply** | Any lesson can be re-explained in plain language on demand (the `explain` task), written for the learner's own level and background - so a beginner who meets jargon never has to leave the page. |
+| **Three languages** | The whole interface - navigation, buttons, headings, home page and footer - is available in **English, 简体中文 and 繁體中文**, switchable from the header and remembered per browser. The dictionaries are plain data in `src/lib/i18n/`, so a unit test keeps them key-for-key in sync. |
 | **Progress** | XP, levels, streaks, 7 badges, bookmarks, quiz best-scores and interview history - all derived from real activity and stored locally. |
 
 ## Tech stack
@@ -119,14 +121,32 @@ src/
 - **every reference challenge solution is executed against its own tests**, and every starter code
   is proven to fail - using the same `new Function` harness the browser sandbox uses
 - the delivery pipeline itself: the workflow, the pre-push hook and `package.json` must keep agreeing
-  on the same scripts (see [Continuous integration](#continuous-integration))
+  on the same scripts (see [Continuous integration and delivery](#continuous-integration-and-delivery))
 
-## Continuous integration
+## Continuous integration and delivery
 
-`.github/workflows/ci.yml` runs `npm ci` followed by `npm run typecheck`, `npm run lint`,
-`npm run test` and `npm run build` on Node 24 - the same four checks as `npm run verify` - for every
-pull request into `main` or `dev`, and for every push to either branch. A failing run shows up as a
-red cross on the pull request.
+`.github/workflows/ci.yml` has two jobs.
+
+**`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run test` and
+`npm run build` on Node 24 - the same four checks as `npm run verify` - for every pull request into
+`main` or `dev`, and for every push to either branch. A failing run shows up as a red cross on the
+pull request.
+
+**`deploy`** promotes `main` to production on Vercel with `vercel deploy --prod`. It runs *only* on a
+push to `main` (never on a pull request, never on `dev`) and it declares `needs: verify`, so a red
+build can never ship. Vercel builds the project on its own infrastructure from the committed
+lockfile, exactly as a deploy from the dashboard would.
+
+Switch it on once per repository by adding the token:
+
+1. Create a token at **vercel.com/account/tokens**.
+2. In GitHub: **Settings -> Secrets and variables -> Actions -> New repository secret**.
+3. Name it `VERCEL_TOKEN` and paste the token in.
+
+The Vercel organisation and project ids live in the workflow's `env:` block. They are public
+identifiers (they appear in the project's dashboard URL), which is why only the token is a secret.
+If the secret is missing, `deploy` fails immediately with those instructions rather than silently
+skipping the release.
 
 To make that a hard requirement instead of a warning, protect the branch once per repository:
 
@@ -159,12 +179,24 @@ skips the hook.
 
 ## Deploying to Vercel
 
+There are two independent ways to ship, and this repository uses the first.
+
+**1. From CI (what this repository does).** `.github/workflows/ci.yml` deploys every push to `main`
+as soon as the `verify` job passes. Switch it on by adding the `VERCEL_TOKEN` secret - see
+[Continuous integration and delivery](#continuous-integration-and-delivery). Vercel's own Git
+integration is *not* needed for this.
+
+**2. From Vercel's Git integration.** Connect the repository in Vercel and it builds on every push
+and creates a preview deployment for every pull request, with no GitHub Actions involved.
+
+Either way the project needs no build configuration:
+
 1. Push the repository to GitHub.
 2. In Vercel: **Add New -> Project -> import the repo**. The Next.js preset is detected; no build
    settings need changing.
 3. (Optional) Add `AI_PROVIDER` / `OPENAI_API_KEY` under **Settings -> Environment Variables**.
    Without them the app deploys in offline mode, which is the intended demo configuration.
-4. Deploy. Preview deployments are created for every pull request automatically.
+4. Deploy.
 
 `src/app/api/ai/route.ts` runs on the Node.js runtime and is marked `force-dynamic`, so it works on
 Vercel's serverless functions without extra configuration.
@@ -172,6 +204,8 @@ Vercel's serverless functions without extra configuration.
 ## Known limitations
 
 - Progress and generated courses are **per browser profile**: there is no account system or sync.
+- The language choice is stored the same way, and only the **interface** is translated today: lesson
+  bodies, course titles and lab copy remain in English (see `src/lib/i18n/`).
 - Narration depends on the browser's Web Speech API (Chrome, Edge, Safari); other browsers see a
   short explanatory note instead of a play button.
 - The offline AI engine is a deterministic template engine, not a language model. It only states
