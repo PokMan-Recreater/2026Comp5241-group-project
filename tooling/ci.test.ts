@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The scripts the pipeline is built out of. */
-const GATE_SCRIPTS = ["typecheck", "lint", "test", "build", "verify"] as const;
+const GATE_SCRIPTS = ["typecheck", "lint", "audit", "test", "build", "verify"] as const;
 
 function readText(relativePath: string): string {
   const absolute = resolve(REPO_ROOT, relativePath);
@@ -45,7 +45,7 @@ describe("CI integrity", () => {
     expect(workflow).toMatch(/branches:\s*\[?\s*main\b/);
 
     // ...and it must actually run each check, not just build.
-    for (const script of ["typecheck", "lint", "test", "build"] as const) {
+    for (const script of ["typecheck", "lint", "audit", "test", "build"] as const) {
       expect(workflow, `ci.yml never runs "npm run ${script}"`).toContain(`npm run ${script}`);
     }
 
