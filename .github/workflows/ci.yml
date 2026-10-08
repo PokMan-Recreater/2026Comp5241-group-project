@@ -73,13 +73,23 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Require the VERCEL_TOKEN secret
+        env:
+          # A repository *variable* of the same name is the most common mistake:
+          # the Secrets and Variables tabs sit side by side in the settings UI,
+          # and only `secrets.*` is readable from a workflow.
+          TOKEN_AS_VARIABLE: ${{ vars.VERCEL_TOKEN }}
         run: |
-          if [ -z "${VERCEL_TOKEN}" ]; then
-            echo "::error::Missing the VERCEL_TOKEN repository secret."
-            echo "Create one at https://vercel.com/account/tokens, then add it under"
-            echo "Settings -> Secrets and variables -> Actions -> New repository secret."
-            exit 1
+          if [ -n "${VERCEL_TOKEN}" ]; then
+            echo "VERCEL_TOKEN is available."
+            exit 0
           fi
+          echo "::error::Missing the VERCEL_TOKEN repository secret."
+          if [ -n "${TOKEN_AS_VARIABLE}" ]; then
+            echo "::error::A repository VARIABLE named VERCEL_TOKEN exists, but variables are not secrets. Move it to the Secrets tab."
+          fi
+          echo "Create one at https://vercel.com/account/tokens, then add it under"
+          echo "Settings -> Secrets and variables -> Actions -> Secrets -> New repository secret."
+          exit 1
 
       - name: Checkout
         uses: actions/checkout@v7
