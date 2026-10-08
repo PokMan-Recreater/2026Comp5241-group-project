@@ -128,11 +128,20 @@ src/
 pull request into `main` or `dev`, and for every push to either branch. A failing run shows up as a
 red cross on the pull request.
 
-To make that a hard requirement instead of a warning, enable branch protection once per repository:
+To make that a hard requirement instead of a warning, protect the branch once per repository:
 
-**Settings -> Branches -> Add branch protection rule** for `main`, then tick **Require status checks
-to pass before merging** and select the **Verify (typecheck, lint, test, build)** check. A red pull
-request can then no longer be merged.
+1. **Settings -> Branches -> Add branch protection rule** (or **Settings -> Rules -> Rulesets** if your
+   repository shows the newer UI - the check name below is the same either way).
+2. **Branch name pattern**: `main`.
+3. Tick **Require status checks to pass before merging**.
+4. Type `Verify` in the search box, click the **Verify (typecheck, lint, test, build)** entry, then
+   click the **+** button beside it. Adding a check is a two-step process and the **+** is easy to
+   miss - without it no check is actually attached, and GitHub refuses to save with **"Rule is
+   invalid"**. The check must show up as a chip before you save.
+5. **Create** / **Save changes**.
+
+The check only appears in that search box after `.github/workflows/ci.yml` has run at least once on
+the branch, so push first and configure afterwards. A red pull request can then no longer be merged.
 
 ### Catch failures before they leave your machine
 
