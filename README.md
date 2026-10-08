@@ -137,6 +137,10 @@ push to `main` (never on a pull request, never on `dev`) and it declares `needs:
 build can never ship. Vercel builds the project on its own infrastructure from the committed
 lockfile, exactly as a deploy from the dashboard would.
 
+Vercel's own Git integration is connected as well, so it *also* deploys `main` (and previews every
+other branch). Both build the same commit, so the result is identical - this job exists so that a
+release is additionally gated on `verify`, which the Git integration does not wait for.
+
 Switch it on once per repository by adding the token:
 
 1. Create a token at **vercel.com/account/tokens**.
@@ -179,15 +183,16 @@ skips the hook.
 
 ## Deploying to Vercel
 
-There are two independent ways to ship, and this repository uses the first.
+This repository has **both** shipping paths switched on.
 
-**1. From CI (what this repository does).** `.github/workflows/ci.yml` deploys every push to `main`
-as soon as the `verify` job passes. Switch it on by adding the `VERCEL_TOKEN` secret - see
-[Continuous integration and delivery](#continuous-integration-and-delivery). Vercel's own Git
-integration is *not* needed for this.
+**1. Vercel's Git integration.** Connected, so Vercel builds on every push: `main` goes to
+production, every other branch gets a preview deployment (aliased `...-git-<branch>-...`). No GitHub
+Actions involved, and it does *not* wait for CI to pass.
 
-**2. From Vercel's Git integration.** Connect the repository in Vercel and it builds on every push
-and creates a preview deployment for every pull request, with no GitHub Actions involved.
+**2. From CI.** `.github/workflows/ci.yml` also deploys every push to `main`, but only once the
+`verify` job has passed. Switch it on by adding the `VERCEL_TOKEN` secret - see
+[Continuous integration and delivery](#continuous-integration-and-delivery). Keeping it means a
+release is gated on the tests, at the cost of a second (identical) production build per push.
 
 Either way the project needs no build configuration:
 
