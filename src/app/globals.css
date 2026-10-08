@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens. Tailwind v4 exposes these as utilities (bg-brand-500,
+   text-ink-950, shadow-glow, ...) and as CSS variables.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-ink-800: #121a2b;
+  --color-ink-900: #0b111f;
+  --color-ink-950: #070a14;
+
+  --shadow-glow: 0 18px 50px -24px rgba(99, 102, 241, 0.75);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ink-950 text-slate-200 antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 12% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+      radial-gradient(50rem 30rem at 100% 0%, rgba(14, 165, 233, 0.12), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.4);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.035];
+  }
+
+  .card-hover {
+    @apply transition hover:border-brand-400/40 hover:bg-white/[0.06];
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-300;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-brand-500 text-white hover:bg-brand-400 shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply border border-white/15 bg-white/5 text-slate-100 hover:bg-white/10;
+  }
+
+  .btn-ghost {
+    @apply text-slate-300 hover:bg-white/5 hover:text-white;
+  }
+
+  .btn-sm {
+    @apply rounded-lg px-3 py-1.5 text-xs;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-ink-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold tracking-tight text-white sm:text-3xl;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-brand-300;
+  }
+
+  .link {
+    @apply text-brand-300 underline-offset-4 hover:underline;
+  }
+
+  .lesson-prose p {
+    @apply text-[15px] leading-7 text-slate-300;
+  }
+
+  .lesson-prose p + p {
+    @apply mt-3;
+  }
+
+  .sentence-active {
+    @apply rounded bg-brand-500/25 text-white;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
+}
