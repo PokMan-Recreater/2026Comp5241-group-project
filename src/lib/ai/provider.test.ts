@@ -70,6 +70,13 @@ describe("offline (mock) provider", () => {
     const text = await mockProvider.complete([{ role: "system", content: "nothing here" }]);
     expect(text.length).toBeGreaterThan(0);
   });
+
+  it("falls back to generic guidance when the payload is missing", async () => {
+    for (const task of ["path-rationale", "interview-coach", "explain-topic", "lesson-outline"]) {
+      const text = await mockProvider.complete([{ role: "system", content: `TASK:${task}` }]);
+      expect(text.length, task).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("provider selection", () => {
