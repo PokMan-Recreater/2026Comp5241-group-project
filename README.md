@@ -46,6 +46,7 @@ npm run lint         # eslint (flat config)
 npm test             # vitest run
 npm run build        # production build
 npm run verify       # typecheck + lint + tests + build
+npm run hooks:install  # enable the pre-push gate (once per clone)
 ```
 
 The app works with **no environment variables**. Copy `.env.example` to `.env.local` only if you
@@ -106,7 +107,7 @@ src/
 
 ## Testing
 
-`npm test` runs 7 Vitest suites covering:
+`npm test` runs 8 Vitest suites covering:
 
 - progress rules: XP idempotence, streak day maths, best-quiz scoring, levels, badges
 - the topic matcher, including false-positive guards (`html` must not match `ml`)
@@ -117,6 +118,35 @@ src/
   scenario exists, and every lab and challenge is used by some lesson
 - **every reference challenge solution is executed against its own tests**, and every starter code
   is proven to fail - using the same `new Function` harness the browser sandbox uses
+- the delivery pipeline itself: the workflow, the pre-push hook and `package.json` must keep agreeing
+  on the same scripts (see [Continuous integration](#continuous-integration))
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs `npm ci` followed by `npm run typecheck`, `npm run lint`,
+`npm run test` and `npm run build` on Node 24 - the same four checks as `npm run verify` - for every
+pull request into `main` or `dev`, and for every push to either branch. A failing run shows up as a
+red cross on the pull request.
+
+To make that a hard requirement instead of a warning, enable branch protection once per repository:
+
+**Settings -> Branches -> Add branch protection rule** for `main`, then tick **Require status checks
+to pass before merging** and select the **Verify (typecheck, lint, test, build)** check. A red pull
+request can then no longer be merged.
+
+### Catch failures before they leave your machine
+
+CI is the authority, but a round trip through GitHub is a slow way to find a typo. The repository
+ships a `pre-push` hook in `.githooks/` that runs `npm run verify` and aborts the push whenever a
+push targets `main`:
+
+```bash
+npm run hooks:install   # git config core.hooksPath .githooks - once per clone
+```
+
+Git never versions `.git/hooks`, which is why the hook lives in `.githooks/` and has to be switched
+on explicitly. Pushes to other branches are left alone. In a genuine emergency, `git push --no-verify`
+skips the hook.
 
 ## Deploying to Vercel
 
