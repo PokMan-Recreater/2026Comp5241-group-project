@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# SkillForge pre-push hook.
+#
+# When a push targets `main`, run the full verification gate
+# (`npm run verify` = typecheck + lint + tests + build) and abort the push if
+# anything fails. That keeps the protected branch green even for a developer
+# pushing straight from their machine instead of opening a pull request.
+#
+# Install once per clone:  npm run hooks:install
+# Emergency bypass:        git push --no-verify
+#
+# Pushes to any other branch are not blocked locally. They are still checked by
+# .github/workflows/ci.yml, and a work-in-progress branch should not be held up.
+
+set -eu
+
+remote="${1:-origin}"
+protected_branch="main"
+pushing_to_main=0
+
+# git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ -z "${remote_ref:-}" ]; then
+    continue
+  fi
+  if [ "$remote_ref" = "refs/heads/$protected_branch" ]; then
+    pushing_to_main=1
+  fi
+done
+
+if [ "$pushing_to_main" -eq 0 ]; then
+  exit 0
+fi
+
+echo "pre-push: push to '$protected_branch' detected on '$remote' - running: npm run verify"
+echo "pre-push: (bypass with 'git push --no-verify' only if you really must)"
+
+if npm run verify; then
+  echo "pre-push: verification passed - continuing with the push to '$protected_branch'"
+  exit 0
+fi
+
+echo "" >&2
+echo "pre-push: verification FAILED - the push to '$protected_branch' was aborted." >&2
+echo "pre-push: fix the failure above, or push to a branch and open a pull request." >&2
+exit 1
