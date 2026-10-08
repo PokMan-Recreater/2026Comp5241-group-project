@@ -1,8 +1,9 @@
-name: CI
+name: CI/CD
 
-# Runs the same gate a developer runs locally (`npm run verify`) so that a type
-# error, lint error, failing test or broken production build can never reach
-# `main` unnoticed.
+# CI runs the same gate a developer runs locally (`npm run verify`) so that a
+# type error, lint error, failing test or broken production build can never
+# reach `main` unnoticed. CD then promotes `main` to production on Vercel - but
+# only after that gate has passed.
 on:
   pull_request:
     branches: [main, dev]
@@ -19,6 +20,10 @@ permissions:
 
 env:
   NEXT_TELEMETRY_DISABLED: "1"
+  # Vercel project identifiers. These are public - they appear in the project's
+  # dashboard URL - so only VERCEL_TOKEN is stored as a secret.
+  VERCEL_ORG_ID: team_Yd5upSgFFpOZQcqTlmP7bz9k
+  VERCEL_PROJECT_ID: prj_47jdDtz3Oi5CpydlSGPtj6jDavSk
 
 jobs:
   verify:
@@ -50,3 +55,34 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  deploy:
+    name: Deploy to Vercel (production)
+    # Production only: pull requests stop at `verify`, and pushes to `dev` are
+    # never deployed. `needs` guarantees unverified code cannot ship.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Require the VERCEL_TOKEN secret
+        run: |
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "::error::Missing the VERCEL_TOKEN repository secret."
+            echo "Create one at https://vercel.com/account/tokens, then add it under"
+            echo "Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Vercel builds the project on its own infrastructure from the committed
+      # lockfile - the same way a deploy from the dashboard would.
+      - name: Deploy to production
+        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"

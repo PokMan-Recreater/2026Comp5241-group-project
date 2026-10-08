@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { LessonBlock } from "@/types";
 import { useAppData } from "@/components/providers/AppDataProvider";
+import { ExplainButton } from "@/components/lesson/ExplainButton";
 import { LessonBlocks, type HighlightTarget } from "@/components/lesson/LessonBlocks";
 import { NarrateButton } from "@/components/lesson/NarrateButton";
 import { findLesson, courseLessonsOf } from "@/content";
@@ -164,6 +165,7 @@ export function LessonView({
               onEnd={() => setHighlight(null)}
             />
           )}
+          <ExplainButton key={lesson.id} topic={lesson.title} />
         </div>
       </header>
 

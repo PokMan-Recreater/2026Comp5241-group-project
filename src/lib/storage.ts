@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   customCourses: "skillforge.customCourses.v1",
   activePath: "skillforge.activePath.v1",
   challengeCode: "skillforge.challengeCode.v1",
+  locale: "skillforge.locale.v1",
 } as const;
 
 function hasStorage(): boolean {

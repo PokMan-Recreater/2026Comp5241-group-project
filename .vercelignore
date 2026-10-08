@@ -1,0 +1,4 @@
+# Local dev artefacts that must never be uploaded to Vercel
+*.log
+dev-server.log
+dev-server.err.log

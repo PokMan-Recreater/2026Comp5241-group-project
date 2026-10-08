@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppDataProvider } from "@/components/providers/AppDataProvider";
+import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 
@@ -36,9 +37,11 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className="flex min-h-full flex-col font-sans">
         <AppDataProvider>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
+          <LanguageProvider>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </LanguageProvider>
         </AppDataProvider>
       </body>
     </html>

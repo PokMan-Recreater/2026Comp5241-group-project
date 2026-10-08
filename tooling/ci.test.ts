@@ -53,6 +53,25 @@ describe("CI integrity", () => {
     expect(workflow).toContain("npm ci");
   });
 
+  it("gates the production deploy behind the verify job", () => {
+    const workflow = readText(".github/workflows/ci.yml");
+
+    // A deploy job must exist...
+    expect(workflow, "ci.yml has no deploy job").toMatch(/^ {2}deploy:/m);
+
+    // ...it must run only for a push to main - never for a pull request or `dev`...
+    expect(workflow).toMatch(
+      /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/,
+    );
+
+    // ...and it must wait for the gate above it, so unverified code cannot ship.
+    expect(workflow).toMatch(/needs:\s*verify/);
+
+    // It authenticates with the token secret and deploys straight to production.
+    expect(workflow).toContain("secrets.VERCEL_TOKEN");
+    expect(workflow).toContain("vercel deploy --prod");
+  });
+
   it("blocks a direct push to main until the whole gate passes", () => {
     const hook = readText(".githooks/pre-push");
 

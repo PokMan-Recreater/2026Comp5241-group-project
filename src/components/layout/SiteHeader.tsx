@@ -4,23 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAppData } from "@/components/providers/AppDataProvider";
+import { useI18n } from "@/components/providers/LanguageProvider";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { levelTitleKey, type TranslationKey } from "@/lib/i18n";
 import { levelFromXp } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/catalog", label: "Courses" },
-  { href: "/paths", label: "My paths" },
-  { href: "/labs", label: "Labs" },
-  { href: "/interview", label: "Interviews" },
-  { href: "/create", label: "Custom topic" },
-  { href: "/dashboard", label: "Dashboard" },
+const NAV: { href: string; key: TranslationKey }[] = [
+  { href: "/catalog", key: "nav.courses" },
+  { href: "/paths", key: "nav.paths" },
+  { href: "/labs", key: "nav.labs" },
+  { href: "/interview", key: "nav.interviews" },
+  { href: "/create", key: "nav.customTopic" },
+  { href: "/dashboard", key: "nav.dashboard" },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
   const { ready, profile, progress } = useAppData();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const level = levelFromXp(progress.xp);
+  const titleKey = levelTitleKey(level.title);
+  const levelTitle = titleKey ? t(titleKey) : level.title;
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-ink-950/85 backdrop-blur">
@@ -48,27 +54,29 @@ export function SiteHeader() {
                     : "text-slate-400 hover:bg-white/5 hover:text-white",
                 )}
               >
-                {item.label}
+                {t(item.key)}
               </Link>
             );
           })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <LanguageSwitcher />
+
           {ready && (
             <Link
               href="/dashboard"
               className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10 sm:flex"
             >
-              <span className="text-amber-300">⚡ {progress.xp} XP</span>
+              <span className="text-amber-300">⚡ {t("header.xp", { xp: progress.xp })}</span>
               <span className="text-slate-500">|</span>
-              <span>
-                Lv{level.level} {level.title}
-              </span>
+              <span>{t("header.level", { level: level.level, title: levelTitle })}</span>
               {progress.streakDays > 0 && (
                 <>
                   <span className="text-slate-500">|</span>
-                  <span className="text-orange-300">🔥 {progress.streakDays}d</span>
+                  <span className="text-orange-300">
+                    🔥 {t("header.streak", { days: progress.streakDays })}
+                  </span>
                 </>
               )}
             </Link>
@@ -76,7 +84,7 @@ export function SiteHeader() {
 
           {ready && !profile && (
             <Link href="/onboarding" className="btn btn-primary btn-sm">
-              Start free
+              {t("header.startFree")}
             </Link>
           )}
 
@@ -84,7 +92,7 @@ export function SiteHeader() {
             type="button"
             className="btn btn-secondary btn-sm lg:hidden"
             aria-expanded={open}
-            aria-label="Toggle navigation"
+            aria-label={t("header.toggleNav")}
             onClick={() => setOpen((value) => !value)}
           >
             ☰
@@ -101,7 +109,7 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
               className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white"
             >
-              {item.label}
+              {t(item.key)}
             </Link>
           ))}
         </nav>
