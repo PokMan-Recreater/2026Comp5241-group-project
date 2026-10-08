@@ -60,6 +60,11 @@ jobs:
     name: Deploy to Vercel (production)
     # Production only: pull requests stop at `verify`, and pushes to `dev` are
     # never deployed. `needs` guarantees unverified code cannot ship.
+    #
+    # Note: Vercel's own Git integration is connected too, so it already deploys
+    # `main` (and previews every other branch) without waiting for CI. This job
+    # is a deliberate second deploy so that a release is additionally gated on
+    # `verify`. Both build the same commit, so the result is identical.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-latest
