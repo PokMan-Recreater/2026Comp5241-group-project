@@ -1,10 +1,18 @@
 # Forma Learning Lab
 
+<p>
+  <a href="https://forma-learning-lab.vercel.app/">
+    <img src="docs/open-forma.svg" alt="Open Forma website" width="360" height="76">
+  </a>
+</p>
+
+**[forma-learning-lab.vercel.app](https://forma-learning-lab.vercel.app/)**
+
 **COMP5241 group project — Forma prototype**
 
 Author: [Cicicrr](https://github.com/Cicicrr) · Branch: `prototype/forma`
 
-[Live demo](https://forma-learning-lab.vercel.app/) · [Group repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
+[Group repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
 
 This branch contains Forma as an independent prototype for the group to compare with the other proposals. SkillForge remains on `main`. Select `prototype/forma` when viewing, checking out or deploying this version.
 
