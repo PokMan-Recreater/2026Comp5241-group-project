@@ -1,29 +1,36 @@
-# 课程重做验证记录
+# Course revision verification record
 
-## 已完成的检查
+## Automated checks
 
-- Node 自动检查：13 项通过，包括课程三语数据完整性、七门课程路径、权限实验、范围预算、逐项反馈、草稿跨语言保留、作业导出和 HTML 转义。
-- 编程参考实现：检查首条记录、顺序、新数组、原对象引用、输入不变及空输入。测试课的 Map 起始稿能被重复编号用例识别为错误。
-- 浏览器实际检查：7 门 × 4 节 × 3 种语言，共 84 个课节页面均有讲解、3 个作业字段和参考解答，无桌面横向溢出。
-- 在浏览器填写草稿、勾选自查、先选错误答案再改为正确答案：反馈跟随选项，切换繁体和重新加载后草稿、自查与反馈保留。
-- 权限实验：其他学生读取申请被拒绝；规则模型另有已归还物品不能重复批准的测试。
-- 范围实验：选择 3 点与 4 点变更时显示 7/6 超支，同时提示未决政策。
-- 分步演示：切换到第二阶段时同时显示 Server 阶段和对应文字。
-- 代码运行器：Map 错误稿被重复编号用例拒绝；正确 Set 实现通过；无限循环被限时终止。
-- 模拟面试：能展开参考追问；实时 AI 未配置时明确展示配置说明，没有伪造回复。
-- 下载作业：实际文件包含保存的个人草稿，不混入参考答案。
-- 学习进度：完成首节后进入下一节并标记完成；学习路径与教师目录均包含七门课程。
-- 语法检查与静态构建通过。
+All 13 Node.js tests and the static build passed again before the prototype was uploaded to the group repository. The checks cover multilingual content completeness, seven-course paths, access rules, scope budgets, option-specific feedback, draft preservation across languages, assignment export and HTML escaping.
 
-## 验证范围
+Coding reference checks cover keeping the first matching record, order, a new result array, original object references, unchanged input and empty input. A duplicate-identifier case detects the faulty `Map` starter in the testing lesson.
 
-这些检查证明网页行为与当前内容结构可用，不等于真实学习效果已得到验证。课程仍需要真实学习者试读；旁白声音依赖设备，没有在本轮播放声音验证。实时 AI 因缺少服务端配置，没有与模型端到端联调。账号和共享教学数据不属于本轮改动。
+## Browser checks recorded during the course revision
 
-文案组织参考及内容边界见 `course-design.md`。记录不包含真实学生的作答、访谈或掌握分数。
+The following records describe the earlier course-revision checks; they were not rerun for the documentation-only English update.
 
-## 部署结果
+- All 84 lesson/language combinations (7 courses × 4 lessons × 3 languages) displayed explanations, three assignment fields and reference answers, without desktop horizontal overflow.
+- Draft text, self-check selections and answer feedback survived a language change to Traditional Chinese and a reload. Feedback updated when an answer was changed.
+- The access-control exercise rejected a different student's request to read an application. Automated rules also reject approval of an already returned item.
+- The scope exercise displayed a 7/6 overspend when changes costing three and four points were selected, and identified unresolved policies.
+- The second demonstration stage displayed the Server stage and its matching explanation.
+- The code runner rejected the faulty `Map` solution, accepted the correct `Set` implementation and terminated an infinite loop at the time limit.
+- Written interview follow-up prompts could be expanded. Unconfigured live AI displayed a configuration message.
+- Downloaded assignments contained the saved learner draft without including reference answers.
+- Completing the first lesson opened the next lesson and retained completion. Learning paths and the instructor catalog included all seven courses.
+- Syntax checks and the static build passed.
 
-已更新现有 Vercel 项目 `forma-learning-lab`，生产地址保持 https://forma-learning-lab.vercel.app 。
-部署编号：`dpl_73orwTT8u6Y7kFdpSUjhDruGHj34`，返回状态 READY。首次更新遇到未授权，核对登录和项目后，以原团队 c-r-r 重试成功。
+## Scope of verification
 
-线上确认七门内置课程均有课程说明入口，已有个人课程仍保留；需求访谈课展示三方材料与三个作业字段。最终页面无浏览器错误记录。
+These checks establish behavior and content structure, not learning effectiveness. The course material still needs review by real learners. Narration depends on the device; audio playback was not validated during the recorded checks. Live AI was not tested end to end because server-side configuration was unavailable. Authentication and shared classroom data were outside the course-revision scope.
+
+See [course design](course-design.md) for teaching references and content limitations. This record contains no real student submissions, interview data or mastery scores.
+
+## Deployment record
+
+The course revision was deployed to the existing Vercel project, `forma-learning-lab`, at [the Forma live demo](https://forma-learning-lab.vercel.app/).
+
+The recorded production check found course-description entry points for all seven built-in courses and preserved existing personal courses. The requirements-interview lesson displayed three stakeholder accounts and three assignment fields. No browser errors were recorded at the end of that check.
+
+The GitHub branch upload and this documentation update do not constitute a new production deployment.
