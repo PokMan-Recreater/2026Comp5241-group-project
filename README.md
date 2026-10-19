@@ -2,11 +2,9 @@
 
 <p>
   <a href="https://forma-learning-lab.vercel.app/">
-    <img src="docs/open-forma.svg" alt="Open Forma website" width="360" height="76">
+    <img src="docs/open-forma.svg" alt="Open Forma website" width="184" height="40">
   </a>
 </p>
-
-**[forma-learning-lab.vercel.app](https://forma-learning-lab.vercel.app/)**
 
 **COMP5241 group project — Forma prototype**
 
