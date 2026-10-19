@@ -1,31 +1,31 @@
-# 需求覆盖与后续工作
+# Requirements and remaining work
 
-依据：`../project_overivew.pdf`，以及本次讨论确认的设计。原型不代表最终验收完成。
+This checklist maps the prototype to the teacher's project overview and the design decisions made for Forma. The original `project_overivew.pdf` is a course reference and is not included in this branch. Prototype coverage does not imply final acceptance.
 
-| 要求 | 当前状态 |
+| Requirement | Current status |
 | --- | --- |
-| 软件工程基础、AI 编程、软技能和产品能力 | 七门三语课程、28 节已提供，详见 course-design.md |
-| 非 CS 与 CS 求职学习者 | 学习档案、规则推荐、入门/进阶内容已提供；仍需真实用户验证 |
-| 图文 | 已提供；自定义图片上传待接入对象存储 |
-| 交互模拟与小游戏 | 上线决策游戏、访问权限与范围预算实验已提供 |
-| 角色扮演、模拟面试 | 案例访谈与书面模拟面试已提供；实时角色和面试接口使用当前课程情境，仍需配置服务端 AI |
-| AI 旁白动画和幻灯片 | 带阶段示意的幻灯片及浏览器旁白已提供；生成式配音和完整动画待实现 |
-| 在线编程 | 两节隔离 JavaScript 编程及独立行为检查、参考实现已提供 |
-| AI 教学与定制内容 | 问答、生成接口已提供，需真实密钥联调；目前路径匹配使用规则 |
-| 教师手动/AI 编辑现有课程和活动 | 手动编辑已提供；AI 生成新课已接接口；现有课的 AI 定向改写、活动参数编辑待完善 |
-| 导入学生、参与和投入情况 | 本机名单和活动记录已提供；共享教学班、跨账号分析待数据库接入 |
-| 其他学科与自主学习 | 支持任意主题手动建课；AI 生成需密钥；个人路径可调整 |
-| 三类身份与手册 | 三个工作台及手册已提供；真正身份认证和服务端权限待实现 |
-| 英语默认、简体/繁体/英语 | 已提供；每门自定义课程按已编辑的语言回退，不伪造翻译 |
-| 多个原型、用户访谈、迭代 | 本应用为第一版；访谈、原型比较及证据由团队开展 |
-| 四人贡献、课程组织公开 GitHub | 尚需团队确认仓库与成员；未擅自创建课程组织仓库 |
-| 公开部署 | 使用 Vercel；实际地址与验证结果记录在交付消息 |
-| 会议摘要、视频、报告、幻灯片、4D 反思、互评 | 团队项目交付工作，待后续组织；不能以应用替代 |
+| Software engineering, AI-assisted coding, soft skills and product skills | Seven multilingual courses and 28 lessons are available; see [course design](course-design.md). |
+| Learners from non-CS backgrounds and CS graduates preparing for employment | Learning profiles, rule-based recommendations and introductory/advanced material are available. Feedback from real learners is pending. |
+| Text and images | Available. Custom image uploads require storage integration. |
+| Interactive simulations and games | Launch-decision game, access-control exercise and scope/budget exercise are available. |
+| Role-play and mock interviews | Authored stakeholder interviews and written mock interviews are available. Live AI interactions use the current course context and require server-side configuration. |
+| AI-narrated animations and slides | Staged diagrams/slides and device narration are available. Generative narration and full animations are pending. |
+| Online coding | Two isolated JavaScript coding lessons include behavior checks and reference implementations. |
+| AI teaching and personalized content | Question-answering and course-generation endpoints are implemented. Live-provider validation requires credentials. Path matching currently uses rules. |
+| Instructor editing of courses and activities, manually and with AI | Manual editing is available. New-course generation uses the AI endpoint when configured. Targeted AI rewriting and activity-parameter editing need further work. |
+| Student import and participation tracking | Browser-local rosters and activity records are available. Shared classrooms and cross-account analytics require a database and authentication. |
+| Other subjects and self-directed learning | Users can create courses on arbitrary topics manually, or generate drafts when AI is configured. Personal learning paths can be reordered. |
+| Learner, instructor and administrator roles and manuals | Three demonstration workspaces and a [user guide](user-guide.md) are available. Real authentication and server-side permissions are pending. |
+| English by default; English, Simplified Chinese and Traditional Chinese | Available. Custom courses fall back to a language that has actually been authored. |
+| Multiple prototypes, user feedback and iteration | Forma is one member's proposal on `prototype/forma`; SkillForge remains on `main`. The third member's upload, comparisons and user-feedback evidence are team tasks. |
+| Member contributions and public project repository | This branch is in the shared group repository. The team should confirm the course's repository-organization instructions and retain evidence of individual contributions. |
+| Public deployment | [Forma live demo](https://forma-learning-lab.vercel.app/) is available on Vercel. |
+| Progress summaries, video, report, slides, AI Fluency 4D reflection and peer review | These are team deliverables to prepare separately from the application. |
 
-## 下一阶段
+## Next steps
 
-1. 先通过用户试用确认课程与游戏的学习价值，修正内容和交互。
-2. 接外部数据库及认证：users、roles、courses、course_versions、classrooms、enrollments、activity_events、learning_profiles、personal_paths。以账号和教学班关系在服务端校验访问权限。
-3. 使用教师课件中提供的实际 AI 服务配置联调。不要把 API 密钥放入前端。
-4. 扩展教师活动参数编辑、图片及媒体上传、真实学习分析和人工审核流程。
-5. 持续收集访谈、测试、提交记录及 AI 使用证据，准备最终交付。
+1. Ask learners to try the courses and game, then revise the content and interactions using their feedback.
+2. Add authentication and shared storage for users, roles, courses, course versions, classrooms, enrollments, activity events, learning profiles and personal paths. Enforce access rules on the server using account and classroom relationships.
+3. Configure the AI service provided for the course and validate its behavior end to end. Keep credentials on the server.
+4. Extend instructor activity settings, media uploads, learning analytics and human review.
+5. Collect interview notes, test results, contribution records and AI-use evidence for the final submission.

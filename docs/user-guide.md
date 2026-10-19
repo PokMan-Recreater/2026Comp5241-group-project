@@ -1,35 +1,39 @@
-# 原型使用手册
+# Prototype user guide
 
-## 通用
+## Getting started
 
-默认英语。在右上角选择 English、简体中文或繁體中文，选择会保存。右上角身份菜单可预览三个工作台。所有业务记录保存在当前浏览器；清除网站数据会移除记录。正式账号系统尚未接入。
+English is the default language. Use the language selector to choose English, Simplified Chinese or Traditional Chinese; the choice is saved. The role selector previews the learner, instructor and administrator workspaces.
 
-## 学习者 Learner
+Application records are stored in the current browser. Clearing site data removes them. A real account system is not connected.
 
-1. 在 Learning profile 填写基础、目标和内容深度。学习语言可以跟随界面，也可以单独选择。
-2. 在 Learning path 查看推荐顺序，使用上下按钮调整。
-3. 在 My learning 或 Explore courses 点击课程名称，先查看课程说明、学习基础、课节与课程成果，再进入课节。
-4. 在课节中阅读材料、切换演示阶段、按需播放设备旁白，阅读案例材料并完成实验。每节作业分三个问题，输入时保存；可以展开参考答案、勾选自查依据并下载本课程作业。旁白为设备朗读，不是 AI 生成音频。
-5. “Five minutes to launch”中选择预算内的行动，开放报名后查看后果，再尝试其他策略。
-6. Code lab 中编辑 uniqueBookings 函数，点击 Run checks；无限循环会被限时终止。测试与上线课从一个有缺陷的 Map 实现开始，可展开参考实现对照。
-7. 点击 Complete & continue 保存完成状态。完成状态是学习者确认的进度，不是自动掌握评定。
-8. 使用 Create a learning path 创建个人课程；可以手动创建或在 AI 已配置时生成，再编辑和发布。
+## Learner
 
-## 教师 Instructor
+1. Open **Learning profile** and select your experience, goals and content depth. Course language can follow the interface or be selected separately.
+2. Open **Learning path** to view the recommended sequence. Use the up/down controls to reorder it.
+3. Select a course in **My learning** or **Explore courses**. Review its description, prerequisites, lessons and expected outcomes before opening a lesson.
+4. Read the lesson, move through its demonstration stages, optionally play device narration, and complete the case or exercise. Each assignment has three prompts and saves as you type. Expand reference answers, mark self-check criteria and download the course assignments as needed. Narration uses device text-to-speech.
+5. In **Five minutes to launch**, choose actions within the budget, open registration, inspect the outcome and try another strategy.
+6. In **Code lab**, edit `uniqueBookings` and select **Run checks**. Execution has a time limit. The testing course starts with a faulty `Map` implementation and offers a reference solution for comparison.
+7. Select **Complete & continue** to save completion and move on. Completion records the learner's confirmation; it is not an automatic mastery assessment.
+8. Use **Create a learning path** to create a personal course manually or generate a draft when AI is configured. Edit and publish the result.
 
-1. 切换至 Instructor，进入 My courses。
-2. 使用 Create course 输入主题与材料，手动建课或生成 AI 草稿。
-3. 在 Course studio 中选择内容语言，编辑标题、简介及课节；每节可选择活动类型。
-4. Save changes 保存，Preview 预览，Publish course 发布到本机原型目录。
-5. 在 Classrooms 创建教学班，选择课程，导入 CSV。列名为 name,email，重复邮箱被跳过；不发送邀请。
-6. 在 Engagement 查看当前浏览器实际记录的学习活动，导出 CSV。导入名单的学生没有真实跨账号活动数据。
+## Instructor
 
-## 管理员 Administrator
+1. Switch to **Instructor** and open **My courses**.
+2. Select **Create course**, enter a topic and source material, and create a course manually or request an AI draft.
+3. In **Course studio**, choose the content language and edit the title, description and lessons. Each lesson has an activity-type setting.
+4. Select **Save changes**, **Preview** or **Publish course** as needed. Publishing adds the course to the current browser's prototype catalog.
+5. In **Classrooms**, create a class, select its course and import a CSV roster with `name,email` columns. Duplicate email addresses are skipped. Invitations are not sent.
+6. Open **Engagement** to view learning activity actually recorded in the current browser and export it as CSV. Imported students do not have shared cross-account activity data.
 
-1. Overview 查看当前本机原型数据。
-2. People & roles 添加用户记录并修改身份、状态。这些修改不会创建真实账号或正式授权。
-3. Course management 将课程发布或转为草稿。
+## Administrator
 
-## AI
+1. Open **Overview** to inspect local prototype records.
+2. Use **People & roles** to add user records and change their roles or status. These records do not create real accounts or enforce production permissions.
+3. Use **Course management** to publish courses or return them to draft.
 
-未配置时可以使用课程、预设提示和规则活动；AI 入口会说明需要的配置。由项目维护者在 Vercel 设置服务端环境变量后重新部署。教师应审核 AI 草稿，学习者应检查 AI 建议。
+## AI features
+
+Courses, preset hints and rule-based activities work without an AI connection. AI controls explain when configuration is needed. A maintainer must set server-side environment variables in Vercel and redeploy to connect a provider.
+
+Instructors should review generated course drafts. Learners should check AI suggestions against the course material and evidence.
