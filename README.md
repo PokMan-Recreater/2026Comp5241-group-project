@@ -1,233 +1,77 @@
-# SkillForge
+# Forma Learning Lab
 
-Mini-courses on software engineering and AI tools with **personalised learning paths**,
-**interactive simulations**, **role-play mock interviews**, **in-browser coding challenges** and
-**AI-narrated content**. Built for both CS and non-CS learners, and for **any topic** - including
-ones that are not in the catalogue.
+> **COMP5241 · Forma prototype**
+>
+> Author: [Cicicrr](https://github.com/Cicicrr) · Branch: `prototype/forma`
+>
+> [Live demo](https://forma-learning-lab.vercel.app/) · [Group repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
+>
+> This branch contains Forma as a separate prototype for the group to review alongside the other proposals. The existing SkillForge prototype remains on `main`; this branch is not a merged final application.
+>
+> 此分支独立保存 Forma 原型，供小组比较方案。使用和部署时请选择 `prototype/forma` 分支。
 
-> COMP5241 group project. Next.js (App Router) + TypeScript + Tailwind, no database, deploys to
-> Vercel with zero configuration.
+面向软件工程课程项目的可操作原型。默认语言为英语，支持简体中文、繁体中文；界面与学习语言可以分别设置。
 
----
+## 已实现
 
-## What it does
+- 学习者、教师、管理员三个工作台和身份流程预览。
+- 七门三语微课程、28 节：开发流程、需求访谈、网页架构、AI 编程、测试与上线、产品协作、技术面试。
+- 按基础和目标匹配七门课程的学习顺序；进阶模式保留基础讲解，并增加分析。
+- 分段讲解、课程说明、案例访谈、书面模拟面试、分步演示、权限与范围实验、上线模拟、两节隔离执行的 JavaScript 练习。
+- 每节包含可保存的三部分作业、参考解答、自查依据；支持下载本课程作业。
+- 部分课节提供逐项解释的理解检查；开放作业不制造自动掌握评分。
+- “上线前 5 分钟”游戏：8 点预算、调查/开发/测试、确定性结果、复盘和重玩。
+- 学习进度、笔记、代码、游戏记录保存；切换语言不重置进度。
+- 教师手动新建、编辑三语课程、添加或删除课节、预览及发布。
+- 教学班建立、CSV 学生名单导入与去重；参与记录展示及 CSV 导出。
+- 管理员课程状态管理、用户和角色记录管理。
+- 服务端 AI 适配接口：配置后支持课程生成、课程问答与角色对话。未配置时明确提示，不伪造 AI 回答。
+- Vercel 部署配置、零依赖本地预览和构建。
 
-| Feature | How it works |
-| --- | --- |
-| **Personalised paths** | `/onboarding` collects background (CS / non-CS), level, goal and weekly study minutes. `src/lib/pathGenerator.ts` matches the topic against a keyword library, orders lessons into modules, and schedules them into weeks that fit the learner's budget. |
-| **Custom topics** | `/create` (and the wizard) accept any free-text topic. If nothing in the catalogue matches, a **complete mini-course is synthesised** - foundations, vocabulary, a hands-on workflow, quality checks, a capstone and interview rehearsal - with the topic written into the lesson titles. |
-| **Interactive simulations** | 6 labs, each a real model of the thing it teaches: Git commit graph with conflict resolution, prompt rubric lab, RAG retrieval pipeline, broken CI pipeline, mock Docker CLI, gradient-descent optimiser. |
-| **Coding challenges** | 7 challenges with real tests, executed inside a **sandboxed iframe** (`allow-scripts`, opaque origin, 4s timeout). Learner code never leaves the browser. |
-| **Role-play / mock interviews** | 5 scenarios (frontend screen, behavioural, stakeholder explanation, data case, ML deep dive) scored by a deterministic rubric: structure, concrete evidence, domain vocabulary, ownership, length, clarity. Optional AI coaching on top. |
-| **AI narration** | Every lesson can be read aloud with the Web Speech API, with sentence-level highlighting as it speaks. No audio files, no API keys. |
-| **Explain simply** | Any lesson can be re-explained in plain language on demand (the `explain` task), written for the learner's own level and background - so a beginner who meets jargon never has to leave the page. |
-| **Three languages** | The whole interface - navigation, buttons, headings, home page and footer - is available in **English, 简体中文 and 繁體中文**, switchable from the header and remembered per browser. The dictionaries are plain data in `src/lib/i18n/`, so a unit test keeps them key-for-key in sync. |
-| **Progress** | XP, levels, streaks, 7 badges, bookmarks, quiz best-scores and interview history - all derived from real activity and stored locally. |
+## 原型边界
 
-## Tech stack
+业务记录保存在当前浏览器的 localStorage。身份切换用于演示，不是生产账号权限。导入学生不会发送邀请，也不会自动产生学习记录。跨设备同步、真正的多账号授权、共享教学班与数据库尚未实现。浏览器旁白使用设备的文字转语音能力，并非生成式 AI 配音；完整动画及可上传媒体的课程编辑尚待实现。教师目前能修改活动说明；游戏场景参数和在线编程测试用例尚未开放为教师配置项。
 
-- **Next.js 16** (App Router, Turbopack) with **React 19** and **TypeScript** (strict)
-- **Tailwind CSS v4** (CSS-first tokens in `src/app/globals.css`)
-- **Vitest** for unit tests of all pure logic
-- **Zero runtime dependencies** beyond Next/React: no UI kit, no state library, no database
-- **AI provider abstraction** (`src/lib/ai`): offline deterministic engine by default, optional
-  OpenAI-compatible provider via environment variables
+因此本版本用于原型评审与用户反馈，不能作为所有课程要求均已完成的最终提交。详见 `docs/requirements.md`。
 
-## Getting started
+## 本地运行
 
-```bash
-npm install
-npm run dev          # http://localhost:3000
+需要 Node.js 22 或更新版本，无需安装依赖。
+
+```sh
+npm run dev
 ```
 
-Other scripts:
+打开 http://127.0.0.1:4173 。
 
-```bash
-npm run typecheck    # tsc --noEmit
-npm run lint         # eslint (flat config)
-npm test             # vitest run
-npm run build        # production build
-npm run verify       # typecheck + lint + tests + build
-npm run hooks:install  # enable the pre-push gate (once per clone)
+```sh
+npm test
+npm run build
 ```
 
-The app works with **no environment variables**. Copy `.env.example` to `.env.local` only if you
-want to enable a real model:
+可选浏览器检查需要本机安装 Playwright 和兼容浏览器，然后运行 `node scripts/browser-check.mjs`。也可以用 `PLAYWRIGHT_MODULE_PATH` 和 `CHROME_PATH` 指定已有安装。
 
-```bash
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-```
+## 部署到 Vercel
 
-With `AI_PROVIDER=mock` (the default) every AI feature still works: path rationales, interview
-coaching and topic explanations are produced by a deterministic template engine in
-`src/lib/ai/mock.ts`. If a remote call fails at runtime, `completeWithFallback` degrades to the
-offline engine, so the UI never breaks.
+导入此目录作为独立项目。框架选择 Other，构建命令 `npm run build`，输出目录 `dist`；`vercel.json` 已声明这些设置。服务端接口为 `api/ai.js`，不依赖本地可写数据库。
 
-## Architecture
+AI 需要在 Vercel 项目环境变量中配置：
 
-```
-src/
-  app/                       # routes (App Router)
-    api/ai/route.ts          #   POST { task: generate-path | interview-coach | explain }
-    courses/[slug]/[lessonId]#   lesson player
-    onboarding/ create/ paths/ dashboard/ labs/ interview/ catalog/
-  components/
-    providers/AppDataProvider # localStorage state: profile, paths, progress, custom courses
-    lesson/                   # lesson player, block renderer, quiz, narration
-    simulations/              # 6 labs + host
-    code/                     # sandboxed challenge runner
-    interview/                # role-play runner + rubric feedback panel
-    catalog/ course/ path/ dashboard/ labs/ onboarding/ create/
-  content/                    # the curriculum, as typed data
-    courses/*.ts              #   11 curated courses
-    challenges.ts roleplays.ts simulations.ts
-  lib/
-    pathGenerator.ts          # personalisation engine (matching, scheduling, synthesis)
-    topics.ts                 # topic keyword library + matcher
-    progress.ts               # XP, streaks, levels, badges, completion (pure functions)
-    rubric.ts                 # interview answer scoring (pure, testable)
-    ai/                       # provider abstraction, prompts, mock + OpenAI implementations
-    speech.ts storage.ts utils.ts
-  types/index.ts              # the whole domain model
-```
+- `AI_API_KEY`：你的服务端 API 密钥。
+- `AI_BASE_URL`：兼容 Chat Completions 的 HTTPS 服务地址，默认 `https://api.deepseek.com`。
+- `AI_MODEL`：该服务支持的模型标识；请按实际账号的提供商文档设置。
 
-### Design decisions worth knowing
+配置后重新部署。密钥不应写入源代码、界面或公开仓库。项目从不要求在浏览器中输入密钥。
 
-- **Pure logic, thin components.** Scheduling, scoring, progress and topic matching live in
-  `src/lib` as pure functions with no React or browser dependencies. That is why they are unit
-  tested, and why the same engine can power both the API route and the offline fallback.
-- **Content is data.** Lessons are typed objects (a `LessonBlock` union), not JSX, so the content
-  layer cannot break the app and any host can render a lesson (lesson player, labs page, generated
-  course).
-- **No database.** Everything a learner creates lives in `localStorage` behind one provider, which
-  removes auth, migrations and hosting cost from a graded group project while keeping the door open
-  for a real backend later.
-- **Safety first for learner code.** Challenges run in a sandboxed iframe with a timeout, rather
-  than `eval` on the main thread.
+## 文件结构
 
-## Testing
+- `public/`：界面、三语文本、课程和规则。
+- `api/`：Vercel 服务端 AI 接口。
+- `scripts/`：预览、构建和浏览器检查。
+- `tests/`：游戏、推荐、CSV 的有效性检查。
+- `docs/`：需求覆盖情况和三类使用说明。
+- `dist/`：构建后的静态文件。
 
-`npm test` runs 14 Vitest suites. `npm run coverage` runs the same suites behind a coverage ratchet -
-currently 90% statements, 80% branches, 88% functions and 92% lines, measured over `src/lib` and
-`src/content`, the layers that have a unit-test harness - and that is the step the gate uses, so an
-untested new module fails the build. Between them they cover:
+## 本轮课程重做
 
-- progress rules: XP idempotence, streak day maths, best-quiz scoring, levels, badges
-- the topic matcher, including false-positive guards (`html` must not match `ml`)
-- path generation: weekly budget compliance, no duplicate lessons, step caps, custom-course
-  synthesis and level-based trimming
-- the interview rubric: strong vs vague answers, filler penalty, missing vocabulary
-- the AI provider abstraction: prompts round-trip their payload, the offline engine is
-  deterministic, provider selection honours the environment, and a failing remote call degrades to
-  the offline engine - driven through a stubbed `fetch`, so no network is used
-- the interface dictionaries: every locale carries the same keys, placeholders interpolate, and
-  browser language tags map to the right locale
-- the browser-facing helpers (`storage`, `speech`) degrade safely when there is no `localStorage`
-  or Web Speech API
-- content integrity: unique ids, valid quiz answers, every referenced simulation / challenge /
-  scenario exists, and every lab and challenge is used by some lesson
-- **every reference challenge solution is executed against its own tests**, and every starter code
-  is proven to fail - using the same `new Function` harness the browser sandbox uses
-- the delivery pipeline itself: the workflow, the pre-push hook and `package.json` must keep agreeing
-  on the same scripts (see [Continuous integration and delivery](#continuous-integration-and-delivery))
-
-## Continuous integration and delivery
-
-`.github/workflows/ci.yml` has two jobs.
-
-**`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run audit`,
-`npm run coverage` and `npm run build` on Node 24 - the same five checks as `npm run verify` - for
-every pull request into `main` or `dev`, and for every push to either branch. A failing run shows up
-as a red cross on the pull request. The `audit` step only inspects production dependencies
-(`npm audit --omit=dev`), so a vulnerability in build tooling cannot block a release while one in
-shipped code can.
-
-**`deploy`** promotes `main` to production on Vercel with `vercel deploy --prod`. It runs *only* on a
-push to `main` (never on a pull request, never on `dev`) and it declares `needs: verify`, so a red
-build can never ship. Vercel builds the project on its own infrastructure from the committed
-lockfile, exactly as a deploy from the dashboard would.
-
-Vercel's own Git integration is connected as well, so it *also* deploys `main` (and previews every
-other branch). Both build the same commit, so the result is identical - this job exists so that a
-release is additionally gated on `verify`, which the Git integration does not wait for.
-
-Switch it on once per repository by adding the token:
-
-1. Create a token at **vercel.com/account/tokens**.
-2. In GitHub: **Settings -> Secrets and variables -> Actions -> New repository secret**.
-3. Name it `VERCEL_TOKEN` and paste the token in.
-
-The Vercel organisation and project ids live in the workflow's `env:` block. They are public
-identifiers (they appear in the project's dashboard URL), which is why only the token is a secret.
-If the secret is missing, `deploy` fails immediately with those instructions rather than silently
-skipping the release.
-
-To make that a hard requirement instead of a warning, protect the branch once per repository:
-
-1. **Settings -> Branches -> Add branch protection rule** (or **Settings -> Rules -> Rulesets** if your
-   repository shows the newer UI - the check name below is the same either way).
-2. **Branch name pattern**: `main`.
-3. Tick **Require status checks to pass before merging**.
-4. Type `Verify` in the search box, click the **Verify (typecheck, lint, test, build)** entry, then
-   click the **+** button beside it. Adding a check is a two-step process and the **+** is easy to
-   miss - without it no check is actually attached, and GitHub refuses to save with **"Rule is
-   invalid"**. The check must show up as a chip before you save.
-5. **Create** / **Save changes**.
-
-The check only appears in that search box after `.github/workflows/ci.yml` has run at least once on
-the branch, so push first and configure afterwards. A red pull request can then no longer be merged.
-
-### Catch failures before they leave your machine
-
-CI is the authority, but a round trip through GitHub is a slow way to find a typo. The repository
-ships a `pre-push` hook in `.githooks/` that runs `npm run verify` and aborts the push whenever a
-push targets `main`:
-
-```bash
-npm run hooks:install   # git config core.hooksPath .githooks - once per clone
-```
-
-Git never versions `.git/hooks`, which is why the hook lives in `.githooks/` and has to be switched
-on explicitly. Pushes to other branches are left alone. In a genuine emergency, `git push --no-verify`
-skips the hook.
-
-## Deploying to Vercel
-
-This repository has **both** shipping paths switched on.
-
-**1. Vercel's Git integration.** Connected, so Vercel builds on every push: `main` goes to
-production, every other branch gets a preview deployment (aliased `...-git-<branch>-...`). No GitHub
-Actions involved, and it does *not* wait for CI to pass.
-
-**2. From CI.** `.github/workflows/ci.yml` also deploys every push to `main`, but only once the
-`verify` job has passed. Switch it on by adding the `VERCEL_TOKEN` secret - see
-[Continuous integration and delivery](#continuous-integration-and-delivery). Keeping it means a
-release is gated on the tests, at the cost of a second (identical) production build per push.
-
-Either way the project needs no build configuration:
-
-1. Push the repository to GitHub.
-2. In Vercel: **Add New -> Project -> import the repo**. The Next.js preset is detected; no build
-   settings need changing.
-3. (Optional) Add `AI_PROVIDER` / `OPENAI_API_KEY` under **Settings -> Environment Variables**.
-   Without them the app deploys in offline mode, which is the intended demo configuration.
-4. Deploy.
-
-`src/app/api/ai/route.ts` runs on the Node.js runtime and is marked `force-dynamic`, so it works on
-Vercel's serverless functions without extra configuration.
-
-## Known limitations
-
-- Progress and generated courses are **per browser profile**: there is no account system or sync.
-- The language choice is stored the same way, and only the **interface** is translated today: lesson
-  bodies, course titles and lab copy remain in English (see `src/lib/i18n/`).
-- Narration depends on the browser's Web Speech API (Chrome, Edge, Safari); other browsers see a
-  short explanatory note instead of a play button.
-- The offline AI engine is a deterministic template engine, not a language model. It only states
-  what the structured payload has already computed.
-- Generated custom courses teach **process** (goal, vocabulary, workflow, verification, explanation)
-  rather than asserting facts about a topic we cannot verify.
-
-
+详见 `docs/course-design.md`。课程组织参考开放课程的案例、例题、练习与反馈方式，案例和讲稿重新编写，不冒称真人教师授课。AI 实时对话仍需密钥，旁白目前为设备朗读，非生成式配音。
