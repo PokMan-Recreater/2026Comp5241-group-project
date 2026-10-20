@@ -6,7 +6,7 @@ import {evaluateAccess,evaluateScope,checkAnswer,readingHTML,workshopHTML,course
 
 test('every published lesson has complete localized teaching and a usable assignment',()=>{
  const ids=new Set();
- assert.equal(courses.length,7);
+ assert.equal(courses.length,16);
  for(const course of courses){
   assert(!ids.has(course.id));ids.add(course.id);
   const lessonIds=new Set();
