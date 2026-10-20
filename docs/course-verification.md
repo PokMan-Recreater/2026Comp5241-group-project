@@ -1,5 +1,7 @@
 # Course revision verification record
 
+The 20 October 2026 expansion has its own [feature checklist and verification record](feature-upgrade.md). The course checks below describe the earlier curriculum revision.
+
 ## Automated checks
 
 All 13 Node.js tests and the static build passed again before the prototype was uploaded to the group repository. The checks cover multilingual content completeness, seven-course paths, access rules, scope budgets, option-specific feedback, draft preservation across languages, assignment export and HTML escaping.
