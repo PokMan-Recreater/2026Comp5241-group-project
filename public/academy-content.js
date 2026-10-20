@@ -1,5 +1,8 @@
+import {peerChallenges} from './peer-challenges.js';
 import {tri as T} from './i18n.js';
+import {programmingLessonById} from './programming-lessons.js';
 export const challenges=[
+ ...peerChallenges,
  {id:'unique',entry:'uniqueById',title:T('Keep the first record','保留第一条记录','保留第一筆紀錄'),brief:T('Return a new array containing the first object for each id, in its original order.','按 id 去重，保留原顺序中的第一个对象，返回新数组。','依 id 去重，保留原順序中的第一個物件，回傳新陣列。'),hint:T('Track IDs in a Set; do not use names as identity.','用 Set 记录 ID，不要按姓名去重。','用 Set 記錄 ID，不要依姓名去重。'),starter:'function uniqueById(items) {\n  return items;\n}',solution:'function uniqueById(items) { const seen = new Set(); return items.filter(x => !seen.has(x.id) && seen.add(x.id)); }',tests:[{name:T('Duplicate IDs','重复 ID','重複 ID'),args:[[{id:1,name:'A'},{id:1,name:'B'},{id:2,name:'A'}]],expected:[{id:1,name:'A'},{id:2,name:'A'}]},{name:T('Empty input','空输入','空輸入'),args:[[]],expected:[]}]},
  {id:'price',entry:'totalPrice',title:T('Calculate an order total','计算订单总价','計算訂單總價'),brief:T('Sum price × quantity for all cart lines. Return a number rounded to two decimal places.','累加各行 price × quantity，返回保留两位小数的数值。','累加各列 price × quantity，回傳保留兩位小數的數值。'),hint:T('Round after summing; empty carts total zero.','累加后再舍入，空购物车为零。','累加後再捨入，空購物車為零。'),starter:'function totalPrice(cart) {\n  return 0;\n}',solution:'function totalPrice(cart) { return Math.round((cart.reduce((n,x)=>n+x.price*x.quantity,0)+Number.EPSILON)*100)/100; }',tests:[{name:T('Multiple lines','多行订单','多列訂單'),args:[[{price:2.5,quantity:2},{price:3,quantity:1}]],expected:8},{name:T('Decimal rounding','小数舍入','小數捨入'),args:[[{price:.1,quantity:3}]],expected:.3},{name:T('Empty cart','空购物车','空購物車'),args:[[]],expected:0}]},
  {id:'access',entry:'canAccess',title:T('Enforce a record-access rule','执行记录访问规则','執行紀錄存取規則'),brief:T('Only active users may read. Allow an active admin or the record owner. All other requests return false.','仅正常用户可读取；允许管理员或记录所有者，其他情况返回 false。','僅正常使用者可讀取；允許管理員或紀錄擁有者，其他情況回傳 false。'),hint:T('Check account status before role or ownership.','先检查账号状态，再判断身份和所有权。','先檢查帳號狀態，再判斷身分和擁有權。'),starter:'function canAccess(user, record) {\n  return true;\n}',solution:"function canAccess(user, record) { return user.active === true && (user.role === 'admin' || user.id === record.ownerId); }",tests:[{name:T('Active owner','正常所有者','正常擁有者'),args:[{id:1,active:true,role:'learner'},{ownerId:1}],expected:true},{name:T('Other learner','其他学习者','其他學習者'),args:[{id:2,active:true,role:'learner'},{ownerId:1}],expected:false},{name:T('Suspended admin','停用管理员','停用管理員'),args:[{id:2,active:false,role:'admin'},{ownerId:1}],expected:false}]},
@@ -18,7 +21,7 @@ export const interviews=[
 ];
 export const labs=[
  ['git',Q('Branch and merge','分支与合并','分支與合併'),Q('Make a branch, diverge, merge and resolve a conflict.','建立分支、制造分歧，再合并并解决冲突。','建立分支、製造分歧，再合併並解決衝突。')],
- ['prompt',Q('Prompt workshop','提示词工作坊','提示詞工作坊'),Q('Check goals, inputs, constraints, output format and evidence.','检查目标、输入、约束、输出格式和验证依据。','檢查目標、輸入、約束、輸出格式和驗證依據。')],
+ ['prompt',Q('Prompt workshop','提示词工作坊','提示詞工作坊'),Q('Specify the reader, source, output contract and a worked example.','检查目标、输入、约束、输出格式和验证依据。','檢查目標、輸入、約束、輸出格式和驗證依據。')],
  ['rag',Q('Retrieval pipeline','检索流程','檢索流程'),Q('Inspect matches and compare top-k and exact-phrase weighting.','查看匹配结果，比较 top-k 和完整短语加权。','查看符合結果，比較 top-k 和完整片語加權。')],
  ['ci',Q('Repair a CI pipeline','修复 CI 流水线','修復 CI 流水線'),Q('Read the failing stage, apply a fix and run again.','阅读失败阶段，修复后重新运行。','閱讀失敗階段，修復後重新執行。')],
  ['docker',Q('Container lifecycle','容器生命周期','容器生命週期'),Q('Build an image and manage a container in a command simulation.','在命令模拟中构建镜像、运行和管理容器。','在指令模擬中建置映像、執行及管理容器。')],
@@ -65,3 +68,8 @@ export const referenceTopics=[
  R('html-grid','html',Q('CSS Grid','网格布局','網格排版'),Q('Grid defines rows and columns. Prefer flexible tracks for content of different lengths.','Grid 定义行列，对不同长度内容优先使用弹性轨道。','Grid 定義行列，對不同長度內容優先使用彈性軌道。'),'<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px"><p>Plan</p><p>Practice</p></div>',Q('Add a third item and inspect the next row.','添加第三项并查看下一行。','新增第三項並查看下一列。')),
  R('html-form','html',Q('Accessible forms','可访问表单','無障礙表單'),Q('Associate labels with inputs. Browser validation helps users, while server-side checks still enforce rules.','将标签关联输入框；浏览器校验帮助填写，服务端仍需校验规则。','將標籤關聯輸入框；瀏覽器驗證協助填寫，伺服器端仍需驗證規則。'),'<form><label for="email">Email</label><input id="email" type="email" required><button>Join</button></form>',Q('Try an empty value and an invalid email.','尝试空值和无效邮箱。','嘗試空值和無效電郵。'))
 ];
+for (const topic of referenceTopics) {
+ const lesson=programmingLessonById[topic.id];
+ if (lesson?.example) topic.code=lesson.example;
+ if (lesson?.exercise) topic.task=lesson.exercise;
+}
