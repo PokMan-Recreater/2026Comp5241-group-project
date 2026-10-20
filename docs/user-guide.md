@@ -41,9 +41,17 @@ Instructors should review generated course drafts. Learners should check AI sugg
 ## Added learner tools
 
 - **Learning path:** enter a topic, level and weekly time budget, preview the schedule, then save it. Several plans can be kept; use **Make active** to choose the current one. Use **Guided setup** for the three-step profile flow. New subjects use an explicitly labelled study template when no catalog course matches.
-- **Practice:** open the six labs, seven JavaScript challenges, five interview scenarios or existing course activities. Challenge code saves locally; **Run checks** shows actual test results. Interview cues are review aids, not grades.
+- **Practice:** open the six labs, fourteen JavaScript challenges, five interview scenarios or existing course activities. Challenge code saves locally; **Run checks** shows actual test results. Interview cues are review aids, not grades.
 - **Reference:** search 30 programming topics, filter by language, inspect syntax examples, keep observation notes and send examples to the playground.
 - **Playground:** run JavaScript in isolation or preview HTML/CSS. The C/C++ and Python modes only trace supported literal assignments/output and reject unsupported constructs. Use the mode's example menu, reset or clear controls as needed.
 - **Lesson toolbar:** save a bookmark, open a lesson-based explanation, or read the complete lesson text. Narration supports speed/voice selection, sentence highlighting and pause/resume. Previously completed lessons can be reopened.
 - **My learning:** view active-plan progress and saved lessons. Expand **Learning record and achievements** for quiz results, interviews, rewards, progress download and reset. A reset preserves courses, classrooms, profile and saved plans; **Undo reset** is available until the page reloads.
 - **Course studio:** select course-level/audience metadata for catalog filters. **Start from a study template** works without a live model. If live generation fails, the editor labels its fallback template for review.
+# Navigation preview
+
+The local review version uses five learner destinations: My learning, Courses, Study plan, Practice and My records. Profile settings are opened through the avatar. Choose Programming foundations within Courses for the 30 mini lessons; use My records for bookmarks and badges. Practice has separate lab, knowledge-check, coding, interview and free-coding tabs. See [the preview record](navigation-preview.md) for the complete flow and validation. This review version has not been deployed.
+
+
+## Peer integration preview (20 October 2026)
+
+Within **Courses**, select **AI & developer tools** for nine subject courses. Existing testing and career courses each have a new fifth lesson. **Practice → Knowledge checks** provides 71 questions with links back to the lesson and shares its check history. **Courses → Programming foundations → Syntax reference** opens 15 searchable syntax cards. Lab pages now show their intermediate evidence and diagnosis. Review each interview answer before proceeding; saved historical attempts can be reopened under **My records → Learning history**. See [peer integration preview](peer-integration-preview.md) for the complete local review record and boundaries.

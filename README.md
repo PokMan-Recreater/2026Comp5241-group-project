@@ -19,20 +19,23 @@ Forma is a working learning-platform prototype for a software engineering course
 ## Implemented features
 
 - Learner, instructor and administrator workspaces; course editing and publication; classroom roster import and local activity export.
-- Seven software-engineering courses with 28 lessons, assignments, reference responses and saved notes in English, Simplified Chinese and Traditional Chinese.
+- Seven software-engineering courses with 30 lessons, assignments, reference responses and saved notes in English, Simplified Chinese and Traditional Chinese.
+- Nine AI/developer-tool courses with 36 more lessons covering Git, SQL, Docker, CI/CD, prompts, LLM applications, ML, everyday AI and Python data scripts.
 - Three-step learner setup, interest tags, weekly scheduling, generation previews and multiple saved learning plans with an active-plan selector.
 - Topic matching against published courses and source-led study templates for new topics, available without model credentials. Templates are explicitly distinguished from verified subject teaching or live AI generation.
 - A practice center with six new models: Git branches and merges, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing launch, access-control and scope exercises remain available.
-- Seven standalone JavaScript challenges with real behavior checks, saved code, hints, reference implementations, detailed failure output and isolated, time-limited execution. The two existing coding lessons are retained.
+- Fourteen standalone JavaScript challenges with real behavior checks, saved code, hints, reference implementations, detailed failure output and isolated, time-limited execution. The two existing coding lessons are retained.
 - Five interview scenarios with saved drafts, per-question review cues, overall review, attempt history and optional live AI coaching. Local phrase-based cues are not mastery or hiring assessments.
 - A learner dashboard with active-plan progress, estimated completed lesson time, bookmarks, quiz best results, challenge and interview records, XP, levels, streaks and seven activity-based badges.
 - Full lesson-text narration with sentence highlighting, voice and speed selection, pause/resume and stop. Narration uses device text-to-speech.
 - Course and lesson search, level/audience filters, lesson bookmarks, undo completion, progress export, confirmed progress reset and same-session undo.
-- A programming reference with 30 multilingual topics and syntax examples across C, C++, Python, JavaScript and HTML/CSS.
+- A programming-foundations collection with 30 multilingual mini lessons across C, C++, Python, JavaScript and HTML/CSS: worked examples, pitfalls, knowledge checks, worked answers, notes and inline JavaScript/HTML practice.
 - A general JavaScript playground and sandboxed HTML/CSS preview, with example transfer, template selection, keyboard indentation, reset and clear-output controls. C/C++ and Python provide explicitly limited literal-output traces, not full compilers or interpreters.
 - Lesson-based plain-language study guides and server-side AI adapters for live course generation, questions and role-play when a provider is configured.
 
-See [the completed comparison checklist and verification](docs/feature-upgrade.md).
+The current local review also adds a 71-question revision bank, 15 syntax cards, detailed lab diagnosis and question-specific interview review. See [the peer integration preview](docs/peer-integration-preview.md) for coverage, entry points and verification.
+
+See [the comparison checklist and verification](docs/feature-upgrade.md) and [the local navigation and learning-flow preview](docs/navigation-preview.md).
 
 ## Prototype limitations
 
@@ -44,7 +47,7 @@ The prototype supports review and user feedback. It does not represent completio
 
 ## Run locally
 
-Use Node.js 22. No dependency installation is needed. The automated suite currently contains 30 tests.
+Use Node.js 22. No dependency installation is needed. The automated suite currently contains 49 tests.
 
 ```sh
 npm run dev
