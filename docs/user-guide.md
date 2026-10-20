@@ -37,3 +37,13 @@ Application records are stored in the current browser. Clearing site data remove
 Courses, preset hints and rule-based activities work without an AI connection. AI controls explain when configuration is needed. A maintainer must set server-side environment variables in Vercel and redeploy to connect a provider.
 
 Instructors should review generated course drafts. Learners should check AI suggestions against the course material and evidence.
+
+## Added learner tools
+
+- **Learning path:** enter a topic, level and weekly time budget, preview the schedule, then save it. Several plans can be kept; use **Make active** to choose the current one. Use **Guided setup** for the three-step profile flow. New subjects use an explicitly labelled study template when no catalog course matches.
+- **Practice:** open the six labs, seven JavaScript challenges, five interview scenarios or existing course activities. Challenge code saves locally; **Run checks** shows actual test results. Interview cues are review aids, not grades.
+- **Reference:** search 30 programming topics, filter by language, inspect syntax examples, keep observation notes and send examples to the playground.
+- **Playground:** run JavaScript in isolation or preview HTML/CSS. The C/C++ and Python modes only trace supported literal assignments/output and reject unsupported constructs. Use the mode's example menu, reset or clear controls as needed.
+- **Lesson toolbar:** save a bookmark, open a lesson-based explanation, or read the complete lesson text. Narration supports speed/voice selection, sentence highlighting and pause/resume. Previously completed lessons can be reopened.
+- **My learning:** view active-plan progress and saved lessons. Expand **Learning record and achievements** for quiz results, interviews, rewards, progress download and reset. A reset preserves courses, classrooms, profile and saved plans; **Undo reset** is available until the page reloads.
+- **Course studio:** select course-level/audience metadata for catalog filters. **Start from a study template** works without a live model. If live generation fails, the editor labels its fallback template for review.
