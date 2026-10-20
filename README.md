@@ -18,19 +18,21 @@ Forma is a working learning-platform prototype for a software engineering course
 
 ## Implemented features
 
-- Learner, instructor and administrator workspaces, with role switching for demonstrations.
-- Seven courses and 28 lessons in three languages: software development, requirements interviews, web architecture, AI-assisted programming, testing and deployment, product collaboration, and technical interviews.
-- A rule-based learning sequence based on experience and goals. Advanced content adds analysis while keeping the introductory explanations available.
-- Structured readings, worked examples, written interviews, step-by-step demonstrations, access-control and scope exercises, a launch simulation, and two JavaScript coding lessons with isolated execution.
-- A three-part assignment for every lesson, with saved drafts, reference answers, self-check criteria and course-assignment downloads.
-- Comprehension checks with explanations in selected lessons. Open assignments do not receive artificial mastery scores.
-- A “Five minutes to launch” game with an eight-point budget, investigation/development/testing choices, deterministic outcomes and replay.
-- Browser-local progress, notes, code and game records that survive language changes.
-- An instructor course editor for creating and editing multilingual courses, adding or removing lessons, previewing and publishing.
-- Classroom creation, CSV roster import with duplicate detection, recorded activity views and CSV export.
-- Administrator controls for course status and local user/role records.
-- A server-side AI adapter for course generation, course questions and role-play when configured. An unconfigured service displays an explicit message.
-- Vercel configuration, local preview and a static build without runtime package dependencies.
+- Learner, instructor and administrator workspaces; course editing and publication; classroom roster import and local activity export.
+- Seven software-engineering courses with 28 lessons, assignments, reference responses and saved notes in English, Simplified Chinese and Traditional Chinese.
+- Three-step learner setup, interest tags, weekly scheduling, generation previews and multiple saved learning plans with an active-plan selector.
+- Topic matching against published courses and source-led study templates for new topics, available without model credentials. Templates are explicitly distinguished from verified subject teaching or live AI generation.
+- A practice center with six new models: Git branches and merges, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing launch, access-control and scope exercises remain available.
+- Seven standalone JavaScript challenges with real behavior checks, saved code, hints, reference implementations, detailed failure output and isolated, time-limited execution. The two existing coding lessons are retained.
+- Five interview scenarios with saved drafts, per-question review cues, overall review, attempt history and optional live AI coaching. Local phrase-based cues are not mastery or hiring assessments.
+- A learner dashboard with active-plan progress, estimated completed lesson time, bookmarks, quiz best results, challenge and interview records, XP, levels, streaks and seven activity-based badges.
+- Full lesson-text narration with sentence highlighting, voice and speed selection, pause/resume and stop. Narration uses device text-to-speech.
+- Course and lesson search, level/audience filters, lesson bookmarks, undo completion, progress export, confirmed progress reset and same-session undo.
+- A programming reference with 30 multilingual topics and syntax examples across C, C++, Python, JavaScript and HTML/CSS.
+- A general JavaScript playground and sandboxed HTML/CSS preview, with example transfer, template selection, keyboard indentation, reset and clear-output controls. C/C++ and Python provide explicitly limited literal-output traces, not full compilers or interpreters.
+- Lesson-based plain-language study guides and server-side AI adapters for live course generation, questions and role-play when a provider is configured.
+
+See [the completed comparison checklist and verification](docs/feature-upgrade.md).
 
 ## Prototype limitations
 
@@ -42,7 +44,7 @@ The prototype supports review and user feedback. It does not represent completio
 
 ## Run locally
 
-Use Node.js 22. No dependency installation is needed.
+Use Node.js 22. No dependency installation is needed. The automated suite currently contains 30 tests.
 
 ```sh
 npm run dev
@@ -84,7 +86,7 @@ Keep credentials out of source files and the public repository. The application 
 | `public/` | Interface, translations, courses, rules and self-hosted assets. |
 | `api/` | Server-side AI endpoint for Vercel. |
 | `scripts/` | Local preview, build and optional browser checks. |
-| `tests/` | API, course-content, game, recommendation and CSV checks. |
+| `tests/` | API, curriculum, plans, state migration, rewards, simulations, challenge contracts and CSV checks. |
 | `docs/` | Requirements, user guide, course design and verification records. |
 | `course-authoring/` | Course-authoring source and optional generation dependencies. |
 | `dist/` | Generated static build; excluded from Git. |

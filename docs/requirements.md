@@ -5,13 +5,13 @@ This checklist maps the prototype to the teacher's project overview and the desi
 | Requirement | Current status |
 | --- | --- |
 | Software engineering, AI-assisted coding, soft skills and product skills | Seven multilingual courses and 28 lessons are available; see [course design](course-design.md). |
-| Learners from non-CS backgrounds and CS graduates preparing for employment | Learning profiles, rule-based recommendations and introductory/advanced material are available. Feedback from real learners is pending. |
+| Learners from non-CS backgrounds and CS graduates preparing for employment | Profiles, interest tags, three setup levels, weekly plans and introductory/advanced readings are available. Feedback from real learners is pending. |
 | Text and images | Available. Custom image uploads require storage integration. |
-| Interactive simulations and games | Launch-decision game, access-control exercise and scope/budget exercise are available. |
-| Role-play and mock interviews | Authored stakeholder interviews and written mock interviews are available. Live AI interactions use the current course context and require server-side configuration. |
+| Interactive simulations and games | The launch game, access/scope exercises and six additional interactive lab models are available. |
+| Role-play and mock interviews | Authored stakeholder cases, written exercises and five structured interview scenarios with saved review history are available. Live AI interactions require server-side configuration. |
 | AI-narrated animations and slides | Staged diagrams/slides and device narration are available. Generative narration and full animations are pending. |
-| Online coding | Two isolated JavaScript coding lessons include behavior checks and reference implementations. |
-| AI teaching and personalized content | Question-answering and course-generation endpoints are implemented. Live-provider validation requires credentials. Path matching currently uses rules. |
+| Online coding | Two course lessons and seven standalone JavaScript challenges include real checks and isolated execution. A JavaScript playground and HTML/CSS preview are also available; C/C++/Python traces are not full runtimes. |
+| AI teaching and personalized content | AI adapters exist; live-provider validation still requires credentials. Rules provide topic matching, weekly planning, template courses and lesson-based study guides without a live model. |
 | Instructor editing of courses and activities, manually and with AI | Manual editing is available. New-course generation uses the AI endpoint when configured. Targeted AI rewriting and activity-parameter editing need further work. |
 | Student import and participation tracking | Browser-local rosters and activity records are available. Shared classrooms and cross-account analytics require a database and authentication. |
 | Other subjects and self-directed learning | Users can create courses on arbitrary topics manually, or generate drafts when AI is configured. Personal learning paths can be reordered. |
@@ -23,6 +23,8 @@ This checklist maps the prototype to the teacher's project overview and the desi
 | Progress summaries, video, report, slides, AI Fluency 4D reflection and peer review | These are team deliverables to prepare separately from the application. |
 
 ## Next steps
+
+The comparison-driven feature upgrade was implemented after the user authorized it on 20 October 2026. See [coverage and verification](feature-upgrade.md). Remaining work is tracked in [future work](future-work.md).
 
 1. Ask learners to try the courses and game, then revise the content and interactions using their feedback.
 2. Add authentication and shared storage for users, roles, courses, course versions, classrooms, enrollments, activity events, learning profiles and personal paths. Enforce access rules on the server using account and classroom relationships.
