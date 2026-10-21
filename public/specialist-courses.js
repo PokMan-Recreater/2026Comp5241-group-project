@@ -1,7 +1,6 @@
 import {tri as T} from './i18n.js';
 // Original short courses. Each lesson ends in a concrete submission and a worked response.
 // Examples are teaching data, never statements about the learner's real organisation.
-const tx=(en,cn,tw)=>T(en,cn,tw);
 function lesson(id,title,explanation,example,task,worked,question,correctAnswer,distractor,practice,advanced){
  const body=T(...['en','zh-CN','zh-TW'].map((lang)=>`${lang==='en'?'## Work through the case':lang==='zh-CN'?'## 跟着案例推一次':'## 跟著案例推一次'}\n${explanation[lang]}\n\n${example?'```\n'+example+'\n```\n\n':''}`));
  const options=[{text:distractor,feedback:worked},{text:correctAnswer,feedback:worked}];if([...id].reduce((n,c)=>n+c.charCodeAt(0),0)%2)options.reverse();
