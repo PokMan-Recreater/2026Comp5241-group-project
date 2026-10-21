@@ -22,7 +22,7 @@ Our three team members developed **SkillForge**, **Forma** and **CodeCraft Acade
 | **SkillForge** | Personalized study paths, interactive developer-tool labs, interview practice, narration and progress rewards. |
 | **CodeCraft Academy** | Multi-language programming topics, code examples, free coding, syntax references and revision activities. |
 
-These contributions describe the design and features brought together; the integrated implementation adapts them to Forma's interface and learning flow. The current development branch is `prototype/forma`. The team has selected this integrated version to replace the earlier prototype on `main` after review.
+These contributions describe the design and features brought together; the integrated implementation adapts them to Forma's interface and learning flow. The integrated Forma prototype is maintained on `main`. The earlier prototypes remain available through the repository's commit history. Use feature branches and pull requests for further changes.
 
 ## Main features
 
@@ -49,9 +49,9 @@ These contributions describe the design and features brought together; the integ
 
 ## Current progress and next steps
 
-The integrated prototype is available for team review. Classmates have tested Forma and provided feedback on navigation, visual design, course depth and feature visibility. We have used that feedback to simplify controls, remove duplicate profile access and improve the learning activities.
+The team has selected the integrated prototype as the basis for the final application. Classmates have tested Forma and provided feedback on navigation, visual design, course depth and feature visibility. We have used that feedback to simplify controls, remove duplicate profile access and improve the learning activities.
 
-Next, we will review and merge the selected version into `main`, divide further development tasks among members, and collaborate through feature branches and pull requests. We will continue testing the main workflows, collecting feedback and improving the documentation before the final deployment.
+Next, we will divide further development tasks among members and collaborate through feature branches and pull requests, reviewing changes before merging into `main`. We will continue testing the main workflows, collecting feedback and improving the documentation before the final deployment.
 
 The live demo may show an earlier revision until the selected branch is deployed. See the [integration review record](docs/peer-completion-preview.md) for the latest local integration checks and scope.
 
@@ -76,13 +76,13 @@ npm test
 npm run build
 ```
 
-The most recent local integration check passed **63 automated tests** and the production build. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
+The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs the tests and build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
 
 An optional browser-check script is available at `scripts/browser-check.mjs`; it requires Playwright and a compatible browser. Set `PLAYWRIGHT_MODULE_PATH` and `CHROME_PATH` to use existing installations.
 
 ## Deploy to Vercel
 
-Deploy the branch containing the selected Forma version. When it replaces `main`, use `main` as the production branch. This application uses a different build configuration from the earlier Next.js prototype:
+Use `main` as the production branch when deploying the integrated Forma prototype. This application uses a different build configuration from the earlier Next.js prototype:
 
 | Setting | Value |
 | --- | --- |
