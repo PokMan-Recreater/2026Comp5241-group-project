@@ -11,9 +11,7 @@ permissions:
 
 jobs:
   verify:
-    # Keep the existing required-check name for the protected main branch.
-    # Forma uses native JavaScript tests and a static build instead of the former TS toolchain.
-    name: Verify (typecheck, lint, test, build)
+    name: Verify (test, build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
