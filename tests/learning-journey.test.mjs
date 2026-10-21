@@ -32,7 +32,7 @@ test('programming plans use real mini lessons, persist no placeholder course and
  for(const [topic,language] of [['Python','python'],['C++','cpp'],['C语言','c'],['HTML/CSS','html'],['JavaScript','javascript']]){
   const {course,plan}=buildPlan({courses,topic,profile:{skillLevel:'intermediate',weeklyMinutes:30},id:'p',courseId:'unused'});
   assert.equal(course,null);assert.equal(plan.source,'programming');
-  assert.equal(plan.steps.length,referenceTopics.filter(x=>x.language===language).length);
+  assert.equal(plan.steps.filter(x=>x.kind==='tutorial').length,referenceTopics.filter(x=>x.language===language).length);assert(plan.steps.some(x=>x.kind==='practice'));assert.equal(plan.steps.at(-1).kind,'practice');
   const s={profile:{},progress:{}};ensureAcademy(s);s.academy.plans=[plan];s.academy.activePlan='p';
   const first=plan.steps[0];assert.equal(planStepRoute(first),'tutorial/'+first.tutorialId);
   assert.deepEqual(nextStudyTarget(courses,s),{kind:'tutorial',id:first.tutorialId});
