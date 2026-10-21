@@ -35,3 +35,43 @@ export function traceProgram(language,code){
  }
  return out;
 }
+
+// Interactive pages run in an opaque origin without access to the Forma document/storage.
+export const interactivePageExample=`<main style="font-family:system-ui;padding:24px">
+  <h1>Click counter</h1>
+  <p>Count: <output id="count">0</output></p>
+  <button id="add" type="button">Add one</button>
+</main>
+<script>
+let count = 0;
+document.querySelector('#add').addEventListener('click', () => {
+  count += 1;
+  document.querySelector('#count').textContent = count;
+  console.log('Count:', count);
+});
+</script>`;
+export function interactiveDocument(code,nonce){
+ const token=JSON.stringify(nonce).replace(/</g,'\\u003c');
+ return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'"><script>(()=>{const send=(type,text)=>parent.postMessage({formaPage:${token},type,text},'*');const serial=v=>{try{return typeof v==='string'?v:JSON.stringify(v)}catch{return String(v)}};for(const key of ['log','warn','error'])console[key]=(...args)=>send('log',args.map(serial).join(' '));addEventListener('error',e=>send('error',e.message));addEventListener('unhandledrejection',e=>send('error',String(e.reason)));addEventListener('click',()=>{const before=document.body.innerText;setTimeout(()=>{if(document.body.innerText!==before)send('interaction','Page text changed after a click')},0)},true);})();<\/script>${String(code).slice(0,60000)}`;
+}
+export function mountInteractivePage(frame,code,{onLog=()=>{},onInteraction=()=>{}}={}){
+ const nonce=crypto.randomUUID();let lines=0;
+ const receive=event=>{if(event.source!==frame.contentWindow||event.data?.formaPage!==nonce)return;if(event.data.type==='interaction')onInteraction();else if(['log','error'].includes(event.data.type)&&lines++<100)onLog(String(event.data.text).slice(0,3000),event.data.type);};
+ window.addEventListener('message',receive);frame.sandbox='allow-scripts';frame.referrerPolicy='no-referrer';frame.hidden=false;frame.srcdoc=interactiveDocument(code,nonce);
+ return ()=>{window.removeEventListener('message',receive);frame.srcdoc='';};
+}
+
+export const domPageExample=`<main style="font-family:system-ui;padding:24px">
+  <h1>Show a message safely</h1>
+  <label for="message">Message</label>
+  <input id="message" value="&lt;b&gt;Hello&lt;/b&gt;">
+  <button id="show" type="button">Show message</button>
+  <p id="result">Your message will appear here.</p>
+</main>
+<script>
+document.querySelector('#show').addEventListener('click', () => {
+  const message = document.querySelector('#message').value;
+  document.querySelector('#result').textContent = message;
+  console.log('Displayed plain text:', message);
+});
+</script>`;

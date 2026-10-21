@@ -1,3 +1,4 @@
+import {extraInterviews} from './interview-cases.js';
 import {peerChallenges} from './peer-challenges.js';
 import {tri as T} from './i18n.js';
 import {programmingLessonById} from './programming-lessons.js';
@@ -13,6 +14,7 @@ export const challenges=[
 ];
 const Q=(en,cn,tw)=>T(en,cn,tw);
 export const interviews=[
+ ...extraInterviews,
  {id:'frontend',title:Q('Frontend project review','前端项目复盘','前端專案回顧'),questions:[Q('Which user task did your interface improve? Describe your own change.','你的界面改善了哪个用户任务？说明你自己的修改。','你的介面改善了哪個使用者任務？說明你自己的修改。'),Q('What happened on slow connections or invalid input? Give a test.','慢速网络或无效输入时会怎样？给出一个测试。','慢速網路或無效輸入時會怎樣？給出一個測試。'),Q('Which design alternative did you reject, and why?','你放弃了哪个设计方案？为什么？','你放棄了哪個設計方案？為甚麼？')]},
  {id:'team',title:Q('Teamwork and disagreement','团队协作与分歧','團隊協作與分歧'),questions:[Q('Describe a disagreement about scope and your role in resolving it.','描述一次范围分歧，以及你如何参与解决。','描述一次範圍分歧，以及你如何參與解決。'),Q('Which evidence changed the decision?','什么证据改变了决定？','甚麼證據改變了決定？'),Q('What would you change in the next handoff?','下次交接时你会改变什么？','下次交接時你會改變甚麼？')]},
  {id:'stakeholder',title:Q('Explain an AI feature','向用户解释 AI 功能','向使用者解釋 AI 功能'),questions:[Q('Explain the feature to a non-technical instructor without promising perfect accuracy.','向非技术教师解释功能，不承诺完全准确。','向非技術教師解釋功能，不承諾完全準確。'),Q('What must a person review before publishing generated content?','发布生成内容之前，人需要检查什么？','發布生成內容之前，人需要檢查甚麼？'),Q('What happens when the AI service is unavailable?','AI 服务不可用时会怎样？','AI 服務無法使用時會怎樣？')]},
