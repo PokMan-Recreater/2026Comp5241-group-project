@@ -1,233 +1,138 @@
-# SkillForge
+# Forma Learning Lab
 
-Mini-courses on software engineering and AI tools with **personalised learning paths**,
-**interactive simulations**, **role-play mock interviews**, **in-browser coding challenges** and
-**AI-narrated content**. Built for both CS and non-CS learners, and for **any topic** - including
-ones that are not in the catalogue.
+**The team's selected integrated prototype for the COMP5241 group project.**
 
-> COMP5241 group project. Next.js (App Router) + TypeScript + Tailwind, no database, deploys to
-> Vercel with zero configuration.
+Forma is a web learning platform for software development, software engineering and AI tools. It brings courses, study plans, practical exercises and learning records into one consistent interface, supporting both non-CS beginners and CS learners preparing for employment.
 
----
+<p>
+  <a href="https://forma-learning-lab.vercel.app/">
+    <img src="docs/open-forma.svg" alt="Open Forma website" width="184" height="40">
+  </a>
+</p>
 
-## What it does
+[Live demo](https://forma-learning-lab.vercel.app/) · [Team repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
 
-| Feature | How it works |
+## From three prototypes to one application
+
+Our three team members developed **SkillForge**, **Forma** and **CodeCraft Academy**. After comparing their designs and functionality, we selected Forma's interface as the basis for our final application and incorporated useful learning and practice features from the other two prototypes.
+
+| Initial prototype | Main contribution to the integrated design |
 | --- | --- |
-| **Personalised paths** | `/onboarding` collects background (CS / non-CS), level, goal and weekly study minutes. `src/lib/pathGenerator.ts` matches the topic against a keyword library, orders lessons into modules, and schedules them into weeks that fit the learner's budget. |
-| **Custom topics** | `/create` (and the wizard) accept any free-text topic. If nothing in the catalogue matches, a **complete mini-course is synthesised** - foundations, vocabulary, a hands-on workflow, quality checks, a capstone and interview rehearsal - with the topic written into the lesson titles. |
-| **Interactive simulations** | 6 labs, each a real model of the thing it teaches: Git commit graph with conflict resolution, prompt rubric lab, RAG retrieval pipeline, broken CI pipeline, mock Docker CLI, gradient-descent optimiser. |
-| **Coding challenges** | 7 challenges with real tests, executed inside a **sandboxed iframe** (`allow-scripts`, opaque origin, 4s timeout). Learner code never leaves the browser. |
-| **Role-play / mock interviews** | 5 scenarios (frontend screen, behavioural, stakeholder explanation, data case, ML deep dive) scored by a deterministic rubric: structure, concrete evidence, domain vocabulary, ownership, length, clarity. Optional AI coaching on top. |
-| **AI narration** | Every lesson can be read aloud with the Web Speech API, with sentence-level highlighting as it speaks. No audio files, no API keys. |
-| **Explain simply** | Any lesson can be re-explained in plain language on demand (the `explain` task), written for the learner's own level and background - so a beginner who meets jargon never has to leave the page. |
-| **Three languages** | The whole interface - navigation, buttons, headings, home page and footer - is available in **English, 简体中文 and 繁體中文**, switchable from the header and remembered per browser. The dictionaries are plain data in `src/lib/i18n/`, so a unit test keeps them key-for-key in sync. |
-| **Progress** | XP, levels, streaks, 7 badges, bookmarks, quiz best-scores and interview history - all derived from real activity and stored locally. |
+| **Forma** | Visual design, software engineering lessons, learner profiles, and learner, instructor and administrator workspaces. |
+| **SkillForge** | Personalized study paths, interactive developer-tool labs, interview practice, narration and progress rewards. |
+| **CodeCraft Academy** | Multi-language programming topics, code examples, free coding, syntax references and revision activities. |
 
-## Tech stack
+These contributions describe the design and features brought together; the integrated implementation adapts them to Forma's interface and learning flow. The integrated Forma prototype is maintained on `main`. The earlier prototypes remain available through the repository's commit history. Use feature branches and pull requests for further changes.
 
-- **Next.js 16** (App Router, Turbopack) with **React 19** and **TypeScript** (strict)
-- **Tailwind CSS v4** (CSS-first tokens in `src/app/globals.css`)
-- **Vitest** for unit tests of all pure logic
-- **Zero runtime dependencies** beyond Next/React: no UI kit, no state library, no database
-- **AI provider abstraction** (`src/lib/ai`): offline deterministic engine by default, optional
-  OpenAI-compatible provider via environment variables
+## Main features
 
-## Getting started
+| Area | What learners and teachers can do |
+| --- | --- |
+| **Courses** | Explore 16 courses with 66 lessons on software engineering and AI/developer tools. Search and filter content by topic, level and background. |
+| **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
+| **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
+| **Interactive labs** | Explore six models: Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
+| **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. Use a free JavaScript playground or HTML/CSS/JavaScript page preview. |
+| **Checks and references** | Review a 73-question revision bank and 15 syntax cards alongside lesson-level checks and worked answers. |
+| **Interview practice** | Practise 11 scenarios with 33 prompts, save drafts and attempts, and review structured writing cues. Optional live AI coaching is available when configured. |
+| **Learning records** | Continue recent learning, save lessons, review history, and track completion, quiz results, XP, levels, streaks and seven activity-based badges. Export local records. |
+| **Language and accessibility** | Use English, Simplified Chinese or Traditional Chinese; choose interface and course languages separately. Listen to lessons with device narration and sentence highlighting, or open plain-language study guides. |
+| **Instructor workspace** | Edit and publish courses, manage local classroom rosters, inspect recorded participation and export CSV summaries. |
+| **Administrator workspace** | Preview catalog management and people-and-role workflows. Role switching demonstrates the three workspaces. |
 
-```bash
-npm install
-npm run dev          # http://localhost:3000
+## What makes Forma distinctive
+
+- **A connected learning flow:** move from a course to a relevant exercise, explain the result in interview practice, and review progress in one place.
+- **Different starting points:** background, learning goals, content depth and study time shape recommendations without excluding learners from courses.
+- **Useful without a live AI model:** authored lessons, planning rules, simulations and local feedback remain available. Optional AI assistance complements these activities.
+- **One consistent design:** the integrated prototype combines the three proposals within Forma's shared navigation and visual style.
+
+## Current progress and next steps
+
+The team has selected the integrated prototype as the basis for the final application. Classmates have tested Forma and provided feedback on navigation, visual design, course depth and feature visibility. We have used that feedback to simplify controls, remove duplicate profile access and improve the learning activities.
+
+Next, we will divide further development tasks among members and collaborate through feature branches and pull requests, reviewing changes before merging into `main`. We will continue testing the main workflows, collecting feedback and improving the documentation before the final deployment.
+
+The live demo may show an earlier revision until the selected branch is deployed. See the [integration review record](docs/peer-completion-preview.md) for the latest local integration checks and scope.
+
+## Run locally
+
+Use **Node.js 22.13 or newer within Node 22**. Run `npm ci` to install the development tools for type checking and linting; the application itself has no third-party runtime dependencies.
+
+```sh
+npm run dev
 ```
 
-Other scripts:
+Open [the local preview](http://127.0.0.1:4173). To use another port:
 
-```bash
-npm run typecheck    # tsc --noEmit
-npm run lint         # eslint (flat config)
-npm test             # vitest run
-npm run build        # production build
-npm run verify       # typecheck + lint + tests + build
-npm run hooks:install  # enable the pre-push gate (once per clone)
+```sh
+PORT=4176 npm run dev
 ```
 
-The app works with **no environment variables**. Copy `.env.example` to `.env.local` only if you
-want to enable a real model:
+Run the automated checks and create the static build:
 
-```bash
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+```sh
+npm run verify
 ```
 
-With `AI_PROVIDER=mock` (the default) every AI feature still works: path rationales, interview
-coaching and topic explanations are produced by a deterministic template engine in
-`src/lib/ai/mock.ts`. If a remote call fails at runtime, `completeWithFallback` degrades to the
-offline engine, so the UI never breaks.
+The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
 
-## Architecture
+Type checking uses TypeScript `checkJs` on learning/planning logic, simulations, challenge execution, interview review, linked content, the AI endpoint and build/preview scripts (including their imported modules). UI event handlers and view templates are not yet included in type checking. ESLint recommended rules cover all application JavaScript and test scripts. These are separate checks: type checking detects incompatible values in checked modules; linting detects issues such as undefined names and duplicate declarations.
 
-```
-src/
-  app/                       # routes (App Router)
-    api/ai/route.ts          #   POST { task: generate-path | interview-coach | explain }
-    courses/[slug]/[lessonId]#   lesson player
-    onboarding/ create/ paths/ dashboard/ labs/ interview/ catalog/
-  components/
-    providers/AppDataProvider # localStorage state: profile, paths, progress, custom courses
-    lesson/                   # lesson player, block renderer, quiz, narration
-    simulations/              # 6 labs + host
-    code/                     # sandboxed challenge runner
-    interview/                # role-play runner + rubric feedback panel
-    catalog/ course/ path/ dashboard/ labs/ onboarding/ create/
-  content/                    # the curriculum, as typed data
-    courses/*.ts              #   11 curated courses
-    challenges.ts roleplays.ts simulations.ts
-  lib/
-    pathGenerator.ts          # personalisation engine (matching, scheduling, synthesis)
-    topics.ts                 # topic keyword library + matcher
-    progress.ts               # XP, streaks, levels, badges, completion (pure functions)
-    rubric.ts                 # interview answer scoring (pure, testable)
-    ai/                       # provider abstraction, prompts, mock + OpenAI implementations
-    speech.ts storage.ts utils.ts
-  types/index.ts              # the whole domain model
-```
+An optional browser-check script is available at `scripts/browser-check.mjs`; it requires Playwright and a compatible browser. Set `PLAYWRIGHT_MODULE_PATH` and `CHROME_PATH` to use existing installations.
 
-### Design decisions worth knowing
+## Deploy to Vercel
 
-- **Pure logic, thin components.** Scheduling, scoring, progress and topic matching live in
-  `src/lib` as pure functions with no React or browser dependencies. That is why they are unit
-  tested, and why the same engine can power both the API route and the offline fallback.
-- **Content is data.** Lessons are typed objects (a `LessonBlock` union), not JSX, so the content
-  layer cannot break the app and any host can render a lesson (lesson player, labs page, generated
-  course).
-- **No database.** Everything a learner creates lives in `localStorage` behind one provider, which
-  removes auth, migrations and hosting cost from a graded group project while keeping the door open
-  for a real backend later.
-- **Safety first for learner code.** Challenges run in a sandboxed iframe with a timeout, rather
-  than `eval` on the main thread.
+Use `main` as the production branch when deploying the integrated Forma prototype. This application uses a different build configuration from the earlier Next.js prototype:
 
-## Testing
+| Setting | Value |
+| --- | --- |
+| Framework preset | Other |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node.js | 22.x |
 
-`npm test` runs 14 Vitest suites. `npm run coverage` runs the same suites behind a coverage ratchet -
-currently 90% statements, 80% branches, 88% functions and 92% lines, measured over `src/lib` and
-`src/content`, the layers that have a unit-test harness - and that is the step the gate uses, so an
-untested new module fails the build. Between them they cover:
+These build settings are declared in `vercel.json`. Check the Vercel project's existing settings when switching from the earlier prototype. The optional server-side AI endpoint is `api/ai.js`.
 
-- progress rules: XP idempotence, streak day maths, best-quiz scoring, levels, badges
-- the topic matcher, including false-positive guards (`html` must not match `ml`)
-- path generation: weekly budget compliance, no duplicate lessons, step caps, custom-course
-  synthesis and level-based trimming
-- the interview rubric: strong vs vague answers, filler penalty, missing vocabulary
-- the AI provider abstraction: prompts round-trip their payload, the offline engine is
-  deterministic, provider selection honours the environment, and a failing remote call degrades to
-  the offline engine - driven through a stubbed `fetch`, so no network is used
-- the interface dictionaries: every locale carries the same keys, placeholders interpolate, and
-  browser language tags map to the right locale
-- the browser-facing helpers (`storage`, `speech`) degrade safely when there is no `localStorage`
-  or Web Speech API
-- content integrity: unique ids, valid quiz answers, every referenced simulation / challenge /
-  scenario exists, and every lab and challenge is used by some lesson
-- **every reference challenge solution is executed against its own tests**, and every starter code
-  is proven to fail - using the same `new Function` harness the browser sandbox uses
-- the delivery pipeline itself: the workflow, the pre-push hook and `package.json` must keep agreeing
-  on the same scripts (see [Continuous integration and delivery](#continuous-integration-and-delivery))
+For live AI, configure these environment variables on the server and redeploy:
 
-## Continuous integration and delivery
+| Variable | Purpose |
+| --- | --- |
+| `AI_API_KEY` | Provider API key. |
+| `AI_BASE_URL` | HTTPS Chat Completions-compatible base URL; defaults to `https://api.deepseek.com`. |
+| `AI_MODEL` | Model identifier supported by the selected provider. |
 
-`.github/workflows/ci.yml` has two jobs.
+Keep credentials out of the repository. The application does not ask learners to enter API keys in the browser.
 
-**`verify`** runs `npm ci` followed by `npm run typecheck`, `npm run lint`, `npm run audit`,
-`npm run coverage` and `npm run build` on Node 24 - the same five checks as `npm run verify` - for
-every pull request into `main` or `dev`, and for every push to either branch. A failing run shows up
-as a red cross on the pull request. The `audit` step only inspects production dependencies
-(`npm audit --omit=dev`), so a vulnerability in build tooling cannot block a release while one in
-shipped code can.
+## Prototype scope and remaining work
 
-**`deploy`** promotes `main` to production on Vercel with `vercel deploy --prod`. It runs *only* on a
-push to `main` (never on a pull request, never on `dev`) and it declares `needs: verify`, so a red
-build can never ship. Vercel builds the project on its own infrastructure from the committed
-lockfile, exactly as a deploy from the dashboard would.
+- **Storage and accounts:** records are saved in the current browser's `localStorage`. Shared storage, cross-device synchronization, production authentication and server-side authorization are pending. Role switching previews workflows; it is not account authentication.
+- **Classrooms:** roster import and engagement views operate on local records. Importing names does not send invitations or create genuine student activity.
+- **Code execution:** JavaScript challenges use isolated execution with a timeout. HTML page previews use an opaque-origin sandbox with restricted resources; they do not have the same execution-time guarantees. C/C++ and Python examples provide limited output traces, not full language runtimes.
+- **AI and content:** live AI requires server-side configuration and end-to-end validation. New-topic study templates guide source-led learning; they do not establish verified facts about arbitrary subjects. Local interview cues are practice aids, not hiring or mastery assessments.
+- **Teaching tools:** media uploads, fully configurable activity parameters, shared analytics and generative audio/animations need further development. Current narration uses device text-to-speech.
 
-Vercel's own Git integration is connected as well, so it *also* deploys `main` (and previews every
-other branch). Both build the same commit, so the result is identical - this job exists so that a
-release is additionally gated on `verify`, which the Git integration does not wait for.
+## Project structure
 
-Switch it on once per repository by adding the token:
+| Directory | Contents |
+| --- | --- |
+| `public/` | Interface, translations, courses, learning logic and self-hosted assets. |
+| `api/` | Server-side AI endpoint for Vercel. |
+| `scripts/` | Local preview, build and optional browser checks. |
+| `tests/` | Automated checks for curriculum, plans, progress, APIs, simulations and practice. |
+| `docs/` | User guide, course design, requirements and dated review records. |
+| `course-authoring/` | Optional course-authoring sources and generation dependencies. |
+| `dist/` | Generated build output, excluded from Git. |
 
-1. Create a token at **vercel.com/account/tokens**.
-2. In GitHub: **Settings -> Secrets and variables -> Actions -> New repository secret**.
-3. Name it `VERCEL_TOKEN` and paste the token in.
+## Documentation and team contributions
 
-The Vercel organisation and project ids live in the workflow's `env:` block. They are public
-identifiers (they appear in the project's dashboard URL), which is why only the token is a secret.
-If the secret is missing, `deploy` fails immediately with those instructions rather than silently
-skipping the release.
+- [User guide](docs/user-guide.md)
+- [Course design](docs/course-design.md)
+- [Integration review and verification](docs/peer-completion-preview.md)
+- [Earlier feature comparison](docs/feature-upgrade.md)
 
-To make that a hard requirement instead of a warning, protect the branch once per repository:
+Some earlier review documents describe previous prototype stages; use the current README and latest dated review record for the integrated version.
 
-1. **Settings -> Branches -> Add branch protection rule** (or **Settings -> Rules -> Rulesets** if your
-   repository shows the newer UI - the check name below is the same either way).
-2. **Branch name pattern**: `main`.
-3. Tick **Require status checks to pass before merging**.
-4. Type `Verify` in the search box, click the **Verify (typecheck, lint, test, build)** entry, then
-   click the **+** button beside it. Adding a check is a two-step process and the **+** is easy to
-   miss - without it no check is actually attached, and GitHub refuses to save with **"Rule is
-   invalid"**. The check must show up as a chip before you save.
-5. **Create** / **Save changes**.
+This is a shared team project. Each team member developed an initial prototype, and our final application combines contributions from all three proposals. Preserve individual work and contribution history when reviewing and merging changes.
 
-The check only appears in that search box after `.github/workflows/ci.yml` has run at least once on
-the branch, so push first and configure afterwards. A red pull request can then no longer be merged.
-
-### Catch failures before they leave your machine
-
-CI is the authority, but a round trip through GitHub is a slow way to find a typo. The repository
-ships a `pre-push` hook in `.githooks/` that runs `npm run verify` and aborts the push whenever a
-push targets `main`:
-
-```bash
-npm run hooks:install   # git config core.hooksPath .githooks - once per clone
-```
-
-Git never versions `.git/hooks`, which is why the hook lives in `.githooks/` and has to be switched
-on explicitly. Pushes to other branches are left alone. In a genuine emergency, `git push --no-verify`
-skips the hook.
-
-## Deploying to Vercel
-
-This repository has **both** shipping paths switched on.
-
-**1. Vercel's Git integration.** Connected, so Vercel builds on every push: `main` goes to
-production, every other branch gets a preview deployment (aliased `...-git-<branch>-...`). No GitHub
-Actions involved, and it does *not* wait for CI to pass.
-
-**2. From CI.** `.github/workflows/ci.yml` also deploys every push to `main`, but only once the
-`verify` job has passed. Switch it on by adding the `VERCEL_TOKEN` secret - see
-[Continuous integration and delivery](#continuous-integration-and-delivery). Keeping it means a
-release is gated on the tests, at the cost of a second (identical) production build per push.
-
-Either way the project needs no build configuration:
-
-1. Push the repository to GitHub.
-2. In Vercel: **Add New -> Project -> import the repo**. The Next.js preset is detected; no build
-   settings need changing.
-3. (Optional) Add `AI_PROVIDER` / `OPENAI_API_KEY` under **Settings -> Environment Variables**.
-   Without them the app deploys in offline mode, which is the intended demo configuration.
-4. Deploy.
-
-`src/app/api/ai/route.ts` runs on the Node.js runtime and is marked `force-dynamic`, so it works on
-Vercel's serverless functions without extra configuration.
-
-## Known limitations
-
-- Progress and generated courses are **per browser profile**: there is no account system or sync.
-- The language choice is stored the same way, and only the **interface** is translated today: lesson
-  bodies, course titles and lab copy remain in English (see `src/lib/i18n/`).
-- Narration depends on the browser's Web Speech API (Chrome, Edge, Safari); other browsers see a
-  short explanatory note instead of a play button.
-- The offline AI engine is a deterministic template engine, not a language model. It only states
-  what the structured payload has already computed.
-- Generated custom courses teach **process** (goal, vocabulary, workflow, verification, explanation)
-  rather than asserting facts about a topic we cannot verify.
-
-
+Course drafts and parts of the implementation were developed with AI assistance. Teaching content and generated suggestions still require human review.
