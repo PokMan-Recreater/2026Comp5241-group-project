@@ -3,6 +3,8 @@ import {referenceTopics,challenges,labs,interviews} from './academy-content.js';
 import {practiceForLesson} from './course-practices.js';
 import {topicKeywords,hasTopicKeyword} from './topic-matching.js';
 
+/** @typedef {{interests?: string[], skillLevel?: string, weeklyMinutes?: number, audience?: string, background?: string, depth?: string}} LearningProfile */
+
 export const lessonKey=(c,l)=>`${c}:${l}`;
 export function ensureAcademy(s){
  const defaults={version:1,plans:[],activePlan:null,bookmarks:[],challenges:{},interviews:[],quizzes:{},tutorials:[],labResults:{},activities:[],playground:{language:'javascript',code:null},narration:{rate:1,voice:''}};
@@ -27,6 +29,7 @@ const keywords=topicKeywords,hasKeyword=hasTopicKeyword;
 export function matchCourses(courses,topic='',interests=[]){
  return courses.filter(c=>c.status==='published').map(c=>{const direct=(c.id===topic.trim().toLowerCase()?100:0)+(keywords[c.id]||[]).reduce((n,k)=>n+(hasKeyword(topic.toLowerCase(),k)?6:0),0)+(String(local(c.title)).toLowerCase().includes(topic.toLowerCase())&&topic.trim()?3:0);return {c,direct,score:direct+(keywords[c.id]||[]).reduce((n,k)=>n+(hasKeyword(interests.join(' ').toLowerCase(),k)?1:0),0)};}).filter(x=>x.direct>0).sort((a,b)=>b.score-a.score).map(x=>x.c);
 }
+/** @param {string} topic @param {string} id @param {LearningProfile} [profile] */
 export function buildTemplateCourse(topic,id,profile={}){
  const name=String(topic).trim().slice(0,180);
  if(!name)throw new Error('Topic required');
@@ -60,7 +63,9 @@ export function buildTemplateCourse(topic,id,profile={}){
  return {id,title,description:tri('A source-led study project with checks and an explanation rehearsal.','以资料为依据，包含检查与讲解练习的学习项目。','以資料為依據，包含檢查與講解練習的學習專案。'),topic:'foundations',theme:'lavender',duration:lessons.reduce((n,l)=>n+l.minutes,0),status:'published',personal:true,origin:'template',level,audience:profile.audience&&profile.audience!=='all'?[profile.audience]:['cs','non-cs'],lessons};
 }
 
+/** @param {{courses: any[], topic: string, profile?: LearningProfile, id: string, courseId: string}} options */
 export function buildPlan({courses,topic,profile={},id,courseId}){
+ /** @type {[string, RegExp][]} */
  const languageRules=[['cpp',/c\+\+|\bcpp\b/i],['javascript',/javascript|\bjs\b/i],['python',/python|派森/i],['html',/html|css/i],['c',/\bc\b(?!\s*\+)|c语言|c語言/i]];
  const languageMatches=languageRules.filter(([,pattern])=>pattern.test(topic)).filter(([language])=>!(language==='python'&&/script|file|csv|automation|文件|檔案/i.test(topic)));
  let selected=matchCourses(courses,topic,profile.interests||[]),course=null;
@@ -75,7 +80,7 @@ export function buildPlan({courses,topic,profile={},id,courseId}){
  for(const c of selected){const included=c.collection==='tools'||c.origin==='template'||!beginner||/\btdd\b/i.test(topic)?c.lessons:c.lessons.slice(0,2);addStage('course-'+c.id,c.title,included.map(l=>({courseId:c.id,lessonId:l.id,index:c.lessons.indexOf(l),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Work through this case before the connected practice.','先学这一案例，再完成关联练习。','先學這一案例，再完成關聯練習。')})));
   for(const l of included){const routes=l.practice?[l.practice]:practiceForLesson(c.id,c.lessons.indexOf(l));for(const route of routes)practiceRoutes.push({route,from:c.id});}
  }
- const toPractice=({route,from})=>{const [kind,pid,index]=route.split('/');if(kind==='learn'){const c=courses.find(x=>x.id===pid),l=c?.lessons[Number(index)];return l&&{courseId:c.id,lessonId:l.id,index:Number(index),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Use this connected case to apply the idea.','用关联案例应用所学。','用關聯案例應用所學。')};}if(kind==='tutorial'){const t=referenceTopics.find(x=>x.id===pid);return t&&{kind:'tutorial',tutorialId:t.id,lessonId:t.id,title:t.title,minutes:8,courseTitle:t.title,rationale:tri('Apply the idea in a programming exercise.','通过编程练习应用概念。','透過程式練習應用概念。')};}const title=kind==='lab'?labs.find(x=>x[0]===pid)?.[1]:kind==='challenge'?challenges.find(x=>x.id===pid)?.title:kind==='interview'?interviews.find(x=>x.id===pid)?.title:kind==='game'?tri('Launch challenge','上线挑战','上線挑戰'):kind==='playground'?tri('Trace a small program','跟踪一个小程序','追蹤一個小程式'):null;return title&&{kind:'practice',route,from,title,courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Use observable results to check your understanding.','用可观察的结果检验理解。','用可觀察的結果檢驗理解。')};};
+ const toPractice=({route,from=undefined})=>{const [kind,pid,index]=route.split('/');if(kind==='learn'){const c=courses.find(x=>x.id===pid),l=c?.lessons[Number(index)];return l&&{courseId:c.id,lessonId:l.id,index:Number(index),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Use this connected case to apply the idea.','用关联案例应用所学。','用關聯案例應用所學。')};}if(kind==='tutorial'){const t=referenceTopics.find(x=>x.id===pid);return t&&{kind:'tutorial',tutorialId:t.id,lessonId:t.id,title:t.title,minutes:8,courseTitle:t.title,rationale:tri('Apply the idea in a programming exercise.','通过编程练习应用概念。','透過程式練習應用概念。')};}const title=kind==='lab'?labs.find(x=>x[0]===pid)?.[1]:kind==='challenge'?challenges.find(x=>x.id===pid)?.title:kind==='interview'?interviews.find(x=>x.id===pid)?.title:kind==='game'?tri('Launch challenge','上线挑战','上線挑戰'):kind==='playground'?tri('Trace a small program','跟踪一个小程序','追蹤一個小程式'):null;return title&&{kind:'practice',route,from,title,courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Use observable results to check your understanding.','用可观察的结果检验理解。','用可觀察的結果檢驗理解。')};};
  const languageTasks={javascript:'fizzbuzz'};
  for(const [language] of languageMatches)practiceRoutes.push({route:language==='javascript'?'challenge/'+languageTasks[language]:'playground/'+language,from:'programming-'+language});
  const exercises=practiceRoutes.filter(x=>!x.route.startsWith('interview/')).map(x=>x.route==='playground/html'?{kind:'practice',route:x.route,from:x.from,title:tri('Build an interactive page','制作交互网页','製作互動網頁'),courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Connect a button to a DOM update in the isolated preview.','在隔离预览中让按钮更新页面。','在隔離預覽中讓按鈕更新頁面。')}:toPractice(x)).filter(Boolean);

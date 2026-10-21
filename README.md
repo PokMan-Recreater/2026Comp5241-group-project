@@ -57,7 +57,7 @@ The live demo may show an earlier revision until the selected branch is deployed
 
 ## Run locally
 
-Use **Node.js 22**. The main application has no third-party runtime packages to install.
+Use **Node.js 22.13 or newer within Node 22**. Run `npm ci` to install the development tools for type checking and linting; the application itself has no third-party runtime dependencies.
 
 ```sh
 npm run dev
@@ -72,11 +72,12 @@ PORT=4176 npm run dev
 Run the automated checks and create the static build:
 
 ```sh
-npm test
-npm run build
+npm run verify
 ```
 
-The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs the tests and build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
+The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
+
+Type checking uses TypeScript `checkJs` on learning/planning logic, simulations, challenge execution, interview review, linked content, the AI endpoint and build/preview scripts (including their imported modules). UI event handlers and view templates are not yet included in type checking. ESLint recommended rules cover all application JavaScript and test scripts. These are separate checks: type checking detects incompatible values in checked modules; linting detects issues such as undefined names and duplicate declarations.
 
 An optional browser-check script is available at `scripts/browser-check.mjs`; it requires Playwright and a compatible browser. Set `PLAYWRIGHT_MODULE_PATH` and `CHROME_PATH` to use existing installations.
 
