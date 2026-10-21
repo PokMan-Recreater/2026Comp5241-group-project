@@ -18,7 +18,9 @@ export function promptAnalysis(prompt){
  return {signals,score:signals.reduce((n,x,i)=>n+(x?weights[i]:0),0),weights};
 }
 export const promptReview=prompt=>promptAnalysis(prompt).signals;
-const tokenise=s=>String(s).toLowerCase().match(/[a-z0-9]+|[\u3400-\u9fff]/g)||[];
+const stopWords=new Set('the a an is are can i my to of for in on at and or how many much do does what when where with from it be am another per'.split(' '));
+const stem=t=>t.length>4?t.replace(/(?:ing|ed|es|s)$/,''):t;
+const tokenise=s=>(String(s).toLowerCase().match(/[a-z0-9]+|[\u3400-\u9fff]/g)||[]).filter(t=>!stopWords.has(t)).map(stem);
 export function rankDocuments(query,docs,hybrid=false){
  const phrase=String(query||'').trim().toLowerCase(),terms=new Set(tokenise(phrase));
  return docs.map(d=>{const words=new Set(tokenise(d.text)),matched=[...terms].filter(t=>words.has(t));const boost=!!phrase&&terms.size>0&&hybrid&&String(d.text).toLowerCase().includes(phrase)?.3:0;return {...d,matched,score:terms.size?matched.length/Math.sqrt(terms.size*Math.max(words.size,1))+boost:0,phraseBoost:boost};}).sort((a,b)=>b.score-a.score);
@@ -30,14 +32,14 @@ export function dockerStep(state,command){
  // Migrate the earlier fixed-name exercise without discarding its state.
  s.images??=s.image?{forma:{tag:'latest',builds:1}}:{};
  s.containers??=s.status&&s.status!=='absent'?{app:{image:'forma',status:s.status,ports:'',detached:false}}:{};
- let out='';const nameOK=x=>/^[a-zA-Z0-9][\w.:-]{0,63}$/.test(x||'');
+ let out='';const imageOK=x=>/^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,127}$/.test(x||'');const nameOK=x=>/^[a-zA-Z0-9][\w.:-]{0,63}$/.test(x||'');
  if(c==='clear'){s.logs=[];return s;}
  if(c==='help'||c==='docker help')out='Simulation commands: docker build -t NAME . | images | run [--name NAME] [-d] [-p HOST:CONTAINER] IMAGE | ps [-a] | stop/start/rm NAME | rmi IMAGE | logs NAME | exec NAME COMMAND | help | clear. No real containers are started.';
  else if(args[0]!=='docker')throw new Error('Use help to see the supported simulation commands');
  else {
   const verb=args[1],rest=args.slice(2);
   if(verb==='build'){
-   if(rest.length!==3||rest[0]!=='-t'||!nameOK(rest[1])||rest[2]!=='.')throw new Error('Use docker build -t NAME .');
+   if(rest.length!==3||rest[0]!=='-t'||!imageOK(rest[1])||rest[2]!=='.')throw new Error('Use docker build -t NAME .');
    const name=rest[1],cached=!!s.images[name];s.images[name]={tag:'latest',builds:(s.images[name]?.builds||0)+1};
    out=`[1/4] FROM node:22-alpine — ${cached?'CACHED':'base layer'}\n[2/4] COPY package*.json ./ — ${cached?'CACHED':'dependency input'}\n[3/4] RUN npm ci — ${cached?'CACHED':'install layer'}\n[4/4] COPY . . — ${cached?'CACHED (unchanged simulated context)':'application layer'}\nBuilt ${name}. In a real build, changing a layer invalidates that layer and later layers. This model has a fixed build context.`;
   }else if(verb==='images'&&!rest.length)out=Object.keys(s.images).join('\n')||'No images';
@@ -53,17 +55,19 @@ export function dockerStep(state,command){
   }else if(verb==='ps'&&(!rest.length||(rest.length===1&&rest[0]==='-a')))out=Object.entries(s.containers).filter(([,x])=>rest[0]==='-a'||x.status==='running').map(([n,x])=>`${n}\t${x.image}\t${x.status}\t${x.ports||'no published port'}`).join('\n')||'No matching containers';
   else if(verb==='rmi'&&rest.length===1){if(!s.images[rest[0]])throw new Error('Image not found');if(Object.values(s.containers).some(x=>x.image===rest[0]))throw new Error('Remove containers using this image first');delete s.images[rest[0]];out='Image removed';}
   else if(['stop','start','rm','logs','exec'].includes(verb)){
+   if(verb==='exec'&&rest[0]==='-it')rest.shift();
    const n=rest[0],x=s.containers[n];if(!x)throw new Error('Container not found');if(verb!=='exec'&&rest.length!==1)throw new Error('Use docker '+verb+' NAME');
    if(verb==='stop'){if(x.status!=='running')throw new Error('Container is not running');x.status='stopped';out=n+' stopped';}
    if(verb==='start'){if(x.status!=='stopped')throw new Error('Container must be stopped first');if(x.ports&&Object.values(s.containers).some(y=>y!==x&&y.status==='running'&&y.ports?.split(':')[0]===x.ports.split(':')[0]))throw new Error('Host port already used');x.status='running';out=n+' started';}
    if(verb==='rm'){if(x.status==='running')throw new Error('Stop the container before removing it');delete s.containers[n];out=n+' removed';}
    if(verb==='logs')out=`[simulated ${n}] Application initialized\n[simulated ${n}] status=${x.status}. Logs remain available after stopping.`;
-   if(verb==='exec'){if(x.status!=='running')throw new Error('exec requires a running container');let cmd=rest.slice(1);if(cmd[0]==='-it')throw new Error('Use docker exec NAME node --version');if(!cmd.length)throw new Error('Specify a simulated command');if(cmd.join(' ')==='node --version')out='v22.x (simulated runtime label)';else if(cmd.join(' ')==='pwd')out='/app (simulated working directory)';else throw new Error('This simulation supports exec NAME node --version or exec NAME pwd');}
+   if(verb==='exec'){if(x.status!=='running')throw new Error('exec requires a running container');let cmd=rest.slice(1);if(cmd[0]==='-it')throw new Error('Use docker exec NAME node --version');if(!cmd.length)throw new Error('Specify a simulated command');if(cmd.join(' ')==='node --version')out='v22.x (simulated runtime label)';else if(cmd.join(' ')==='pwd')out='/app (simulated working directory)';else if(cmd.join(' ')==='sh')out='Simulated shell transcript (not an interactive shell):\n$ ls /app\npackage.json  src  node_modules\n$ echo $NODE_ENV\nproduction';else if(cmd.join(' ')==='ls /app')out='package.json  src  node_modules (simulated)';else if(cmd.join(' ')==='echo $NODE_ENV')out='production (simulated)';else throw new Error('Supported simulated commands: pwd, node --version, sh, ls /app, echo $NODE_ENV');}
   }else throw new Error('Unsupported command. Use help.');
  }
  s.image=Object.keys(s.images).length>0;s.status=s.containers.app?.status||Object.values(s.containers)[0]?.status||'absent';s.logs.push('$ '+c+'\n'+out);s.logs=s.logs.slice(-60);return s;
 }
-export function gradientStep({m=0,b=0,rate=.05,history=[],steps=0},count=1){let loss=0;for(let n=0;n<Math.max(1,Math.min(1000,count));n++){let dm=0,db=0;for(const x of [0,1,2,3,4]){const error=m*x+b-(2*x+1);dm+=2*x*error/5;db+=2*error/5;}m-=rate*dm;b-=rate*db;steps++;loss=[0,1,2,3,4].reduce((sum,x)=>sum+(m*x+b-(2*x+1))**2/5,0);history=[...history,loss].slice(-100);if(!Number.isFinite(loss)||loss>1e12)break;}return {m,b,rate,history,steps,loss,diverged:!Number.isFinite(loss)||loss>1e12};}
+export const gradientSamples=(dataset='clean')=>dataset==='noisy'?[0,.4,.8,1.2,1.6,2,2.4,2.8,3.2,3.6,4].map((x,i)=>({x,y:2*x+1+[.18,-.21,.11,-.08,.22,-.17,.04,.16,-.2,.09,-.14][i]})):[0,1,2,3,4].map(x=>({x,y:2*x+1}));
+export function gradientStep({m=0,b=0,rate=.05,history=[],steps=0,dataset='clean'},count=1){const samples=gradientSamples(dataset);let loss=0;for(let n=0;n<Math.max(1,Math.min(1000,count));n++){let dm=0,db=0;for(const {x,y} of samples){const error=m*x+b-y;dm+=2*x*error/samples.length;db+=2*error/samples.length;}m-=rate*dm;b-=rate*db;steps++;loss=samples.reduce((sum,{x,y})=>sum+(m*x+b-y)**2/samples.length,0);history=[...history,loss].slice(-100);if(!Number.isFinite(loss)||loss>1e12)break;}return {m,b,rate,history,steps,dataset,loss,diverged:!Number.isFinite(loss)||loss>1e12};}
 const pipelineStages=[['install',null,'npm ci\n42 packages installed from the lockfile.'],['lint','format','src/average.js:4 — missing semicolon.'],['test','edge','average([]): expected 0; received NaN.'],['build','env','Missing PUBLIC_API_ORIGIN; build stopped.'],['deploy',null,'Preview artifact uploaded; smoke check: 200 OK (simulated).']];
 export function pipelineResult(fixes=[]){let blocked=false;return pipelineStages.map(([stage,fix,log])=>{const status=blocked?'blocked':!fix||fixes.includes(fix)?'passed':'failed';if(status==='failed')blocked=true;return {stage,fix,status,log:status==='blocked'?'Waiting for preceding stages.':status==='passed'&&fix?`${stage}: repaired; check passed.`:log};});}
 export function diagnosePipeline(fixes,choice){const failed=pipelineResult(fixes).find(x=>x.status==='failed');if(!failed)return {fixes:[...fixes],correct:false,message:'All stages already pass. Inspect the deployment smoke check.'};if(choice===failed.fix)return {fixes:[...new Set([...fixes,choice])],correct:true,message:'The cause was repaired. The next stage can now run.'};return {fixes:[...fixes],correct:false,message:choice==='rerun'?'An unchanged rerun reproduces the same defect. Read the first failing log.':choice==='expectation'?'Changing the expected result hides the empty-input defect. Keep the contract and fix the function.':'That change does not address the first failing log. Fix one cause at a time.'};}

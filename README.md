@@ -1,101 +1,137 @@
 # Forma Learning Lab
 
+**The team's selected integrated prototype for the COMP5241 group project.**
+
+Forma is a web learning platform for software development, software engineering and AI tools. It brings courses, study plans, practical exercises and learning records into one consistent interface, supporting both non-CS beginners and CS learners preparing for employment.
+
 <p>
   <a href="https://forma-learning-lab.vercel.app/">
     <img src="docs/open-forma.svg" alt="Open Forma website" width="184" height="40">
   </a>
 </p>
 
-**COMP5241 group project — Forma prototype**
+[Live demo](https://forma-learning-lab.vercel.app/) · [Team repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
 
-Author: [Cicicrr](https://github.com/Cicicrr) · Branch: `prototype/forma`
+## From three prototypes to one application
 
-[Group repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
+Our three team members developed **SkillForge**, **Forma** and **CodeCraft Academy**. After comparing their designs and functionality, we selected Forma's interface as the basis for our final application and incorporated useful learning and practice features from the other two prototypes.
 
-This branch contains Forma as an independent prototype for the group to compare with the other proposals. SkillForge remains on `main`. Select `prototype/forma` when viewing, checking out or deploying this version.
+| Initial prototype | Main contribution to the integrated design |
+| --- | --- |
+| **Forma** | Visual design, software engineering lessons, learner profiles, and learner, instructor and administrator workspaces. |
+| **SkillForge** | Personalized study paths, interactive developer-tool labs, interview practice, narration and progress rewards. |
+| **CodeCraft Academy** | Multi-language programming topics, code examples, free coding, syntax references and revision activities. |
 
-Forma is a working learning-platform prototype for a software engineering course project. English is the default language; Simplified Chinese and Traditional Chinese are also supported. Learners can choose their interface and course languages separately.
+These contributions describe the design and features brought together; the integrated implementation adapts them to Forma's interface and learning flow. The current development branch is `prototype/forma`. The team has selected this integrated version to replace the earlier prototype on `main` after review.
 
-## Implemented features
+## Main features
 
-- Learner, instructor and administrator workspaces; course editing and publication; classroom roster import and local activity export.
-- Seven software-engineering courses with 30 lessons, assignments, reference responses and saved notes in English, Simplified Chinese and Traditional Chinese.
-- Nine AI/developer-tool courses with 36 more lessons covering Git, SQL, Docker, CI/CD, prompts, LLM applications, ML, everyday AI and Python data scripts.
-- Three-step learner setup, interest tags, weekly scheduling, generation previews and multiple saved learning plans with an active-plan selector.
-- Topic matching against published courses and source-led study templates for new topics, available without model credentials. Templates are explicitly distinguished from verified subject teaching or live AI generation.
-- A practice center with six new models: Git branches and merges, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing launch, access-control and scope exercises remain available.
-- Fourteen standalone JavaScript challenges with real behavior checks, saved code, hints, reference implementations, detailed failure output and isolated, time-limited execution. The two existing coding lessons are retained.
-- Five interview scenarios with saved drafts, per-question review cues, overall review, attempt history and optional live AI coaching. Local phrase-based cues are not mastery or hiring assessments.
-- A learner dashboard with active-plan progress, estimated completed lesson time, bookmarks, quiz best results, challenge and interview records, XP, levels, streaks and seven activity-based badges.
-- Full lesson-text narration with sentence highlighting, voice and speed selection, pause/resume and stop. Narration uses device text-to-speech.
-- Course and lesson search, level/audience filters, lesson bookmarks, undo completion, progress export, confirmed progress reset and same-session undo.
-- A programming-foundations collection with 30 multilingual mini lessons across C, C++, Python, JavaScript and HTML/CSS: worked examples, pitfalls, knowledge checks, worked answers, notes and inline JavaScript/HTML practice.
-- A general JavaScript playground and sandboxed HTML/CSS preview, with example transfer, template selection, keyboard indentation, reset and clear-output controls. C/C++ and Python provide explicitly limited literal-output traces, not full compilers or interpreters.
-- Lesson-based plain-language study guides and server-side AI adapters for live course generation, questions and role-play when a provider is configured.
+| Area | What learners and teachers can do |
+| --- | --- |
+| **Courses** | Explore 16 courses with 66 lessons on software engineering and AI/developer tools. Search and filter content by topic, level and background. |
+| **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
+| **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
+| **Interactive labs** | Explore six models: Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
+| **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. Use a free JavaScript playground or HTML/CSS/JavaScript page preview. |
+| **Checks and references** | Review a 73-question revision bank and 15 syntax cards alongside lesson-level checks and worked answers. |
+| **Interview practice** | Practise 11 scenarios with 33 prompts, save drafts and attempts, and review structured writing cues. Optional live AI coaching is available when configured. |
+| **Learning records** | Continue recent learning, save lessons, review history, and track completion, quiz results, XP, levels, streaks and seven activity-based badges. Export local records. |
+| **Language and accessibility** | Use English, Simplified Chinese or Traditional Chinese; choose interface and course languages separately. Listen to lessons with device narration and sentence highlighting, or open plain-language study guides. |
+| **Instructor workspace** | Edit and publish courses, manage local classroom rosters, inspect recorded participation and export CSV summaries. |
+| **Administrator workspace** | Preview catalog management and people-and-role workflows. Role switching demonstrates the three workspaces. |
 
-The current local review also adds a 71-question revision bank, 15 syntax cards, detailed lab diagnosis and question-specific interview review. See [the peer integration preview](docs/peer-integration-preview.md) for coverage, entry points and verification.
+## What makes Forma distinctive
 
-See [the comparison checklist and verification](docs/feature-upgrade.md) and [the local navigation and learning-flow preview](docs/navigation-preview.md).
+- **A connected learning flow:** move from a course to a relevant exercise, explain the result in interview practice, and review progress in one place.
+- **Different starting points:** background, learning goals, content depth and study time shape recommendations without excluding learners from courses.
+- **Useful without a live AI model:** authored lessons, planning rules, simulations and local feedback remain available. Optional AI assistance complements these activities.
+- **One consistent design:** the integrated prototype combines the three proposals within Forma's shared navigation and visual style.
 
-## Prototype limitations
+## Current progress and next steps
 
-Application records are stored in the current browser's `localStorage`. Role switching is a demonstration feature; real authentication, server-side authorization, a shared database and cross-device synchronization are pending. Importing a roster does not send invitations or create student activity records.
+The integrated prototype is available for team review. Classmates have tested Forma and provided feedback on navigation, visual design, course depth and feature visibility. We have used that feedback to simplify controls, remove duplicate profile access and improve the learning activities.
 
-Narration uses the device's text-to-speech service. Generative AI audio, full animations and media uploads in the course editor are pending. Instructors can edit activity descriptions; game parameters and coding test cases are not yet configurable through the editor.
+Next, we will review and merge the selected version into `main`, divide further development tasks among members, and collaborate through feature branches and pull requests. We will continue testing the main workflows, collecting feedback and improving the documentation before the final deployment.
 
-The prototype supports review and user feedback. It does not represent completion of every final-project requirement. See [requirements and remaining work](docs/requirements.md).
+The live demo may show an earlier revision until the selected branch is deployed. See the [integration review record](docs/peer-completion-preview.md) for the latest local integration checks and scope.
 
 ## Run locally
 
-Use Node.js 22. No dependency installation is needed. The automated suite currently contains 49 tests.
+Use **Node.js 22**. The main application has no third-party runtime packages to install.
 
 ```sh
 npm run dev
 ```
 
-Open [the local preview](http://127.0.0.1:4173).
+Open [the local preview](http://127.0.0.1:4173). To use another port:
+
+```sh
+PORT=4176 npm run dev
+```
+
+Run the automated checks and create the static build:
 
 ```sh
 npm test
 npm run build
 ```
 
-The optional browser check requires Playwright and a compatible browser:
+The most recent local integration check passed **63 automated tests** and the production build. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
 
-```sh
-node scripts/browser-check.mjs
-```
-
-Use `PLAYWRIGHT_MODULE_PATH` and `CHROME_PATH` to select existing installations if needed.
+An optional browser-check script is available at `scripts/browser-check.mjs`; it requires Playwright and a compatible browser. Set `PLAYWRIGHT_MODULE_PATH` and `CHROME_PATH` to use existing installations.
 
 ## Deploy to Vercel
 
-Import this branch as a separate Vercel project. Select **Other** as the framework, use `npm run build` as the build command, and set the output directory to `dist`. These settings are declared in `vercel.json`. The server-side AI endpoint is `api/ai.js`.
+Deploy the branch containing the selected Forma version. When it replaces `main`, use `main` as the production branch. This application uses a different build configuration from the earlier Next.js prototype:
 
-To enable AI, configure the following server-side environment variables in Vercel and redeploy:
+| Setting | Value |
+| --- | --- |
+| Framework preset | Other |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node.js | 22.x |
+
+These build settings are declared in `vercel.json`. Check the Vercel project's existing settings when switching from the earlier prototype. The optional server-side AI endpoint is `api/ai.js`.
+
+For live AI, configure these environment variables on the server and redeploy:
 
 | Variable | Purpose |
 | --- | --- |
-| `AI_API_KEY` | API key for the configured provider. |
-| `AI_BASE_URL` | HTTPS endpoint compatible with Chat Completions; defaults to `https://api.deepseek.com`. |
-| `AI_MODEL` | A model identifier supported by the provider and account. |
+| `AI_API_KEY` | Provider API key. |
+| `AI_BASE_URL` | HTTPS Chat Completions-compatible base URL; defaults to `https://api.deepseek.com`. |
+| `AI_MODEL` | Model identifier supported by the selected provider. |
 
-Keep credentials out of source files and the public repository. The application does not ask users to enter API keys in the browser.
+Keep credentials out of the repository. The application does not ask learners to enter API keys in the browser.
+
+## Prototype scope and remaining work
+
+- **Storage and accounts:** records are saved in the current browser's `localStorage`. Shared storage, cross-device synchronization, production authentication and server-side authorization are pending. Role switching previews workflows; it is not account authentication.
+- **Classrooms:** roster import and engagement views operate on local records. Importing names does not send invitations or create genuine student activity.
+- **Code execution:** JavaScript challenges use isolated execution with a timeout. HTML page previews use an opaque-origin sandbox with restricted resources; they do not have the same execution-time guarantees. C/C++ and Python examples provide limited output traces, not full language runtimes.
+- **AI and content:** live AI requires server-side configuration and end-to-end validation. New-topic study templates guide source-led learning; they do not establish verified facts about arbitrary subjects. Local interview cues are practice aids, not hiring or mastery assessments.
+- **Teaching tools:** media uploads, fully configurable activity parameters, shared analytics and generative audio/animations need further development. Current narration uses device text-to-speech.
 
 ## Project structure
 
 | Directory | Contents |
 | --- | --- |
-| `public/` | Interface, translations, courses, rules and self-hosted assets. |
+| `public/` | Interface, translations, courses, learning logic and self-hosted assets. |
 | `api/` | Server-side AI endpoint for Vercel. |
 | `scripts/` | Local preview, build and optional browser checks. |
-| `tests/` | API, curriculum, plans, state migration, rewards, simulations, challenge contracts and CSV checks. |
-| `docs/` | Requirements, user guide, course design and verification records. |
-| `course-authoring/` | Course-authoring source and optional generation dependencies. |
-| `dist/` | Generated static build; excluded from Git. |
+| `tests/` | Automated checks for curriculum, plans, progress, APIs, simulations and practice. |
+| `docs/` | User guide, course design, requirements and dated review records. |
+| `course-authoring/` | Optional course-authoring sources and generation dependencies. |
+| `dist/` | Generated build output, excluded from Git. |
 
-## Course design and verification
+## Documentation and team contributions
 
-See the [course design notes](docs/course-design.md), [user guide](docs/user-guide.md) and [verification record](docs/course-verification.md).
+- [User guide](docs/user-guide.md)
+- [Course design](docs/course-design.md)
+- [Integration review and verification](docs/peer-completion-preview.md)
+- [Earlier feature comparison](docs/feature-upgrade.md)
 
-The course drafts use cases, worked examples, practice and feedback informed by open teaching resources. They were written with AI assistance and are not presented as instructor-reviewed material. Live AI interactions require server-side configuration; device narration is text-to-speech.
+Some earlier review documents describe previous prototype stages; use the current README and latest dated review record for the integrated version.
+
+This is a shared team project. Forma's initial prototype was developed by [Cicicrr](https://github.com/Cicicrr); SkillForge and CodeCraft Academy were developed by the other two team members. The final direction combines all three proposals. Preserve individual work and contribution history when reviewing and merging changes.
+
+Course drafts and parts of the implementation were developed with AI assistance. Teaching content and generated suggestions still require human review.

@@ -1,6 +1,12 @@
+import {tri as T} from './i18n.js';
 import {referenceTopics} from './academy-content.js';
 import {programmingLessonById} from './programming-lessons.js';
+export const extraRevisionQuestions=[
+ {key:'revision:c-address',group:'c',title:T('Address-of operator','取地址运算符','取位址運算子'),question:T('Which C operator obtains the address of a variable?','C 中哪个运算符取得变量的地址？','C 中哪個運算子取得變數的位址？'),options:[T('&','&','&'),T('*','*','*'),T('sizeof','sizeof','sizeof')],correct:0,feedback:[T('&value obtains its address; *p accesses the pointed-to object.','&value 取得地址，*p 访问指向的对象。','&value 取得位址，*p 存取指向的物件。'),T('* dereferences a valid pointer; & obtains an address.','* 解引用有效指针，& 取地址。','* 解參考有效指標，& 取位址。'),T('sizeof measures a type or object size; it does not return its address.','sizeof 计算大小，不返回地址。','sizeof 計算大小，不回傳位址。')],route:'tutorial/c-pointer'},
+ {key:'revision:cpp-keyword',group:'cpp',title:T('Dynamic dispatch keyword','动态分派关键字','動態分派關鍵字'),question:T('Which C++ keyword enables runtime dispatch for a base-class member function?','C++ 哪个关键字让基类成员函数支持运行时分派？','C++ 哪個關鍵字讓基底類別成員函式支援執行時期分派？'),options:[T('static','static','static'),T('virtual','virtual','virtual'),T('const','const','const')],correct:1,feedback:[T('A static member is not a virtual dispatch point.','static 成员不是虚分派点。','static 成員不是虛擬分派點。'),T('virtual dispatches an overridden function through a base pointer or reference.','virtual 使通过基类指针或引用调用时选择重写实现。','virtual 使透過基底指標或參考呼叫時選擇覆寫實作。'),T('const constrains modification; it does not enable virtual dispatch.','const 限制修改，不启用虚分派。','const 限制修改，不啟用虛擬分派。')],route:'tutorial/cpp-virtual'},
+];
 export function knowledgeQuestions(courses){return [
+ ...extraRevisionQuestions,
  ...courses.filter(c=>c.status==='published').flatMap(c=>c.lessons.filter(l=>l.check).map(l=>({key:c.id+':'+l.id,group:c.collection==='tools'?'tools':'software',title:l.title,question:l.check.question,options:l.check.options.map(x=>x.text),correct:l.check.correct,feedback:l.check.options.map(x=>x.feedback),route:`learn/${c.id}/${c.lessons.indexOf(l)}`}))),
  ...referenceTopics.map(t=>{const l=programmingLessonById[t.id];return {key:'tutorial:'+t.id,group:t.language,title:t.title,question:l.checkQuestion||l.question,code:t.code,options:l.options,correct:l.correct,feedback:l.options.map(()=>l.answer),route:'tutorial/'+t.id};})
 ];}
