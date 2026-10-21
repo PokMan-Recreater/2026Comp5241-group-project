@@ -1,5 +1,5 @@
 import {extraInterviewGuides,extraInterviewContext} from './interview-cases.js';
-import {tri as T,local} from './i18n.js';
+import {tri as T} from './i18n.js';
 import {evaluateInterview} from './academy-core.js';
 const guide=(keywords,outline,followup)=>({keywords,outline,followup});
 export const interviewGuides={

@@ -24,7 +24,6 @@ export function createAcademy(ctx){
  const link=(hash,label,secondary=true)=>`<a class="btn ${secondary?'secondary':''} small-btn" href="#${hash}">${label}</a>`;
  const heading=(title,sub='')=>`<div class="page-heading"><h1>${title}</h1>${sub?`<p>${sub}</p>`:''}</div>`;
  const weekText=n=>`${n} ${L(n===1?'week':'weeks','周','週')}`;
- const dayText=n=>`${n} ${L(n===1?'day':'days','天','天')}`;
  const selected=(x,v)=>x===v?'selected':'';
  const option=(value,label,current)=>`<option value="${e(value)}" ${selected(value,current)}>${e(label)}</option>`;
  const codeLanguage=x=>x==='cpp'?'C++':x==='python'?'Python':x==='html'?'HTML/CSS':x==='javascript'?'JavaScript':'C';
@@ -68,8 +67,8 @@ export function createAcademy(ctx){
  return heading(e(T(scenario.title)))+selection+`<form id="academy-interview-form" class="form-card"><span class="pill">${i+1} / ${scenario.questions.length}</span><h2>${e(T(scenario.questions[i]))}</h2><label for="academy-interview-answer">${L('Your answer','你的回答','你的回答')}</label><textarea id="academy-interview-answer" data-scenario="${scenario.id}" data-question="${i}" rows="7" required maxlength="6000">${e(draft[i]||'')}</textarea><div id="academy-interview-feedback" class="academy-live-review" role="status"></div><div class="form-actions">${i?button('interview-back',L('Previous question','上一题','上一題')):''}<button class="btn" type="submit">${L('Review this answer','检查这一题','檢查這一題')}</button></div></form>${view.questionReview?interviewFeedbackHTML(view.questionReview,h)+`<div class="row mt">${button('interview-next',i+1===scenario.questions.length?L('Finish and save review','完成并保存复盘','完成並儲存回顧'):L('Next question','下一题','下一題'),'',false)}</div>`:''}`;
  }
  function labState(id){const defaults={git:createGit(),prompt:{text:'',result:null},rag:{query:'classroom roster',k:2,hybrid:false,result:null},ci:{fixes:[],result:null},docker:initialDocker(),gradient:{m:0,b:0,rate:.05,history:[],loss:33}};a().labStates??={};a().labStates[id]??=defaults[id];return a().labStates[id];}
- function labPage(id){const meta=labs.find(x=>x[0]===id);if(!meta)return empty();const z=labState(id);let body='';
-  body=renderLabBody(id,z,{e,L,T,button,option});
+ function labPage(id){const meta=labs.find(x=>x[0]===id);if(!meta)return empty();const z=labState(id);
+  const body=renderLabBody(id,z,{e,L,T,button,option});
   return heading(e(T(meta[1])),e(T(meta[2])))+`<div class="row mb">${link('practice',L('All practice','全部练习','全部練習'))}${button('reset-lab',L('Reset lab','重置实验','重設實驗'),`data-id="${id}"`)}</div><section class="panel academy-lab-panel">${body}<div id="academy-lab-feedback" role="status"></div></section>`;
  }
  function stopSpeech(){if('speechSynthesis' in window)window.speechSynthesis.cancel();speech.running=false;speech.paused=false;document.querySelectorAll('.academy-spoken').forEach(n=>n.classList.remove('academy-spoken'));}
@@ -83,7 +82,7 @@ export function createAcademy(ctx){
  function updateSpeechButtons(){const b=document.querySelector('[data-ac="read-lesson"]'),p=document.querySelector('[data-ac="pause-reading"]');if(b)b.textContent=speech.running?L('Stop reading','停止朗读','停止朗讀'):L('Read lesson','朗读课文','朗讀課文');if(p){p.disabled=!speech.running;p.textContent=speech.paused?L('Resume','继续朗读','繼續朗讀'):L('Pause','暂停','暫停');}}
  function voiceOptions(){const selector=document.querySelector('#academy-voice');if(!selector||!('speechSynthesis' in window))return;const voices=speechSynthesis.getVoices().filter(v=>v.lang.startsWith(contentLang()==='en'?'en':'zh')).slice(0,30);selector.innerHTML=option('',L('Device default voice','设备默认声音','裝置預設聲音'),a().narration.voice)+voices.map(v=>option(v.voiceURI,v.name+' · '+v.lang,a().narration.voice)).join('');}
  function lessonTools(c,l,index){
-  const key=lessonKey(c.id,l.id),done=s().progress[c.id]?.includes(l.id),saved=a().bookmarks.includes(key),supported='speechSynthesis' in window;
+  const done=s().progress[c.id]?.includes(l.id),supported='speechSynthesis' in window;
   return `<section class="academy-lesson-tools"><div class="row">${button('explain',L('Explain simply','通俗解释','淺白解釋'),`data-course="${e(c.id)}" data-index="${index}"`)}${done?button('reopen',L('Mark as not complete','撤销完成','撤銷完成'),`data-course="${e(c.id)}" data-lesson="${e(l.id)}"`):''}</div><div class="academy-narration mt-sm">${button('read-lesson',L('Read lesson','朗读课文','朗讀課文'),supported?'':'disabled')}${button('pause-reading',L('Pause','暂停','暫停'),'disabled')}<label>${L('Speed','语速','語速')}<select id="academy-rate">${[.8,1,1.25,1.5].map(v=>option(String(v),v+'×',String(a().narration.rate))).join('')}</select></label><label>${L('Voice','声音','聲音')}<select id="academy-voice"></select></label></div>${supported?'':`<p class="small muted">${L('This browser does not support speech; the complete lesson remains readable.','此浏览器不支持朗读，可以阅读完整课文。','此瀏覽器不支援朗讀，可閱讀完整課文。')}</p>`}</section>`;
  }
  function afterRender(page,id,index){

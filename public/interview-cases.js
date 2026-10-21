@@ -1,6 +1,7 @@
 import {tri as T} from './i18n.js';
 // Separate scenarios preserve existing answer histories and their question order.
 const question=(prompt,keywords,outline,followup)=>({prompt,keywords,outline,followup});
+/** @type {[string, ReturnType<typeof T>, ReturnType<typeof T>, string, string[], ReturnType<typeof question>[]][]} */
 const cases=[
  ['frontend-hiring',T('Frontend interview','前端面试','前端面試'),T('A frontend reviewer asks about work you actually shipped. Label course exercises honestly.','前端评审询问你实际交付的工作；课程练习请如实说明。','前端評審詢問你實際交付的工作；課程練習請如實說明。'),'intermediate',['cs'],[
   question(T('Walk me through something you built: your role, what shipped and how you checked it.','介绍一个你做的项目：负责什么、交付什么、如何验证？','介紹一個你做的專案：負責甚麼、交付甚麼、如何驗證？'),['role|responsib|负责|負責','ship|release|deliver|交付|发布|發布','check|test|测试|測試'],T('Describe the original task, your own change, the shipped scope and one observed result. Separate your work from the team’s.','交代任务、你自己的修改、交付范围和一个观察结果，区分个人与团队工作。','交代任務、你自己的修改、交付範圍和一個觀察結果，區分個人與團隊工作。'),T('What did you personally decide?','哪项决定是你自己作出的？','哪項決定是你自己作出的？')),

@@ -41,7 +41,7 @@ export function createLearningViews(ctx, h) {
   return `<section class="lesson-connection"><div>${ico('code',24)}<h2>${L('Put it to work','用练习检验理解','用練習檢驗理解')}</h2></div>${links.map(route=>{const x=activity(route);if(!x)return '';const target=['lab','challenge','interview','tutorial'].includes(route.split('/')[0])?route+'/'+courseId+'/'+index:route;return `<article><div><h3>${e(x.title)}</h3><p>${e(x.description)}</p></div>${link(target,x.done?L('Revisit practice','复习练习','複習練習'):L('Try this practice','做相关练习','做相關練習'),false)}</article>`;}).join('')}</section>`;
  }
  function sourceContext() {
-  const [page,id,cid,index]=ctx.route(),c=ctx.course(cid),l=c?.lessons[Number(index)];
+  const [page,,cid,index]=ctx.route(),c=ctx.course(cid),l=c?.lessons[Number(index)];
   if(!['lab','challenge','interview','tutorial'].includes(page)||!l)return '';
   return `<div class="source-context">${ico('book',17)}<span>${L('From','来自课节','來自課節')} <a href="#learn/${e(cid)}/${Number(index)}">${e(T(l.title))}</a></span><a href="#records/history">${L('My learning record','查看学习记录','查看學習紀錄')}${ico('arrow',15)}</a></div>`;
  }
