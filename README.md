@@ -132,6 +132,6 @@ Keep credentials out of the repository. The application does not ask learners to
 
 Some earlier review documents describe previous prototype stages; use the current README and latest dated review record for the integrated version.
 
-This is a shared team project. Forma's initial prototype was developed by [Cicicrr](https://github.com/Cicicrr); SkillForge and CodeCraft Academy were developed by the other two team members. The final direction combines all three proposals. Preserve individual work and contribution history when reviewing and merging changes.
+This is a shared team project. Each team member developed an initial prototype, and our final application combines contributions from all three proposals. Preserve individual work and contribution history when reviewing and merging changes.
 
 Course drafts and parts of the implementation were developed with AI assistance. Teaching content and generated suggestions still require human review.
