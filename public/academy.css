@@ -110,3 +110,69 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
+
+/* Code Quest — pixel-art practice game */
+.quest-langbar{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 6px}
+.quest-lang{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:2px solid #050038;border-radius:10px;background:#fff;color:#050038;font:500 13px/1 var(--font);cursor:pointer;box-shadow:3px 3px 0 #05003812}
+.quest-lang.on{background:#ffd02f}
+.quest-lang:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 #05003820}
+.quest-difficulties{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
+.quest-difficulty{display:flex;flex-direction:column;gap:9px;text-align:left;padding:20px;border:2px solid #050038;border-radius:14px;background:#fff;cursor:pointer;box-shadow:4px 4px 0 #05003818;transition:transform .12s ease,box-shadow .12s ease}
+.quest-difficulty:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 #05003822}
+.quest-diff-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.quest-diff-head strong{font-size:16px}
+.quest-diff-count{font-size:12px;color:#605a8a;font-variant-numeric:tabular-nums}
+.quest-diff-summary{font-size:13px;color:#51476c;line-height:1.6}
+.quest-diff-focus{font-size:11px;color:#7a6fa8}
+.quest-diff-track{display:block;height:8px;border:2px solid #050038;border-radius:6px;background:#eeeaff;overflow:hidden}
+.quest-diff-track i{display:block;height:100%;background:#ffd02f}
+.quest-backrow{margin-top:16px}
+.quest-map{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:26px;padding:30px 26px;border:2px dashed #b9afe8;border-radius:16px;background:#fbfaff;overflow-x:auto}
+.quest-node{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:120px;padding:14px 12px;border:2px solid #050038;border-radius:12px;background:#fff;cursor:pointer;font-family:var(--font)}
+.quest-node.done{background:#fff3a3}
+.quest-node.open{box-shadow:4px 4px 0 #05003820}
+.quest-node.locked{opacity:.5;cursor:not-allowed;border-style:dashed}
+.quest-node-art{display:grid;place-items:center;height:44px}
+.quest-sprite{display:block}
+.quest-node-index{font-size:11px;color:#605a8a;font-variant-numeric:tabular-nums}
+.quest-node-title{font-size:13px;font-weight:500;text-align:center;line-height:1.4}
+.quest-node-state{font-size:11px;color:#7a6fa8}
+.quest-path{flex:1;min-width:24px;height:4px;background:repeating-linear-gradient(90deg,#b9afe8 0 8px,transparent 8px 14px)}
+.quest-stage{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;margin-top:20px}
+.quest-codewrap{border:2px solid #050038;border-radius:14px;background:#fff;overflow:hidden;box-shadow:4px 4px 0 #05003818}
+.quest-filebar{padding:9px 16px;border-bottom:2px solid #050038;background:#eeeaff;font:500 11px/1 var(--font);color:#605a8a}
+.quest-code{padding:14px 0;font:400 13px/1.75 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace}
+.quest-line{display:flex;gap:14px;padding:1px 16px}
+.quest-ln{width:20px;flex:none;text-align:right;color:#a89ec9;font-variant-numeric:tabular-nums;user-select:none}
+.quest-line.current{background:#ffd02f;box-shadow:inset 3px 0 0 #050038}
+.quest-side{display:flex;flex-direction:column;gap:14px}
+.quest-panel{border:2px solid #050038;border-radius:14px;background:#fff;padding:16px 18px;box-shadow:4px 4px 0 #05003818}
+.quest-panel h2{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#605a8a;margin-bottom:10px}
+.quest-goal,.quest-terminal{margin:0;font:400 13px/1.7 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace}
+.quest-goal span,.quest-terminal span{display:block}
+.quest-terminal{background:#050038;color:#ffd02f;border-radius:10px;padding:13px 15px;min-height:64px}
+.quest-vars{display:flex;flex-wrap:wrap;gap:8px}
+.quest-var{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border:2px solid #050038;border-radius:8px;background:#eeeaff;font:400 12px/1 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace}
+.quest-var b{font-weight:500;color:#605a8a}
+.quest-empty{color:#a89ec9;font-size:12px}
+.quest-choices{margin-top:18px;border:2px solid #050038;border-radius:14px;background:#fff;padding:18px;box-shadow:4px 4px 0 #05003818}
+.quest-choices h2{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#605a8a;margin-bottom:12px}
+.quest-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.quest-option{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:14px;border:2px solid #050038;border-radius:11px;background:#fbfaff;cursor:pointer;text-align:left;font-family:var(--font);transition:background .12s ease,transform .12s ease}
+.quest-option:hover{background:#fff3a3;transform:translateY(-1px)}
+.quest-option.chosen{background:#ffd02f;box-shadow:inset 0 0 0 2px #05003820}
+.quest-option code{font:400 13px/1.5 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace}
+.quest-option small{font-size:11px;color:#7a6fa8;line-height:1.5}
+.quest-controls{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.quest-result{margin-top:16px;padding:16px 18px;border:2px solid #050038;border-radius:12px}
+.quest-result.good{background:#e2f3e8}
+.quest-result.bad{background:#ffe9e6}
+.quest-result strong{display:block;font-size:14px;margin-bottom:6px}
+.quest-result p{margin:0;font-size:13px;line-height:1.6}
+.quest-note{font-size:11px;color:#a89ec9;margin-top:14px;line-height:1.6}
+.quest-runinfo{font-size:12px;color:#605a8a;margin-top:10px;font-variant-numeric:tabular-nums}
+@media(max-width:1150px){
+ .quest-difficulties{grid-template-columns:1fr}
+ .quest-stage{grid-template-columns:1fr}
+ .quest-options{grid-template-columns:1fr}
+}

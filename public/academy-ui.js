@@ -10,12 +10,13 @@ import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learning
 import {challenges,interviews,labs,retrievalDocs,referenceTopics} from './academy-content.js';
 import {runSandbox,traceProgram} from './academy-runner.js';
 import {createLearningViews} from './academy-views.js';
+import {createQuestViews} from './codequest-views.js';
 import {programmingLessonById} from './programming-lessons.js';
 
 export function createAcademy(ctx){
  const {esc:e,ico}=ctx,s=()=>ctx.state(),a=()=>ensureAcademy(s()),lang=()=>s().lang,contentLang=()=>s().profile.learningLanguage||lang();
  const L=(en,cn,tw)=>local(tri(en,cn,tw),lang()),T=v=>local(v,contentLang());
- const labels={markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('Choose a course, then put it into practice.','选一门课，再用练习检验理解。','選一門課，再用練習檢驗理解。'),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Interview practice','面试练习','面試練習'),tutorial:tri('Programming guide','编程指南','程式指南')};
+ const labels={markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('Choose a course, then put it into practice.','选一门课，再用练习检验理解。','選一門課，再用練習檢驗理解。'),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Interview practice','面试练习','面試練習'),tutorial:tri('Programming guide','编程指南','程式指南'),codequest:tri('Code quest','编程闯关','程式闖關')};
  const view={preview:null,setupStep:0,setupDraft:null,interviewId:null,question:0,questionReview:null,feedback:null,loadedAttempt:null,lab:null,output:'',running:false,runToken:0};
  let speech={running:false,paused:false,index:0,sentences:[],utterance:null},lastReset=null;
  let knownBadges=learningStats(s()).badges;
@@ -37,6 +38,7 @@ export function createAcademy(ctx){
  function renderInPlace(){const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});}
  function stateStats(){return learningStats(s());}
  const views=createLearningViews(ctx,{e,L,T,s,a,link,button,heading,ico,cards,codeLanguage,stateStats,activePlan,badges,empty,canUndo:()=>!!lastReset});
+ const quest=createQuestViews({...ctx,a},{e,L,T,ico,button,link});
  function activePlan(){return a().plans.find(p=>p.id===a().activePlan)||null;}
  function savePlan(){
   if(!view.preview)return;const {plan,course}=view.preview;
@@ -114,6 +116,7 @@ export function createAcademy(ctx){
  function completeLab(id,result){a().labResults[id]={...a().labResults[id],...result,at:new Date().toISOString()};touch('lab',id);}
  function previewPlan(data){const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,weeklyMinutes:profile.weeklyMinutes,skillLevel:profile.skillLevel};save();}
  async function click(action,el){
+  if(await quest.click(action,el))return;
   const id=el.dataset.id,route=ctx.route(),page=route[0];
   if(action==='refresh-plan'){const old=a().plans.find(x=>x.id===id);if(old){const updated=buildPlan({courses:ctx.courses(),topic:old.topic,profile:{...s().profile,weeklyMinutes:old.weeklyMinutes,skillLevel:old.level},id:old.id,courseId:uid('study')});if(updated.course)s().courses.push(updated.course);a().plans=a().plans.map(x=>x.id===id?updated.plan:x);save();render();}return;}
   if(action==='save-plan'){savePlan();return;}
@@ -217,7 +220,7 @@ export function createAcademy(ctx){
  ensureAcademy(s());
  return {
   label:key=>labels[key]?local(labels[key],lang()):null,
-  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({learning:views.home,explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id)})[page]?.()??null;},
+  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({learning:views.home,explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
   afterRender,afterModal,activePlan,template:buildTemplate,
   beforeRender(){view.pageCleanup?.();view.pageCleanup=null;stopSpeech();view.runToken++;view.running=false;},
   recordEvent(type,cid,detail){const key=lessonKey(cid,detail.lessonId||ctx.course(cid)?.lessons[Number(ctx.route()[2])||0]?.id||'');if(type==='checkpoint'){const prior=a().quizzes[key]||{};a().quizzes[key]={...prior,correct:!!prior.correct||!!detail.passed,lastCorrect:!!detail.passed,selected:s().checks?.[key]?.checked,attempts:(prior.attempts||0)+1,at:new Date().toISOString()};}if(type==='code'){const prior=a().challenges['course/'+key]||{};a().challenges['course/'+key]={...prior,passed:!!prior.passed||!!detail.passed,attempts:(prior.attempts||0)+1};}if(['lesson','checkpoint','code','game','scope-lab','access-lab'].includes(type)){recordActivity(s(),type,key,{passed:detail.passed});save();}},
