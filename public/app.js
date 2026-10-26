@@ -30,7 +30,7 @@ function learningOrder(){const published=new Set(learnerCourses().map(c=>c.id));
 function coursePct(c){return c.lessons.length?Math.round(c.lessons.filter(l=>state.progress[c.id]?.includes(l.id)).length/c.lessons.length*100):0;}
 function courseStatus(c){return coursePct(c)===100?'completed':coursePct(c)>0?'inProgress':'notStarted';}
 function heroNotes(){return `<div class="sticky-board" aria-hidden="true"><div class="hero-note note-understand"><strong>${t('noteProblem')}</strong></div><div class="hero-note note-build"><strong>${t('noteVersion')}</strong></div><div class="hero-note note-learn"><strong>${t('noteImprove')}</strong></div></div>`;}
-const navs={learner:[['learning','home'],['explore','compass'],['path','path'],['practice','code'],['records','chart']],instructor:[['courses','book'],['classrooms','users'],['engagement','chart']],admin:[['overview','home'],['users','users'],['catalog','layers']]};
+const navs={learner:[['learning','home'],['explore','compass'],['path','path'],['practice','code'],['codequest','gamepad'],['records','chart']],instructor:[['courses','book'],['classrooms','users'],['engagement','chart']],admin:[['overview','home'],['users','users'],['catalog','layers']]};
 function route(){return decodeURIComponent(location.hash.slice(1)||'learning').split('/');}
 function go(hash){location.hash=hash;}
 function render(){
