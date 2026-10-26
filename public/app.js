@@ -1,5 +1,6 @@
 import {tr,local,languages} from './i18n.js';
 import {icon as ico} from './icons.js';
+import {courseArt} from './course-art.js';
 import {createAcademy} from './academy-ui.js';
 import {courses as seeds,starterCode,courseReferences} from './data.js';
 import {actions,spent,simulate,recommendation,parseRoster,csvCell} from './engine.js';
@@ -28,11 +29,6 @@ function learnerCourses(){return allCourses().filter(c=>c.status==='published');
 function learningOrder(){const published=new Set(learnerCourses().map(c=>c.id));return [...new Set([...(state.path||academy?.activePlan()?.steps.map(x=>x.courseId)||recommendation(state.profile)),...recommendation(state.profile),...published])].filter(id=>published.has(id));}
 function coursePct(c){return c.lessons.length?Math.round(c.lessons.filter(l=>state.progress[c.id]?.includes(l.id)).length/c.lessons.length*100):0;}
 function courseStatus(c){return coursePct(c)===100?'completed':coursePct(c)>0?'inProgress':'notStarted';}
-function courseArt(c){const common=`<svg class="art" viewBox="0 0 240 126" fill="none" aria-hidden="true">`;
- if(c.theme==='lavender')return common+`<g transform="rotate(-5 120 65)"><rect x="38" y="13" width="165" height="104" rx="7" fill="#fff" stroke="#d5ceff"/><g fill="#d5ceff"><circle cx="51" cy="25" r="2"/><circle cx="59" cy="25" r="2"/><circle cx="67" cy="25" r="2"/></g><path d="m73 48-13 13 13 13m91-26 13 13-13 13m-39-29-15 34" stroke="#7864be" stroke-width="3" stroke-linecap="round"/><path d="M58 95h86" stroke="#ded9ff" stroke-width="4" stroke-linecap="round"/></g><rect x="161" y="86" width="49" height="25" rx="5" fill="#ffd02f"/><path d="m178 98 5 5 11-12" stroke="#050038" stroke-width="2"/></svg>`;
- if(c.theme==='peach')return common+`<g transform="rotate(-5 86 44)"><path d="M28 20h112a8 8 0 0 1 8 8v39a8 8 0 0 1-8 8H64L47 88V75H28a8 8 0 0 1-8-8V28a8 8 0 0 1 8-8Z" fill="#fff" stroke="#b9afe8"/><path d="M38 39h89M38 52h58" stroke="#d5ceff" stroke-width="4" stroke-linecap="round"/></g><g transform="rotate(5 168 86)"><path d="M121 62h91a7 7 0 0 1 7 7v34a7 7 0 0 1-7 7h-16l-1 10-16-10h-58a7 7 0 0 1-7-7V69a7 7 0 0 1 7-7Z" fill="#e4ddff" stroke="#b9afe8"/><circle cx="145" cy="86" r="3" fill="#605a8a"/><circle cx="165" cy="86" r="3" fill="#605a8a"/><circle cx="185" cy="86" r="3" fill="#605a8a"/></g></svg>`;
- return common+`<g transform="rotate(-7 72 67)"><rect x="22" y="24" width="94" height="85" fill="#ffd02f"/><path d="M38 44h48M38 58h60M38 72h42" stroke="#746019" stroke-width="3" stroke-linecap="round" opacity=".65"/></g><g transform="rotate(4 171 70)"><rect x="126" y="35" width="92" height="73" fill="#fff" stroke="#ded9ff"/><path d="M143 53h53M143 66h41M143 79h47" stroke="#b9afe8" stroke-width="3" stroke-linecap="round"/></g><path d="M101 70h32m-6-5 6 5-6 5" stroke="#605a8a" stroke-width="1.5"/></svg>`;
-}
 function heroNotes(){return `<div class="sticky-board" aria-hidden="true"><div class="hero-note note-understand"><strong>${t('noteProblem')}</strong></div><div class="hero-note note-build"><strong>${t('noteVersion')}</strong></div><div class="hero-note note-learn"><strong>${t('noteImprove')}</strong></div></div>`;}
 const navs={learner:[['learning','home'],['explore','compass'],['path','path'],['practice','code'],['records','chart']],instructor:[['courses','book'],['classrooms','users'],['engagement','chart']],admin:[['overview','home'],['users','users'],['catalog','layers']]};
 function route(){return decodeURIComponent(location.hash.slice(1)||'learning').split('/');}
