@@ -32,6 +32,7 @@ These contributions describe the design and features brought together; the integ
 | **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
 | **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
 | **Interactive labs** | Explore six models: Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
+| **Code quest** | Clear nine pixel-style levels that teach programming by fixing one broken line. Pick a difficulty, choose C++, Python or Java, then run or step the program and watch the variables change. |
 | **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. Use a free JavaScript playground or HTML/CSS/JavaScript page preview. |
 | **Checks and references** | Review a 73-question revision bank and 15 syntax cards alongside lesson-level checks and worked answers. |
 | **Interview practice** | Practise 11 scenarios with 33 prompts, save drafts and attempts, and review structured writing cues. Optional live AI coaching is available when configured. |
@@ -51,6 +52,20 @@ The catalogue used to show three generic covers shared across all sixteen course
 | **Interface** | The Explore navigation icon is a compass again; it previously repeated the book icon used by the instructor courses tab. |
 
 Covers live in `public/course-art.js`, keyed by course id. Courses created inside the browser (self-study) still fall back to the original theme-based covers.
+
+## Code quest: a programming game
+
+Code quest is a level-clear game in the learner sidebar. Each level shows a short program with one line missing and asks the learner to pick the version that produces the goal output. The same program can be read in C++, Python or Java, so the game teaches the idea behind the code rather than the syntax of one language.
+
+| Difficulty | Levels | Ideas practised |
+| --- | --- | --- |
+| **Rookie** | Output, update, remainder | Printing a value, assigning a variable, integer remainder |
+| **Adept** | Parity, max, flag | Conditions, comparison, boolean flags |
+| **Master** | Accumulate, halving, even sum | Loop conditions, integer division, filtering inside a loop |
+
+Each level is stored once as a small instruction tree. That single source is both executed to produce the step trace and rendered into the three languages, so the code on screen and the result in the terminal can never disagree. Execution is bounded by a step budget and a loop-pass limit, so a deliberately bad condition cannot freeze the page.
+
+The game lives in `public/codequest.js` (level data, interpreter and code rendering) and `public/codequest-views.js` (difficulty select, level map and run panel). Progress is stored in the existing academy state, so reset, undo and export already cover it.
 
 ## What makes Forma distinctive
 
@@ -131,6 +146,8 @@ Keep credentials out of the repository. The application does not ask learners to
 | `public/` | Interface, translations, courses, learning logic and self-hosted assets. |
 | `public/course-art.js` | One flat SVG cover per course, plus the generic fallback covers. |
 | `public/icons.js` | Lucide icon set for the interface, including a distinct icon per lab. |
+| `public/codequest.js` | Code quest level data, the instruction interpreter and the C++/Python/Java renderer. |
+| `public/codequest-views.js` | Code quest difficulty select, level map and run panel. |
 | `api/` | Server-side AI endpoint for Vercel. |
 | `scripts/` | Local preview, build and optional browser checks. |
 | `tests/` | Automated checks for curriculum, plans, progress, APIs, simulations and practice. |
