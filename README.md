@@ -40,6 +40,18 @@ These contributions describe the design and features brought together; the integ
 | **Instructor workspace** | Edit and publish courses, manage local classroom rosters, inspect recorded participation and export CSV summaries. |
 | **Administrator workspace** | Preview catalog management and people-and-role workflows. Role switching demonstrates the three workspaces. |
 
+## Course covers and practice icons
+
+The catalogue used to show three generic covers shared across all sixteen courses, and every interactive lab used the same icon. Each item now carries artwork that hints at its own topic, drawn with the same palette, stroke weight and corner radii as the original covers so the grid keeps one visual language.
+
+| Area | What changed |
+| --- | --- |
+| **Courses** | One cover per course: a three-stage pipeline for software development, interview bubbles for requirements, a three-tier stack for web architecture, an editor with a sparkle for AI coding, a checklist with an incident marker for testing and release, a scope list plus team cluster for product decisions, a candidate badge for interview prep, a tool box and magnifier for AI tools, a commit graph for Git, a cylinder and filter funnel for SQL, stacked layers for Docker, a looping pipeline for CI/CD, a prompt card with a target for prompt engineering, retrieval sheets feeding a model for LLM apps, and a loss curve for machine learning. |
+| **Branch and merge** | It no longer shares one icon with the other labs. All six labs now have distinct icons: a branch for Git, a chat bubble for the prompt workshop, a database for retrieval, a wrench for CI repair, a container for the Docker lifecycle and a descending trend for gradient descent. |
+| **Interface** | The Explore navigation icon is a compass again; it previously repeated the book icon used by the instructor courses tab. |
+
+Covers live in `public/course-art.js`, keyed by course id. Courses created inside the browser (self-study) still fall back to the original theme-based covers.
+
 ## What makes Forma distinctive
 
 - **A connected learning flow:** move from a course to a relevant exercise, explain the result in interview practice, and review progress in one place.
@@ -117,6 +129,8 @@ Keep credentials out of the repository. The application does not ask learners to
 | Directory | Contents |
 | --- | --- |
 | `public/` | Interface, translations, courses, learning logic and self-hosted assets. |
+| `public/course-art.js` | One flat SVG cover per course, plus the generic fallback covers. |
+| `public/icons.js` | Lucide icon set for the interface, including a distinct icon per lab. |
 | `api/` | Server-side AI endpoint for Vercel. |
 | `scripts/` | Local preview, build and optional browser checks. |
 | `tests/` | Automated checks for curriculum, plans, progress, APIs, simulations and practice. |
