@@ -21,13 +21,14 @@ export const interviews=[
  {id:'data',title:Q('Investigate a drop in completion','调查完成率下降','調查完成率下降'),questions:[Q('Which records would you inspect before changing the course?','改课之前，你会先检查哪些记录？','改課之前，你會先檢查哪些紀錄？'),Q('Give an alternative explanation for the drop and a way to test it.','提出另一种下降原因和验证方法。','提出另一種下降原因和驗證方法。'),Q('How would you report uncertainty to the instructor?','你会如何向教师说明不确定性？','你會如何向教師說明不確定性？')]},
  {id:'ml',title:Q('Review a retrieval prototype','检索原型技术复盘','檢索原型技術回顧'),questions:[Q('What did your retriever index, and how did you choose results?','检索器索引了什么？你如何选择结果？','檢索器索引了甚麼？你如何選擇結果？'),Q('Describe a failed query and how you measured the improvement.','描述一次失败查询，以及你如何衡量改进。','描述一次失敗查詢，以及你如何衡量改進。'),Q('Which limitation remains, and what experiment would you run next?','还存在什么局限？下一步你会做什么实验？','還存在甚麼侷限？下一步你會做甚麼實驗？')]}
 ];
+// [id, title, description, icon] — the icon key maps to an entry in icons.js.
 export const labs=[
- ['git',Q('Branch and merge','分支与合并','分支與合併'),Q('Make a branch, diverge, merge and resolve a conflict.','建立分支、制造分歧，再合并并解决冲突。','建立分支、製造分歧，再合併並解決衝突。')],
- ['prompt',Q('Prompt workshop','提示词工作坊','提示詞工作坊'),Q('Specify the reader, source, output contract and a worked example.','检查目标、输入、约束、输出格式和验证依据。','檢查目標、輸入、約束、輸出格式和驗證依據。')],
- ['rag',Q('Retrieval pipeline','检索流程','檢索流程'),Q('Inspect matches and compare top-k and exact-phrase weighting.','查看匹配结果，比较 top-k 和完整短语加权。','查看符合結果，比較 top-k 和完整片語加權。')],
- ['ci',Q('Repair a CI pipeline','修复 CI 流水线','修復 CI 流水線'),Q('Read the failing stage, apply a fix and run again.','阅读失败阶段，修复后重新运行。','閱讀失敗階段，修復後重新執行。')],
- ['docker',Q('Container lifecycle','容器生命周期','容器生命週期'),Q('Build an image and manage a container in a command simulation.','在命令模拟中构建镜像、运行和管理容器。','在指令模擬中建置映像、執行及管理容器。')],
- ['gradient',Q('Gradient descent','梯度下降','梯度下降'),Q('Change the learning rate and inspect convergence or divergence.','调整学习率，观察收敛或发散。','調整學習率，觀察收斂或發散。')]
+ ['git',Q('Branch and merge','分支与合并','分支與合併'),Q('Make a branch, diverge, merge and resolve a conflict.','建立分支、制造分歧，再合并并解决冲突。','建立分支、製造分歧，再合併並解決衝突。'),'git-branch'],
+ ['prompt',Q('Prompt workshop','提示词工作坊','提示詞工作坊'),Q('Specify the reader, source, output contract and a worked example.','检查目标、输入、约束、输出格式和验证依据。','檢查目標、輸入、約束、輸出格式和驗證依據。'),'message'],
+ ['rag',Q('Retrieval pipeline','检索流程','檢索流程'),Q('Inspect matches and compare top-k and exact-phrase weighting.','查看匹配结果，比较 top-k 和完整短语加权。','查看符合結果，比較 top-k 和完整片語加權。'),'database'],
+ ['ci',Q('Repair a CI pipeline','修复 CI 流水线','修復 CI 流水線'),Q('Read the failing stage, apply a fix and run again.','阅读失败阶段，修复后重新运行。','閱讀失敗階段，修復後重新執行。'),'wrench'],
+ ['docker',Q('Container lifecycle','容器生命周期','容器生命週期'),Q('Build an image and manage a container in a command simulation.','在命令模拟中构建镜像、运行和管理容器。','在指令模擬中建置映像、執行及管理容器。'),'container'],
+ ['gradient',Q('Gradient descent','梯度下降','梯度下降'),Q('Change the learning rate and inspect convergence or divergence.','调整学习率，观察收敛或发散。','調整學習率，觀察收斂或發散。'),'trending-down']
 ];
 export const retrievalDocs=[
  {id:'d1',text:'A classroom roster lists enrolled students. Roster import does not create participation events. 教学班 名单 导入 学生 参与 教學班 名單 匯入 學生 參與'},
