@@ -47,8 +47,7 @@
 .mini-lesson[lang="zh-CN"]{font-family:"Plus Jakarta Sans","Source Han Sans CN","PingFang SC",sans-serif}.mini-lesson[lang="zh-TW"]{font-family:"Plus Jakarta Sans","Source Han Sans TW","PingFang TC",sans-serif}
 /* Course depth and evidence-led practice, using the established Forma palette. */
 .lab-disclosure{font-size:.86rem;line-height:1.65;color:var(--muted,#605a8a);margin:24px 0 0}
-.lab-task-brief{padding:20px 0;border-bottom:1px solid #e4def1;margin-bottom:24px}.lab-task-brief h3{font-size:1.05rem;line-height:1.6}.lab-task-brief details{margin-top:14px}.lab-analysis{margin-top:24px;background:#faf8f0;padding:24px;border-radius:12px}.lab-analysis ul{padding-left:20px;display:grid;gap:14px}.lab-analysis p{margin:5px 0;color:#605a8a}
-.lab-graph-scroll{overflow:auto;padding:12px 0;margin-bottom:24px;border-bottom:1px solid #e4def1}.git-dag{width:100%;max-height:460px;font:14px 'Plus Jakarta Sans',sans-serif}.graph-label{font-size:12px;fill:#625985}.lane-line{fill:none;stroke:#e4def1;stroke-width:1.5}.parent-edge{stroke:#6253a0;stroke-width:3;fill:none}.merge-edge{stroke:#ae7f00;stroke-dasharray:6 5}.commit-dot{fill:#ffd02f;stroke:#050038;stroke-width:2}
+.lab-task-brief{padding:20px 0;border-bottom:1px solid #e4def1;margin-bottom:24px}.lab-task-brief h3{font-size:1.05rem;line-height:1.6}.lab-task-brief details{margin-top:14px}.lab-analysis{margin-top:24px;background:#faf8f0;padding:24px;border-radius:12px}.lab-analysis ul{padding-left:20px;display:grid;gap:14px}.lab-analysis p{margin:5px 0;color:#605a8a}.graph-label{font-size:12px;fill:#625985}.lane-line{fill:none;stroke:#e4def1;stroke-width:1.5}.parent-edge{stroke:#6253a0;stroke-width:3;fill:none}.merge-edge{stroke:#ae7f00;stroke-dasharray:6 5}.commit-dot{fill:#ffd02f;stroke:#050038;stroke-width:2}
 .rag-candidates{display:grid;gap:12px}.rag-candidates article{padding:18px;border:1px solid #e4def1;border-radius:12px;background:#fff}.rag-candidates article.selected{border-color:#c5a22f;background:#fffdf0}.rag-candidates h3{font-size:1rem}.rag-candidates meter{width:100%;height:12px;margin:10px 0 4px;accent-color:#7864be}.rag-candidates p{font-size:.9rem}.rag-candidates details{margin-top:10px}.academy-output{white-space:pre-wrap;overflow-wrap:anywhere}
 .pipeline-stages{list-style:none;padding:0;display:grid;gap:12px;margin:24px 0}.pipeline-stages li{padding:16px 20px;border:1px solid #ddd6ef;border-left:4px solid #bdb6d4;border-radius:10px}.pipeline-stages li.passed{border-left-color:#8b8a37}.pipeline-stages li.failed{border-left-color:#c15b37;background:#fff9f5}.pipeline-stages h3{font-size:1rem;display:flex;justify-content:space-between;gap:16px}.pipeline-stages h3 span{font-weight:500}.pipeline-stages pre{white-space:pre-wrap;margin:10px 0 0;font-size:.87rem}.ci-diagnosis{padding:18px;border:1px solid #ddd6ef;border-radius:12px;display:flex;gap:10px;flex-wrap:wrap}.ci-diagnosis legend{padding:0 8px;font-weight:600}
 .docker-state{display:grid;grid-template-columns:1fr 2fr;gap:24px;border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}.docker-state p{white-space:pre-wrap}.docker-state h3{font-size:1rem}.docker-terminal{max-height:460px;overflow:auto;min-height:150px}
@@ -231,34 +230,6 @@
 .quest-tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px;margin-top:10px}.quest-tips>div{min-width:0}.quest-tips b{font-size:11px;color:#605a8a}.quest-tips pre{max-width:100%;margin:3px 0 0;padding:8px 10px;border-radius:8px;background:#eeeaff;font:400 12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre}
 .quest-hero+.quest-langbar,.quest-langbar+.quest-hero{margin-top:14px}
 .academy-output.failed{background:#fff5f4;border-color:#e3b3ad;color:#8a332c}
-.git-state{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}
-.git-state h3,.git-files h3,.git-review h2,.git-goals h2{font-size:1rem;margin:0 0 10px}
-.git-state p{font-size:.92rem;margin:0 0 10px;overflow-wrap:anywhere}
-.git-files{border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}
-.git-files textarea{min-height:140px}
-.git-review ol{padding-left:22px;margin:12px 0 0}
-.git-review li{margin-bottom:20px}
-.git-review code{display:inline-block;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f7f5fc;border:1px solid var(--line);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
-.git-review-message{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8a332c;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
-.git-review p{font-size:.92rem;margin:6px 0}
-.git-goals{margin:22px 0}
-.git-goal-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
-.git-goal-list li{font-size:.94rem;color:#605a8a}
-.git-goal-list li.done{color:#31593e;font-weight:650}
-.git-scenario{border:1px solid #e4def1;border-radius:12px;padding:20px;margin-bottom:22px;background:#fbfaff}
-.git-goals-fold{margin:22px 0}.git-goals-fold>summary{cursor:pointer;font-weight:650;color:#625985;padding:8px 0}
-.git-goals-fold[open]>summary{margin-bottom:8px}
-.git-scenario h2{font-size:1rem;margin:0 0 12px}
-.git-brief p{font-size:.95rem;margin:6px 0}
-.git-solution{margin:10px 0 0;padding-left:22px}
-.git-solution li{margin:6px 0}
-.git-solution code{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
-.git-task-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
-.git-task-list li{font-size:.94rem;color:#605a8a;padding:10px 12px;border:1px solid #e4def1;border-radius:8px;background:#fff}
-.git-task-list li.done{color:#31593e;border-color:#cfe3d5;background:#f6fbf7}
-.git-task-list li.current{color:#050038;border-color:#b9aede;background:#fff;font-weight:650;box-shadow:inset 3px 0 0 #6253a0}
-.git-task-hint{display:block;margin-top:6px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#625985;font-weight:400;overflow-wrap:anywhere}
-@media(max-width:700px){.git-state{grid-template-columns:1fr}}
 
 /* Personal settings: one set of defaults, separated from individual plans. */
 .profile-settings-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:32px;align-items:start}

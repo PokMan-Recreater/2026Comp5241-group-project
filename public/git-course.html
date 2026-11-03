@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Git course · Forma</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="git-course/app.css">
+<script>try{var s=JSON.parse(localStorage.getItem('forma.gitcourse.v1')||'{}');document.documentElement.dataset.theme=s.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){document.documentElement.dataset.theme='dark';}</script>
+</head>
+<body>
+<div class="app">
+ <header class="topbar">
+  <div class="brand"><a id="back" href="./#git" title="Back to Forma">Forma<span class="dot">.</span></a><span class="sep">/</span><span>Git</span></div>
+  <button class="tb-btn" id="outline-btn" aria-label="Lessons">☰ <span class="lbl">Lessons</span></button>
+  <button class="tb-btn" id="prev" aria-label="Previous lesson">←</button>
+  <select class="lesson-select" id="lesson-select" aria-label="Lesson"></select>
+  <button class="tb-btn" id="next" aria-label="Next lesson">→</button>
+  <span class="spacer"></span>
+  <span class="progress-chip" id="progress"></span>
+  <button class="tb-btn" id="reset" title="Restart lesson">↺ <span class="lbl">Reset</span></button>
+  <button class="tb-btn" id="theme" aria-label="Theme"></button>
+  <button class="tb-btn" id="lang">中文</button>
+ </header>
+ <div class="main">
+  <nav class="activity" aria-label="Views">
+   <button aria-pressed="true" title="Explorer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></button>
+   <button title="Source control" aria-pressed="false" onclick="document.querySelector('.graph-wrap')?.scrollIntoView({behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-11 6"/></svg></button>
+  </nav>
+  <aside class="sidebar" id="sidebar"></aside>
+  <section class="center">
+   <div class="editor-area" id="editor"></div>
+   <div class="splitter" id="splitter" role="separator" aria-orientation="horizontal" title="Drag to resize"></div>
+   <div class="terminal">
+    <div class="term-head"><span>Problems</span><span>Output</span><span class="on">Terminal</span><span class="grow"></span><span style="text-transform:none;letter-spacing:0">bash</span></div>
+    <div class="term" id="term" role="log" aria-live="polite"></div>
+   </div>
+  </section>
+  <aside class="mission" id="mission" aria-label="Lesson"></aside>
+ </div>
+ <footer class="statusbar" id="status"></footer>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script type="module" src="git-course/app.js"></script>
+</body>
+</html>

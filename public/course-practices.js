@@ -1,12 +1,12 @@
 import {specialistCourses,supplementalLessons} from './specialist-courses.js';
 import {isHiddenLabRoute} from './academy-content.js';
 const connections = {
- development: [['lab/git'], ['lab/git'], ['learn/product-decisions/1'], ['lab/ci']],
- requirements: [['challenge/form'], ['lab/git'], ['challenge/summary'], ['challenge/form'], ['challenge/access'], ['lab/ci']],
+ development: [['git/commit'], ['git/branch'], ['learn/product-decisions/1'], ['lab/ci']],
+ requirements: [['challenge/form'], ['git/commit'], ['challenge/summary'], ['challenge/form'], ['challenge/access'], ['lab/ci']],
  architecture: [['tutorial/html-structure'], ['tutorial/js-async'], ['challenge/access'], ['lab/docker']],
  'ai-coding': [['lab/prompt'], ['challenge/unique'], ['challenge/summary'], ['interview/stakeholder']],
  'testing-release': [['challenge/summary'], ['challenge/retry'], ['game'], ['lab/ci']],
- 'product-decisions': [['interview/team'], ['game'], ['interview/stakeholder'], ['lab/git']],
+ 'product-decisions': [['interview/team'], ['game'], ['interview/stakeholder'], ['git/merge']],
  career: [['interview/frontend'], ['interview/team'], ['interview/ml'], ['interview/data']],
 };
 
