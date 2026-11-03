@@ -37,6 +37,12 @@ export const labs=[
  ['docker',Q('Container lifecycle','容器生命周期','容器生命週期'),Q('Build an image and manage a container in a command simulation.','在命令模拟中构建镜像、运行和管理容器。','在指令模擬中建置映像、執行及管理容器。'),'container'],
  ['gradient',Q('Gradient descent','梯度下降','梯度下降'),Q('Change the learning rate and inspect convergence or divergence.','调整学习率，观察收敛或发散。','調整學習率，觀察收斂或發散。'),'trending-down']
 ];
+// Labs kept in the code but hidden from learners: their pages still render by
+// address, yet nothing lists them, no lesson, plan or home card links them, and
+// a lesson that used one falls back to a visible practice.
+export const hiddenLabs=new Set(['prompt','rag','ci','docker','gradient']);
+export const isHiddenLab=id=>hiddenLabs.has(id);
+export const isHiddenLabRoute=route=>typeof route==='string'&&route.startsWith('lab/')&&hiddenLabs.has(route.slice(4));
 export const retrievalDocs=[
  {id:'d1',text:'A classroom roster lists enrolled students. Roster import does not create participation events. 教学班 名单 导入 学生 参与 教學班 名單 匯入 學生 參與'},
  {id:'d2',text:'Course drafts should be reviewed by an instructor before publication. AI output can contain errors. 课程 草稿 教师 审核 AI 錯誤 課程 草稿 教師 審核'},
