@@ -252,5 +252,10 @@
 .git-solution{margin:10px 0 0;padding-left:22px}
 .git-solution li{margin:6px 0}
 .git-solution code{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
+.git-task-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.git-task-list li{font-size:.94rem;color:#605a8a;padding:10px 12px;border:1px solid #e4def1;border-radius:8px;background:#fff}
+.git-task-list li.done{color:#31593e;border-color:#cfe3d5;background:#f6fbf7}
+.git-task-list li.current{color:#050038;border-color:#b9aede;background:#fff;font-weight:650;box-shadow:inset 3px 0 0 #6253a0}
+.git-task-hint{display:block;margin-top:6px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#625985;font-weight:400;overflow-wrap:anywhere}
 @media(max-width:700px){.git-state{grid-template-columns:1fr}}
 
