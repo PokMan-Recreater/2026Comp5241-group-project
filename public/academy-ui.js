@@ -6,7 +6,7 @@ import {interviewContext,reviewInterview,interviewFeedbackHTML} from './intervie
 import {syntaxCards} from './syntax-reference.js';
 import {knowledgeQuestions,saveKnowledgeAttempt} from './knowledge-checks.js';
 import {tri,local} from './i18n.js';
-import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete} from './academy-core.js';
+import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete,resolveConflictFile} from './academy-core.js';
 import {challenges,interviews,labs,retrievalDocs,referenceTopics} from './academy-content.js';
 import {runSandbox,runTypedProgram} from './academy-runner.js';
 import {createLearningViews} from './academy-views.js';
@@ -194,6 +194,13 @@ export function createAcademy(ctx){
    const which=action.slice(7);
    if(which==='run'){runGitLabCommand(el.dataset.command);return;}
    if(which==='clear'){z.transcript=[];save();render();return;}
+   if(which==='hint'){z.hintFor=el.dataset.task;save();render();return;}
+   if(which==='mistakes'){z.showAllMistakes=!z.showAllMistakes;save();render();return;}
+   if(which==='resolve-file'){
+    const path=document.querySelector('#git-file')?.value;
+    if(path){a().labStates['git-cli']=resolveConflictFile(z,path,el.dataset.choice);save();render();}
+    return;
+   }
    if(which==='start-scenario'){startGitScenario();return;}
    if(which==='restart-scenario'){startGitScenario(z.scenario?.id);return;}
    if(which==='save-file'){
