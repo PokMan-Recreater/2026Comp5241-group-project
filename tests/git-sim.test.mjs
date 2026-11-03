@@ -354,10 +354,12 @@ test('every small practice asks for exactly one command and is solved by it',()=
  for(const drill of GIT_DRILLS){
   assert.equal(drill.tasks.length,1,drill.id+' must ask for one thing');
   assert.equal(drill.kind,'drill');
-  const task=drill.tasks[0];
-  assert.equal((task.hint[0].match(/(^|\s)git\s/g)||[]).length,1,drill.id+' must hint exactly one command');
-  assert.equal(task.label.length,3,drill.id+' localizes its label');
+  assert.equal(drill.tasks[0].label.length,3,drill.id+' localizes its label');
   let repo=startScenario(drill.id);
+  const task=scenarioTasks(repo)[0];
+  const commands=(task.hint[0].match(/(^|\s)git\s/g)||[]).length;
+  assert.ok(commands<=1,drill.id+' must not chain commands');
+  if(commands===0)assert.match(task.hint[0],/file editor/,drill.id+' must be a single editor step');
   assert.deepEqual(scenarioTasks(repo).filter(t=>t.done),[],drill.id+' must start unsolved');
   assert.equal(scenarioComplete(repo),false,drill.id);
   const steps=(fixFor[drill.id]??(()=>[drill.solution[0]]))(repo);
@@ -368,6 +370,59 @@ test('every small practice asks for exactly one command and is solved by it',()=
  }
  assert.ok(GIT_DRILLS.every(d=>d.tasks.length===1));
  assert.equal(scenarioById('read-status').kind,'drill');
+});
+
+test('a wrong first move still gets a hint that works',()=>{
+ let repo=startScenario('create-branch');
+ repo=runGit(repo,'git branch feature/form').repo;
+ assert.equal(scenarioTasks(repo)[0].hint[0],'git switch feature/form','the hint must fit the state');
+ assert.equal(scenarioComplete(runGit(repo,scenarioTasks(repo)[0].hint[0]).repo),true);
+ const staged=runGit(startScenario('stage-one-file'),'git add .').repo;
+ assert.equal(scenarioComplete(staged),false,'staging everything is not staging one file');
+ assert.equal(scenarioTasks(staged)[0].hint[0],'git restore --staged README.md');
+ assert.equal(scenarioComplete(runGit(staged,'git restore --staged README.md').repo),true,'unstaging the other file finishes the task');
+ const discard=runGit(startScenario('discard-edit'),'git add .').repo;
+ assert.equal(scenarioTasks(discard)[0].hint[0],'git restore --staged --worktree src/app.js');
+ assert.equal(scenarioComplete(runGit(discard,'git restore --staged --worktree src/app.js').repo),true);
+ const fetched=runGit(startScenario('get-teammate-work'),'git fetch origin').repo;
+ assert.equal(scenarioComplete(fetched),false,'fetching must not count as pulling');
+ assert.equal(scenarioComplete(runGit(fetched,'git pull origin main').repo),true);
+ const cleaned=runGit(startScenario('preview-clean'),'git clean -f').repo;
+ assert.equal(scenarioComplete(cleaned),false,'deleting is not previewing');
+ assert.match(scenarioTasks(cleaned)[0].hint[0],/file editor/);
+});
+
+test('a --hard reset says what it discarded instead of losing it silently',()=>{
+ const dirty=writeFile(committed(),'src/app.js','export function validateSignup() {\n  return true;\n}');
+ const reset=runGit(dirty,'git reset --hard HEAD');
+ assert.match(reset.output.join('\n'),/warning: 1 uncommitted change was discarded: src\/app\.js/);
+ assert.match(reset.output.join('\n'),/git reflog/);
+ assert.equal(reset.repo.files['src/app.js'],GIT_SEED_FILES['src/app.js']);
+ assert.equal(/warning/.test(runGit(committed(),'git reset --hard HEAD').output.join('\n')),false,'a clean reset must stay quiet');
+});
+
+test('a --hard reset warns about the commit it drops, and the reflog brings it back',()=>{
+ const bad=runGit(startScenario('undo-shared-commit'),'git reset --hard HEAD~1');
+ assert.match(bad.output.join('\n'),/warning: 1 commit is no longer on main: [0-9a-f]{7} Skip the name check/);
+ assert.match(bad.output.join('\n'),/git reset --hard <id> brings it back/);
+ const log=runGit(bad.repo,'git reflog').output.join('\n');
+ assert.match(log,/^[0-9a-f]{7} HEAD@\{0\}: commit: Skip the name check/m);
+ assert.match(log,/0000000 HEAD@\{2\}: repository created/);
+ const id=bad.repo.reflog.find(e=>e.text&&/Skip the name check/.test(e.text)).id;
+ const back=runGit(bad.repo,'git reset --hard '+id).repo;
+ assert.equal(back.branches.main,id);
+ assert.equal(scenarioComplete(runGit(back,'git revert HEAD').repo),true,'the situation can be finished again');
+});
+
+test('git restore --staged --worktree puts a staged file back, as Git does',()=>{
+ let repo=committed();
+ repo=runGit(writeFile(repo,'src/app.js','export function validateSignup() {\n  return true;\n}'),'git add .').repo;
+ assert.notEqual(repo.index['src/app.js'],GIT_SEED_FILES['src/app.js']);
+ assert.equal(runGit(repo,'git restore src/app.js').repo.files['src/app.js'],'export function validateSignup() {\n  return true;\n}','restore alone takes the staged version');
+ const restored=runGit(repo,'git restore --staged --worktree src/app.js');
+ assert.equal(restored.repo.index['src/app.js'],GIT_SEED_FILES['src/app.js']);
+ assert.equal(restored.repo.files['src/app.js'],GIT_SEED_FILES['src/app.js']);
+ assert.equal(restored.repo.mistakes.length,0);
 });
 
 test('a conflict can be resolved in one click by keeping either side',()=>{

@@ -179,6 +179,8 @@ export const GIT_SEED_FILES={
  'src/app.js':'export function validateSignup(form) {\n  return form.name.trim().length > 0;\n}',
  'notes.txt':'Review checklist:\n- read the diff before staging\n- keep commits small'
 };
+/** The hint for a task: a fixed triple, or one that depends on the state. */
+const hintFor=(task,repo)=>typeof task.hint==='function'?task.hint(repo):task.hint;
 /** Writes a file in the working tree, which is how edits become "modified". */
 export function writeFile(repo,path,content){
  const next=structuredClone(repo);
@@ -227,7 +229,7 @@ function syncTasks(r){
  // Point the file editor at the file the current task talks about.
  const pending=scenario.tasks.find(t=>!r.tasks[t.id]);
  if(pending){
-  const named=Object.keys(r.files).find(p=>pending.hint[0].includes(p));
+  const named=Object.keys(r.files).find(p=>hintFor(pending,r)[0].includes(p));
   if(named)r.selectedFile=named;
  }
  return r;
@@ -239,7 +241,7 @@ function cmdInit(r){
  r.remoteRefs={};
  r.files={...GIT_SEED_FILES};
  r.index={};
- r.reflog.push('repository created');
+ r.reflog.push({id:null,text:'repository created'});
  return ['Initialized empty Git repository in /forma/playground/.git/'];
 }
 function cmdConfig(r,args,cmd){
@@ -370,6 +372,8 @@ function cmdMv(r,args,cmd){
 }
 function cmdRestore(r,args,cmd){
  const staged=args.includes('--staged')||args.includes('--cached');
+ const worktree=args.includes('--worktree')||args.includes('-W');
+ const both=staged&&worktree;
  const paths=args.filter(a=>!a.startsWith('-'));
  if(!paths.length)return refuse(r,cmd,'fatal: you must specify path(s) to restore.',
   ['git restore needs the file to restore.','git restore 需要指定要恢复的文件。','git restore 需要指定要還原的檔案。'],
@@ -379,11 +383,15 @@ function cmdRestore(r,args,cmd){
   if(!(p in r.index)&&!(p in tree))return refuse(r,cmd,`error: pathspec '${p}' did not match any file(s) known to git`,
    ['That file is not tracked, so there is no saved version to restore.','这个文件未被跟踪，没有可恢复的版本。','這個檔案未被追蹤，沒有可還原的版本。'],
    ['Run git status to see the tracked files.','先运行 git status 查看已跟踪文件。','先執行 git status 查看已追蹤檔案。']);
-  if(staged){
+  // --staged --worktree puts the index and the file back together, as Git does.
+  if(staged||both){
    if(p in tree)r.index[p]=tree[p];
    else delete r.index[p];
-  }else if(p in r.index)r.files[p]=r.index[p];
-  else delete r.files[p];
+  }
+  if(worktree||both||!staged){
+   if(p in r.index)r.files[p]=r.index[p];
+   else delete r.files[p];
+  }
  }
  return [];
 }
@@ -395,13 +403,21 @@ function cmdReset(r,args,cmd){
  if(!id)return refuse(r,cmd,`fatal: ambiguous argument '${target}': unknown revision or path not in the working tree.`,
   ['That commit, branch or tag does not exist in this repository.','这个提交、分支或标签在仓库里不存在。','這個提交、分支或標籤在倉庫裡不存在。'],
   ['Run git log --oneline and copy a real commit id.','先运行 git log --oneline 复制真实提交号。','先執行 git log --oneline 複製真實提交號。']);
+ const tree=treeOf(r,id);
+ // Name the work a --hard reset is about to throw away, instead of losing it silently.
+ const discarded=mode==='hard'?dirtyPaths(r).filter(p=>(p in r.files?r.files[p]:undefined)!==(p in tree?tree[p]:undefined)):[];
+ const before=headId(r);
+ const orphaned=mode==='hard'&&before&&before!==id&&!reachable(r,[id]).has(before)?[before]:[];
  if(r.head.detached)r.head.name=id;
  else r.branches[r.head.name]=id;
- const tree=treeOf(r,id);
  if(mode!=='soft')r.index={...tree};
  if(mode==='hard')r.files={...tree};
  r.conflict=null;
- return [`HEAD is now at ${short(id)} ${commitOf(r,id).message}`];
+ const lines=[`HEAD is now at ${short(id)} ${commitOf(r,id).message}`];
+ if(discarded.length)lines.push(`warning: ${discarded.length} uncommitted change${discarded.length===1?' was':'s were'} discarded: ${discarded.join(', ')}`);
+ if(orphaned.length)lines.push(`warning: ${orphaned.length} commit is no longer on ${r.head.detached?'HEAD':r.head.name}: ${short(before)} ${commitOf(r,before)?.message??''}`);
+ if(discarded.length||orphaned.length)lines.push('hint: commit before a --hard reset; what you leave behind is still in git reflog, and git reset --hard <id> brings it back.');
+ return lines;
 }
 function cmdCommit(r,args,cmd){
  const amend=args.includes('--amend');
@@ -440,7 +456,7 @@ function cmdCommit(r,args,cmd){
  else r.branches[r.head.name]=commit.id;
  r.conflict=null;
  r.stats.commits++;
- r.reflog.push(`${amend?'commit (amend)':'commit'}: ${message}`);
+ r.reflog.push({id:commit.id,text:`${amend?'commit (amend)':'commit'}: ${message}`});
  const changed=Object.keys(tree).length;
  if(r.head.detached)return [`[detached HEAD ${short(commit.id)}] ${message}`,` ${changed} file${changed===1?'':'s'} changed`,'You are not currently on a branch: save this work with git switch -c <name>.'];
  return [`[${r.head.name} ${short(commit.id)}] ${message}`,` ${changed} file${changed===1?'':'s'} changed`];
@@ -796,7 +812,7 @@ function cmdRebase(r,args,cmd){
  adoptTree(r,treeOf(r,current));
  if(r.head.detached)r.head.name=current;
  else r.branches[r.head.name]=current;
- r.reflog.push(`rebase: onto ${onto}`);
+ r.reflog.push({id:current,text:`rebase: onto ${onto}`});
  return [`Successfully rebased and updated refs/heads/${r.head.detached?'HEAD':r.head.name}.`];
 }
 
@@ -1001,7 +1017,7 @@ function cmdPush(r,args,cmd){
  remote.branches[branch]=local;
  if(args.includes('-u')||args.includes('--set-upstream'))r.upstream[branch]={remote:remoteName,branch};
  r.stats.pushes++;
- r.reflog.push(`push: ${branch} -> ${remoteName}/${branch}`);
+ r.reflog.push({id:local,text:`push: ${branch} -> ${remoteName}/${branch}`});
  return [`To ${remote.url}`,remoteTip?`   ${short(remoteTip)}..${short(local)}  ${branch} -> ${branch}`:` * [new branch]      ${branch} -> ${branch}`];
 }
 
@@ -1051,7 +1067,7 @@ function cmdClone(r,args,cmd){
  r.remotes={origin:{url,branches:{main:seed.tip},objects:Object.fromEntries(seed.commits.map(c=>[c.id,structuredClone(c)]))}};
  r.remoteRefs={'origin/main':seed.tip};
  r.upstream={main:{remote:'origin',branch:'main'}};
- r.reflog=['clone: from '+url];
+ r.reflog=[{id:seed.tip,text:'clone: from '+url}];
  return [`Cloning into '${url.split('/').filter(Boolean).pop()?.replace(/\.git$/,'')||'project'}'...`,'remote: Enumerating objects: 2, done.','Receiving objects: 100% (2/2), done.','Checking out files: 100% (2/2), done.'];
 }
 function cmdClean(r,args,cmd){
@@ -1065,7 +1081,11 @@ function cmdClean(r,args,cmd){
  return untracked.map(p=>dry?`Would remove ${p}`:`Removing ${p}`);
 }
 function cmdReflog(r){
- return [...r.reflog].reverse().map((entry,i)=>`${short(headId(r))} HEAD@{${i}}: ${entry}`);
+ return [...r.reflog].reverse().map((entry,i)=>{
+  const text=typeof entry==='string'?entry:entry.text;
+  const id=typeof entry==='string'?headId(r):entry.id;
+  return `${short(id||'0000000')} HEAD@{${i}}: ${text}`;
+ });
 }
 function cmdHelp(r,args){
  const name=args.find(a=>!a.startsWith('-'));
@@ -1246,13 +1266,13 @@ export const GIT_DRILLS=[
   ['Run git status and read it','运行 git status 并阅读输出','執行 git status 並閱讀輸出'],['git status','git status','git status'],r=>r.transcript.some(line=>line==='$ git status'),
   ['git status']),
  drill('stage-one-file',['Stage one file','暂存一个文件','暫存一個檔案'],['Two files changed, but only the checklist belongs in the next commit. Stage that one file.','两个文件有改动，但只有清单属于这次提交。只暂存那一个文件。','兩個檔案有改動，但只有清單屬於這次提交。只暫存那一個檔案。'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),r=>writeFile(r,'README.md','# Team project\nChanged by mistake')]),
-  ['Stage only notes.txt','只暂存 notes.txt','只暫存 notes.txt'],['git add notes.txt','git add notes.txt','git add notes.txt'],r=>{const head=treeOf(r,r.branches.main);return r.index['notes.txt']!==head['notes.txt']&&r.index['README.md']===head['README.md'];},
+  ['Stage only notes.txt','只暂存 notes.txt','只暫存 notes.txt'],r=>{const head=treeOf(r,r.branches.main);return r.index['README.md']!==head['README.md']?['git restore --staged README.md','git restore --staged README.md','git restore --staged README.md']:['git add notes.txt','git add notes.txt','git add notes.txt'];},r=>{const head=treeOf(r,r.branches.main);return r.index['notes.txt']!==head['notes.txt']&&r.index['README.md']===head['README.md'];},
   ['git add notes.txt','git status --short']),
  drill('commit-staged',['Commit what is staged','提交已暂存的内容','提交已暫存的內容'],['The checklist change is already staged. Record it with a message that says what changed.','清单的改动已经暂存。用一句说明“改了什么”的提交信息记录下来。','清單的改動已經暫存。用一句說明「改了什麼」的提交訊息記錄下來。'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add notes.txt']),
   ['Commit it with a message','用说明提交','用說明提交'],['git commit -m "Ask for a failing test first"','git commit -m "Ask for a failing test first"','git commit -m "Ask for a failing test first"'],r=>(r.stats.commits??0)>0&&/checks/.test(String(commitOf(r,r.branches.main)?.tree['notes.txt']||'')),
   ['git commit -m "Ask for a failing test first"']),
  drill('create-branch',['Create a branch and move to it','创建分支并切换过去','建立分支並切換過去'],['Start work that can be reviewed on its own. Create feature/form and switch to it.','开始一段可以单独审查的工作：创建 feature/form 并切换过去。','開始一段可以單獨審查的工作：建立 feature/form 並切換過去。'],SEEDED,
-  ['Create and switch in one command','用一条命令创建并切换','用一條指令建立並切換'],['git switch -c feature/form','git switch -c feature/form','git switch -c feature/form'],r=>r.head.name==='feature/form',
+  ['Create and switch in one command','用一条命令创建并切换','用一條指令建立並切換'],r=>Object.hasOwn(r.branches,'feature/form')?['git switch feature/form','git switch feature/form','git switch feature/form']:['git switch -c feature/form','git switch -c feature/form','git switch -c feature/form'],r=>r.head.name==='feature/form',
   ['git switch -c feature/form']),
  drill('switch-back',['Switch back to main','切换回 main','切換回 main'],['You are on feature/form. Move back to main before you change anything else.','你目前在 feature/form。在继续改动之前，先切回 main。','你目前在 feature/form。在繼續改動之前，先切回 main。'],SEEDED.concat(['git switch -c feature/form']),
   ['Switch to main','切换到 main','切換到 main'],['git switch main','git switch main','git switch main'],r=>r.head.name==='main',
@@ -1267,7 +1287,7 @@ export const GIT_DRILLS=[
   ['Unstage it and keep the edit','取消暂存并保留改动','取消暫存並保留改動'],['git restore --staged notes.txt','git restore --staged notes.txt','git restore --staged notes.txt'],r=>{const head=treeOf(r,r.branches.main);return r.index['notes.txt']===head['notes.txt']&&String(r.files['notes.txt']||'').includes('run the checks');},
   ['git restore --staged notes.txt','git status --short']),
  drill('discard-edit',['Throw away an edit','丢弃一次改动','丟棄一次改動'],['The edit to src/app.js was a mistake. Put the file back exactly as the last commit has it.','对 src/app.js 的改动是错的。把文件恢复成上一次提交的样子。','對 src/app.js 的改動是錯的。把檔案還原成上一次提交的樣子。'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup(form) {\n  return true;\n}')]),
-  ['Discard the working-tree change','丢弃工作区改动','丟棄工作區改動'],['git restore src/app.js','git restore src/app.js','git restore src/app.js'],r=>r.files['src/app.js']===GIT_SEED_FILES['src/app.js'],
+  ['Discard the working-tree change','丢弃工作区改动','丟棄工作區改動'],r=>{const head=treeOf(r,r.branches.main);return r.index['src/app.js']!==head['src/app.js']?['git restore --staged --worktree src/app.js','git restore --staged --worktree src/app.js','git restore --staged --worktree src/app.js']:['git restore src/app.js','git restore src/app.js','git restore src/app.js'];},r=>r.files['src/app.js']===GIT_SEED_FILES['src/app.js'],
   ['git restore src/app.js']),
  drill('stash-work',['Set work aside','把工作暂存起来','把工作暫存起來'],['You must leave this branch with an unfinished edit. Put the work aside so the branch is clean.','你要带着未完成的改动离开这个分支。先把工作暂存，让分支干净。','你要帶著未完成的改動離開這個分支。先把工作暫存，讓分支乾淨。'],SEEDED.concat([r=>writeFile(r,'notes.txt','Review checklist:\n- half-finished thought')]),
   ['Set the work aside','把工作暂存','把工作暫存'],['git stash','git stash','git stash'],r=>(r.stats.stashes??0)>0&&!workChanges(r).modified.length,
@@ -1284,7 +1304,7 @@ export const GIT_DRILLS=[
  drill('amend-message',['Fix the last commit message','修改最后一次提交说明','修改最後一次提交說明'],['The last message says nothing useful. Replace it before anyone reviews it.','最后一条提交说明没有信息量。在别人审查之前把它改掉。','最後一條提交說明沒有資訊量。在別人審查之前把它改掉。'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "stuff"']),
   ['Rewrite the message of the last commit','重写最后一次提交说明','重寫最後一次提交說明'],['git commit --amend -m "Ask for a failing test first"','git commit --amend -m "Ask for a failing test first"','git commit --amend -m "Ask for a failing test first"'],r=>/checks/.test(String(commitOf(r,r.branches.main)?.tree['notes.txt']||''))&&/failing test/.test(String(commitOf(r,r.branches.main)?.message||'')),
   ['git commit --amend -m "Ask for a failing test first"']),
- drill('undo-commit-keep-work',['Undo a commit but keep the work','撤销提交但保留改动','撤銷提交但保留改動'],['The last commit was made too early. Move the branch back but keep the changes so you can commit them again later.','最后一次提交太早了。把分支移回去，但保留改动，方便以后再提交。','最後一次提交太早了。把分支移回去，但保留改動，方便以後再提交。'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "Too early"']),
+ drill('undo-commit-keep-work',['Undo a commit but keep the work','撤销提交但保留改动','撤銷提交但保留改動'],['The last commit was made too early. Move the branch back but keep the changes so you can commit them again later. A reset --hard would lose the work, and then the practice has to be started again.','最后一次提交太早了。把分支移回去，但保留改动，方便以后再提交。如果用了 reset --hard，改动会丢失，只能重新开始这个练习。','最後一次提交太早了。把分支移回去，但保留改動，方便以後再提交。如果用了 reset --hard，改動會遺失，只能重新開始這個練習。'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "Too early"']),
   ['Undo the commit, keep the changes','撤销提交，保留改动','撤銷提交，保留改動'],['git reset --soft HEAD~1','git reset --soft HEAD~1','git reset --soft HEAD~1'],r=>r.branches.main===r.commits[0].id&&stagedCount(r)>0,
   ['git reset --soft HEAD~1','git status']),
  drill('connect-remote',['Connect a remote','连接远程仓库','連接遠端倉庫'],['There is nowhere to push yet. Point the name origin at the team repository.','现在还没有可推送的目标。把 origin 指向团队仓库。','現在還沒有可推送的目標。把 origin 指向團隊倉庫。'],SEEDED,
@@ -1294,16 +1314,16 @@ export const GIT_DRILLS=[
   ['Push the branch','推送分支','推送分支'],['git push origin main','git push origin main','git push origin main'],r=>(r.stats.pushes??0)>0&&r.remotes.origin.branches.main===r.branches.main,
   ['git push origin main']),
  drill('get-teammate-work',['Get a teammate change','获取同事的改动','取得同事的改動'],['A teammate pushed a commit you do not have. Bring it into your branch.','同事推送了一个你还没有的提交。把它取到你的分支上。','同事推送了一個你還沒有的提交。把它取到你的分支上。'],['git clone https://example.edu/team/project.git',r=>teammateCommit(r,'origin','Add the sign-up form',{'src/signup.js':'export const fields = ["name", "email"];'})],
-  ['Pull their change','拉取他们的改动','拉取他們的改動'],['git pull origin main','git pull origin main','git pull origin main'],r=>r.commits.some(c=>c.message==='Add the sign-up form'),
+  ['Pull their change','拉取他们的改动','拉取他們的改動'],['git pull origin main','git pull origin main','git pull origin main'],r=>{const teammate=r.commits.find(c=>c.message==='Add the sign-up form');return !!teammate&&reachable(r,[r.branches.main]).has(teammate.id);},
   ['git pull origin main','git log --oneline']),
- drill('undo-shared-commit',['Undo a shared commit safely','安全撤销已共享的提交','安全撤銷已共享的提交'],['The last commit removed a check and others already have it. Undo the change without deleting the commit.','最后一次提交去掉了校验，别人也已经拉取过。请在不删除该提交的前提下撤销改动。','最後一次提交去掉了校驗，別人也已經拉取過。請在不刪除該提交的前提下撤銷改動。'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup() {\n  return true;\n}'),'git add .','git commit -m "Skip the name check"']),
+ drill('undo-shared-commit',['Undo a shared commit safely','安全撤销已共享的提交','安全撤銷已共享的提交'],['The last commit removed a check and others already have it. Undo the change without deleting the commit. A reset --hard would delete it, and then the practice has to be started again.','最后一次提交去掉了校验，别人也已经拉取过。请在不删除该提交的前提下撤销改动。如果用了 reset --hard，提交会被删除，只能重新开始这个练习。','最後一次提交去掉了校驗，別人也已經拉取過。請在不刪除該提交的前提下撤銷改動。如果用了 reset --hard，提交會被刪除，只能重新開始這個練習。'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup() {\n  return true;\n}'),'git add .','git commit -m "Skip the name check"']),
   ['Revert the last commit','还原最后一次提交','還原最後一次提交'],['git revert HEAD','git revert HEAD','git revert HEAD'],r=>r.files['src/app.js']===GIT_SEED_FILES['src/app.js']&&r.commits.length===3,
   ['git revert HEAD','git log --oneline']),
  drill('copy-commit',['Copy a commit to another branch','把提交复制到另一个分支','把提交複製到另一個分支'],['The fix on feature/form is needed on main too, but main must keep its own history. Copy just that one commit.','feature/form 上的修复在 main 上也需要，但 main 必须保留自己的历史。只复制那一个提交。','feature/form 上的修復在 main 上也需要，但 main 必須保留自己的歷史。只複製那一個提交。'],SEEDED.concat(['git switch -c feature/form',r=>writeFile(r,'src/app.js','export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}'),'git add .','git commit -m "Require three characters"','git switch main']),
   ['Copy the feature commit onto main','把功能提交复制到 main','把功能提交複製到 main'],['git cherry-pick <commit id>','git cherry-pick <commit id>','git cherry-pick <commit id>'],r=>r.head.name==='main'&&String(r.files['src/app.js']||'').includes('length > 2'),
   ['git log --oneline','git cherry-pick <id of "Require three characters">']),
  drill('preview-clean',['Preview untracked files','预览未跟踪文件','預覽未追蹤檔案'],['Before deleting anything, ask Git which files it is not tracking.','在删除任何东西之前，先让 Git 告诉你哪些文件没有被跟踪。','在刪除任何東西之前，先讓 Git 告訴你哪些檔案沒有被追蹤。'],SEEDED.concat([r=>writeFile(r,'scratch.txt','notes I may not need')]),
-  ['Preview what clean would remove','预览 clean 会删除什么','預覽 clean 會刪除什麼'],['git clean -n','git clean -n','git clean -n'],r=>r.transcript.some(line=>line==='$ git clean -n')&&'scratch.txt' in r.files,
+  ['Preview what clean would remove','预览 clean 会删除什么','預覽 clean 會刪除什麼'],r=>'scratch.txt' in r.files?['git clean -n','git clean -n','git clean -n']:['create scratch.txt again in the file editor','在文件编辑器里重新创建 scratch.txt','在檔案編輯器裡重新建立 scratch.txt'],r=>r.transcript.some(line=>line==='$ git clean -n')&&'scratch.txt' in r.files,
   ['git clean -n'])
 ];
 
@@ -1376,7 +1396,7 @@ export const GIT_SITUATIONS=[
  {
   id:'revert-bad',
   title:['A bad commit is already shared','错误提交已经共享','錯誤提交已經共享'],
-  brief:['The last commit removed the sign-up check and other people already have it, so rewriting history is not allowed. Undo the change without deleting the commit.','最后一次提交去掉了报名校验，而且别人已经拉取过，所以不能改写历史。请在不删除该提交的前提下撤销改动。','最後一次提交去掉了報名校驗，而且別人已經拉取過，所以不能改寫歷史。請在不刪除該提交的前提下撤銷改動。'],
+  brief:['The last commit removed the sign-up check and other people already have it, so rewriting history is not allowed. Undo the change without deleting the commit. A reset --hard would delete it, and then the situation would have to be started again.','最后一次提交去掉了报名校验，而且别人已经拉取过，所以不能改写历史。请在不删除该提交的前提下撤销改动。如果用了 reset --hard，提交会被删除，只能重新开始这个场景。','最後一次提交去掉了報名校驗，而且別人已經拉取過，所以不能改寫歷史。請在不刪除該提交的前提下撤銷改動。如果用了 reset --hard，提交會被刪除，只能重新開始這個情境。'],
   setup:['git init','git add .','git commit -m "Initial version"',
    r=>writeFile(r,'src/app.js','export function validateSignup() {\n  return true; // accepts every name\n}'),
    'git add .','git commit -m "Skip the name check"'],
@@ -1389,7 +1409,7 @@ export const GIT_SITUATIONS=[
  {
   id:'wrong-branch',
   title:['Work committed on main by mistake','误把改动提交到 main','誤把改動提交到 main'],
-  brief:['Your formatter commit landed on main, but it needs review on its own branch. Move it to a branch without losing the work.','你的格式化提交落在了 main 上，但它需要在自己的分支上被审查。请把这次提交移到分支上，且不要丢失工作。','你的格式化提交落在了 main 上，但它需要在自己的分支上被審查。請把這次提交移到分支上，且不要遺失工作。'],
+  brief:['Your formatter commit landed on main, but it needs review on its own branch. Move it to a branch without losing the work. A reset --hard before the branch exists would lose the commit.','你的格式化提交落在了 main 上，但它需要在自己的分支上被审查。请把这次提交移到分支上，且不要丢失工作。如果分支还不存在就用 reset --hard，提交会丢失。','你的格式化提交落在了 main 上，但它需要在自己的分支上被審查。請把這次提交移到分支上，且不要遺失工作。如果分支還不存在就用 reset --hard，提交會遺失。'],
   setup:['git init','git add .','git commit -m "Initial version"',
    r=>writeFile(r,'src/format.js','export const formatName = value => value.trim();'),
    'git add .','git commit -m "Add the name formatter"'],
@@ -1451,7 +1471,7 @@ export function scenarioTasks(repo){
  const tasks=[];
  for(const task of scenario.tasks){
   const previous=tasks.at(-1);
-  tasks.push({id:task.id,label:task.label,hint:task.hint,done:(!previous||previous.done)&&!!(repo?.tasks?.[task.id]||task.done(repo))});
+  tasks.push({id:task.id,label:task.label,hint:hintFor(task,repo),done:(!previous||previous.done)&&!!(repo?.tasks?.[task.id]||task.done(repo))});
  }
  return tasks;
 }
