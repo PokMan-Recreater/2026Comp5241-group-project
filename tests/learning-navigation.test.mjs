@@ -10,18 +10,24 @@ const views=createLearningViews({courses:()=>[],course:()=>null},{
  e:String,L:(en,cn)=>cn,T:x=>typeof x==='object'?x['zh-CN']:x,s:()=>state,a:()=>ensureAcademy(state),
  link:(url,title)=>`<a href="#${url}">${title}</a>`,button:()=>'',heading:title=>`<h1>${title}</h1>`,ico:()=>'',cards:items=>items.join(''),codeLanguage:x=>x,empty:()=>'',
 });
-test('practice keeps three categories and drops the labs and written tabs',()=>{
- const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,3);
- assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
+test('practice keeps four categories and drops the labs and written tabs',()=>{
+ const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,4);
+ assert.match(nav,/#practice\/git/);assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
  assert.match(nav,/#practice\/coding" aria-current="page"/);assert.doesNotMatch(nav,/#practice\/playground/);
  assert.match(views.practiceSections('playground'),/#practice\/playground" aria-current="page"/);
 });
-test('the Git topic inside Knowledge practice lists every Git practice and no other lab',()=>{
- assert.match(views.practice('checks'),/#practice\/checks\/topic-git/);
- const git=views.practice('checks','topic-git');
+test('the Git practice category lists every Git page and no other lab',()=>{
+ assert.match(views.practiceTabs('git'),/#practice\/git" aria-current="page"/);
+ const git=views.practice('git');
  assert.match(git,/#lab\/git"/);assert.match(git,/#lab\/git-cli/);assert.match(git,/#lab\/git-read-status/);
  assert.doesNotMatch(git,/#lab\/docker/);assert.doesNotMatch(git,/#lab\/prompt/);assert.doesNotMatch(git,/#lab\/rag/);
  assert.equal((git.match(/#lab\/[a-z0-9-]+/g)||[]).length,23);
+});
+test('Knowledge practice asks Git questions and links no practice page',()=>{
+ assert.match(views.practice('checks'),/#practice\/checks\/topic-git/);
+ const git=views.practice('checks','topic-git');
+ assert.doesNotMatch(git,/#lab\//);
+ assert.ok((git.match(/href="#practice\/checks\/git:[a-z-]+"/g)||[]).length>=8,'the Git group needs questions');
 });
 test('the retired lab and written entries open Knowledge practice instead',()=>{
  const labs=views.practice('labs'),written=views.practice('written');

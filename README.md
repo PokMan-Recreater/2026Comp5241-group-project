@@ -31,7 +31,7 @@ These contributions describe the design and features brought together; the integ
 | **Courses** | Explore 16 courses with 66 lessons on software engineering and AI/developer tools. Search and filter content by topic, level and background. |
 | **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
 | **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
-| **Git practice** | Practise 23 Git pages under **Practice → Knowledge practice → Git**: branch and merge, the Git command line with seven whole production situations, and 21 one-command practices that each get their own page. Everything runs the commands you type, keeps the task list and explains every mistake afterwards. |
+| **Git practice** | A practice category of its own: 23 Git pages (branch and merge, the Git command line with seven whole production situations, and 21 one-command practices that each get their own page). Everything runs the commands you type, keeps the task list and explains every mistake afterwards, and Knowledge practice asks ten questions about the same ideas. |
 | **Other interactive labs** | The prompt, retrieval, CI, container and gradient models are kept in the code but hidden in this build: no lesson, plan, card or listing links them, and a lesson that used one falls back to its own knowledge check. Existing software engineering scenario exercises remain available. |
 | **Code quest** | A Codédex-style course in pixel style: five chapters, 21 exercises, XP, levels and badges. Choose Python, C++ or Java, type real code and run it, or fix one broken line and watch the variables change. |
 | **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. The free-coding playground really runs your code: JavaScript in an isolated worker, HTML/CSS/JavaScript in an isolated page preview, and C, C++ or Python through the same small interpreter as Code quest. |
@@ -75,7 +75,7 @@ The game lives in `public/codequest.js` (interpreter, fix levels and code render
 
 ## Git practice: 23 pages of commands you can really type
 
-Git is the largest group of practices. All 23 Git pages sit together under **Practice → Knowledge practice → Git**, and every one of them runs the commands the learner actually types against a simulated repository. No real repository, file or network is touched, so a wrong command is safe, and anything Git refuses is explained afterwards together with the command to use instead. The commit graph, the working tree and the index are drawn from the same state the commands change.
+Git has a practice category of its own. All 23 Git pages sit under **Practice → Git practice**, and every one of them runs the commands the learner actually types against a simulated repository. No real repository, file or network is touched, so a wrong command is safe, and anything Git refuses is explained afterwards together with the command to use instead. The commit graph, the working tree and the index are drawn from the same state the commands change. Knowledge practice asks ten questions about the same ideas, and each one links back to the practice that shows it in a repository.
 
 | Practice | What the learner does |
 | --- | --- |
