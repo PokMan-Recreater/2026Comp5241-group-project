@@ -166,6 +166,16 @@ test('lessons may store structured slides with per-slide bounded art',()=>{
  const over=course();over.lessons[0]={...over.lessons[0],body:'',slides:[{heading:'Start',bullets:['One'],art:{scene:'document',items:['A','B','C','D']}}]};
  assert.throws(()=>validateCourse(over),/invalid_request/);
 });
+test('teaching intent fields are validated when present and preserved on save',()=>{
+ const lesson={id:'l1',title:'Lesson',objectives:['Explain A','Apply B'],misconceptions:['A is B. Correct: A is C.'],sourceNotes:['Course handout p.3'],body:'',scene:'flow',sceneItems:['A','B'],questions:[],slides:[{heading:'Start',concept:'One idea',bullets:['B'],script:['Say this'],notes:['Teacher note'],art:{scene:'flow',items:['A','B']}}]};
+ const c=course();c.lessons[0]=lesson;
+ const saved=validateCourse(c,true).lessons[0];
+ for(const key of ['objectives','misconceptions','sourceNotes','slides'])assert.deepEqual(saved[key],lesson[key]);
+ for(const strip of [l=>l.objectives=[],l=>l.objectives=['x'.repeat(121)],l=>l.misconceptions=['x'.repeat(301)],l=>l.sourceNotes='note',l=>l.slides[0].concept='',l=>l.slides[0].script=[],l=>l.slides[0].notes=[1],l=>l.slides[0].extra='x']){
+  const bad=course();bad.lessons[0]=JSON.parse(JSON.stringify(saved));strip(bad.lessons[0]);assert.throws(()=>validateCourse(bad),/invalid_request/);
+ }
+ const optional=course();assert.equal('objectives'in validateCourse(optional).lessons[0],false);
+});
 test('the SQL boundary accepts structured slides and the shared scene vocabulary',async()=>{
  const sql=await readFile(new URL('../supabase/migrations/202611030004_teaching_slides.sql',import.meta.url),'utf8');
  assert.match(sql,/'id','title','body','slides','scene','sceneItems','questions'/);
@@ -184,4 +194,13 @@ test('the SQL boundary rejects art that exceeds a template slot count',async()=>
  assert.match(sql,/v in \('compare','balance'\) and jsonb_array_length\(art->'items'\)=2/);
  assert.match(sql,/v in \('layers','chain','decision'\) and jsonb_array_length\(art->'items'\) between 2 and 4/);
  assert.match(sql,/v in \('document','database'\) and jsonb_array_length\(art->'items'\) between 2 and 3/);
+});
+test('the SQL boundary accepts optional teaching intent fields without weakening bounds',async()=>{
+ const sql=await readFile(new URL('../supabase/migrations/202611030007_lesson_quality_fields.sql',import.meta.url),'utf8');
+ assert.match(sql,/'objectives','misconceptions','sourceNotes','body','slides','scene','sceneItems','questions'/);
+ assert.match(sql,/'heading','concept','bullets','script','notes','art'/);
+ assert.match(sql,/jsonb_array_length\(l->'objectives'\) not between 1 and 5/);
+ assert.match(sql,/jsonb_array_length\(l->'misconceptions'\) not between 1 and 5/);
+ assert.match(sql,/jsonb_array_length\(sl->'script'\) not between 1 and 5/);
+ assert.match(sql,/jsonb_array_length\(sl->'notes'\) not between 1 and 5/);
 });

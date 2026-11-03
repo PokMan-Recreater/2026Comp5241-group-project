@@ -346,9 +346,13 @@
 .tc-slide[hidden]{display:none}
 .tc-slide-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:24px;align-items:start;position:relative;z-index:1}
 .tc-slide-content{min-width:0}
+.tc-slide-concept{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#8a6d1f;margin:0 0 6px;font-weight:700}
 .tc-slide-title{font-size:17px;font-weight:700;color:#100640;margin-bottom:12px;line-height:1.5}
 .tc-slide-bullets{display:flex;flex-direction:column;gap:8px}
 .tc-slide-bullets span{font-size:14px;line-height:1.6;color:#242032;padding-left:4px}
+.tc-slide-script{margin-top:14px;padding-top:12px;border-top:1px dashed #e6dfc8;display:flex;flex-direction:column;gap:6px}
+.tc-slide-script p{margin:0;font-size:13px;line-height:1.65;color:#37324a}
+.tc-slide-notes{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.55;color:#6d6684}
 .tc-slide-art{min-width:0;overflow:hidden;border-radius:12px;background:#fffcf1;max-height:240px;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box}
 .tc-slide-art svg{width:100%;height:auto;max-height:224px;min-width:0;max-width:100%;flex:0 1 auto}
 .tc-slide-illustration{display:block;width:100%;height:auto}

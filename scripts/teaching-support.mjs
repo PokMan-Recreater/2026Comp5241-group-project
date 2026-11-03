@@ -9,19 +9,22 @@ export function validateCourse(value,publishing=false){
  if(!['en','zh-CN','zh-TW'].includes(language)||!Array.isArray(value.lessons)||value.lessons.length<1||value.lessons.length>10)fail();
  const ids=new Set();const id=(v,seen=ids)=>{text(v,80);if(!/^[\w-]+$/.test(v)||seen.has(v))fail();seen.add(v);return v;};
  const lessons=value.lessons.map(l=>{
-  keys(l,['id','title','body','slides','scene','sceneItems','questions']);
+  keys(l,['id','title','objectives','misconceptions','sourceNotes','body','slides','scene','sceneItems','questions']);
   const raw=l.slides;
   if(raw!==undefined&&(!Array.isArray(raw)||raw.length<1||raw.length>20))fail();
   if(!isScene(l.scene)||!Array.isArray(l.sceneItems)||l.sceneItems.length<1||l.sceneItems.length>5||!Array.isArray(l.questions)||l.questions.length>5)fail();
+  const list=(v,min,max,len)=>{if(v===undefined)return undefined;if(!Array.isArray(v)||v.length<min||v.length>max)fail();return v.map(x=>text(x,len));};
+  const objectives=list(l.objectives,1,5,120),misconceptions=list(l.misconceptions,1,5,300),sourceNotes=list(l.sourceNotes,1,5,400);
   const slides=raw===undefined?undefined:raw.map(s=>{
-   keys(s,['heading','bullets','art']);
+   keys(s,['heading','concept','bullets','script','notes','art']);
    if(!Array.isArray(s.bullets)||s.bullets.length<1||s.bullets.length>6)fail();
+   const concept=s.concept===undefined?undefined:text(s.concept,120),script=list(s.script,1,5,300),notes=list(s.notes,1,5,200);
    keys(s.art,['scene','items']);
    if(!isScene(s.art.scene)||!Array.isArray(s.art.items)||!itemsFitScene(s.art.scene,s.art.items.length))fail();
-   return {heading:text(s.heading,120),bullets:s.bullets.map(b=>text(b,200)),art:{scene:s.art.scene,items:s.art.items.map(i=>text(i,80))}};
+   return {heading:text(s.heading,120),...(concept?{concept}:{}),bullets:s.bullets.map(b=>text(b,200)),...(script?{script}:{}),...(notes?{notes}:{}),art:{scene:s.art.scene,items:s.art.items.map(i=>text(i,80))}};
   });
   const questionIds=new Set();
-  const lesson={id:id(l.id),title:text(l.title,180),body:text(l.body??'',18000,!publishing||!!slides),scene:l.scene,sceneItems:l.sceneItems.map(s=>text(s,60)),questions:l.questions.map(q=>{
+  const lesson={id:id(l.id),title:text(l.title,180),...(objectives?{objectives}:{}),...(misconceptions?{misconceptions}:{}),...(sourceNotes?{sourceNotes}:{}),body:text(l.body??'',18000,!publishing||!!slides),scene:l.scene,sceneItems:l.sceneItems.map(s=>text(s,60)),questions:l.questions.map(q=>{
    keys(q,['id','prompt','options','correctIndex','explanation']);
    if(!Array.isArray(q.options)||q.options.length<2||q.options.length>5||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>=q.options.length)fail();
    return {id:id(q.id,questionIds),prompt:text(q.prompt,1500),options:q.options.map(s=>text(s,500)),correctIndex:q.correctIndex,explanation:text(q.explanation,2500,true)};
