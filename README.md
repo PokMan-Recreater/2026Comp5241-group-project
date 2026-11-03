@@ -31,7 +31,7 @@ These contributions describe the design and features brought together; the integ
 | **Courses** | Explore 16 courses with 66 lessons on software engineering and AI/developer tools. Search and filter content by topic, level and background. |
 | **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
 | **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
-| **Interactive labs** | Explore six models: Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
+| **Interactive labs** | Explore seven models: a Git command line that really runs your commands and explains every mistake afterwards, Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
 | **Code quest** | A Codédex-style course in pixel style: five chapters, 21 exercises, XP, levels and badges. Choose Python, C++ or Java, type real code and run it, or fix one broken line and watch the variables change. |
 | **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. The free-coding playground really runs your code: JavaScript in an isolated worker, HTML/CSS/JavaScript in an isolated page preview, and C, C++ or Python through the same small interpreter as Code quest. |
 | **Checks and references** | Review a 73-question revision bank and 15 syntax cards alongside lesson-level checks and worked answers. |
@@ -48,7 +48,7 @@ The catalogue used to show three generic covers shared across all sixteen course
 | Area | What changed |
 | --- | --- |
 | **Courses** | One cover per course: a three-stage pipeline for software development, interview bubbles for requirements, a three-tier stack for web architecture, an editor with a sparkle for AI coding, a checklist with an incident marker for testing and release, a scope list plus team cluster for product decisions, a candidate badge for interview prep, a tool box and magnifier for AI tools, a commit graph for Git, a cylinder and filter funnel for SQL, stacked layers for Docker, a looping pipeline for CI/CD, a prompt card with a target for prompt engineering, retrieval sheets feeding a model for LLM apps, and a loss curve for machine learning. |
-| **Branch and merge** | It no longer shares one icon with the other labs. All six labs now have distinct icons: a branch for Git, a chat bubble for the prompt workshop, a database for retrieval, a wrench for CI repair, a container for the Docker lifecycle and a descending trend for gradient descent. |
+| **Branch and merge** | It no longer shares one icon with the other labs. All seven labs now have distinct icons: a branch for Git, a merge symbol for the Git command line, a chat bubble for the prompt workshop, a database for retrieval, a wrench for CI repair, a container for the Docker lifecycle and a descending trend for gradient descent. |
 | **Interface** | The Explore navigation icon is a compass again; it previously repeated the book icon used by the instructor courses tab. |
 
 Covers live in `public/course-art.js`, keyed by course id. Courses created inside the browser (self-study) still fall back to the original theme-based covers.
@@ -107,7 +107,7 @@ Run the automated checks and create the static build:
 npm run verify
 ```
 
-The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
+The most recent integration check passed **113 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
 
 Type checking uses TypeScript `checkJs` on learning/planning logic, simulations, challenge execution, interview review, linked content, the AI endpoint and build/preview scripts (including their imported modules). UI event handlers and view templates are not yet included in type checking. ESLint recommended rules cover all application JavaScript and test scripts. These are separate checks: type checking detects incompatible values in checked modules; linting detects issues such as undefined names and duplicate declarations.
 

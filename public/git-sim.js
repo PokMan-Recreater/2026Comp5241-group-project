@@ -1,0 +1,1112 @@
+// A teaching model of Git for the free practice sandbox.
+//
+// Learners type real commands against a simulated repository: a working tree,
+// an index, commits with real trees, branches, a stash, tags and remotes. The
+// model is deliberately honest. When a command cannot work it prints what Git
+// would print and records *why* it failed with the fix, so the review panel can
+// explain the mistake afterwards. Nothing is ever quietly "made to work".
+//
+// Supported: init, clone, config, status, add, rm, mv, restore, reset, commit
+// (including --amend), log, diff, show, branch, switch, checkout, merge with
+// conflicts, rebase, cherry-pick, revert, tag, stash, remote, fetch, pull,
+// push, clean, reflog, help.
+//
+// Out of scope and refused honestly: a rebase, cherry-pick or revert that hits
+// a conflict stops instead of guessing, and no network is contacted.
+
+export const GIT_COMMANDS=['init','clone','config','status','add','rm','mv','restore','reset','commit','log','diff','show','branch','switch','checkout','merge','rebase','cherry-pick','revert','tag','stash','remote','fetch','pull','push','clean','reflog','help'];
+
+export const GIT_USAGE={
+ init:'git init',clone:'git clone <url>',config:'git config user.name "Your Name"',status:'git status [--short]',
+ add:'git add <path> | . | -A | -u',rm:'git rm [--cached] <path>',mv:'git mv <from> <to>',restore:'git restore [--staged] <path>',
+ reset:'git reset [--soft|--mixed|--hard] [<commit>]',commit:'git commit -m "message" [--amend]',log:'git log [--oneline] [--graph] [--all]',
+ diff:'git diff [--staged] [<commit>]',show:'git show [<commit>]',branch:'git branch [<name>] [-d|-D <name>]',
+ switch:'git switch [-c] <branch>',checkout:'git checkout [-b] <branch>',merge:'git merge <branch> [--abort]',
+ rebase:'git rebase <branch>',"cherry-pick":'git cherry-pick <commit>',revert:'git revert <commit>',tag:'git tag [<name>] [-d <name>]',
+ stash:'git stash [push|list|pop|apply|drop]',remote:'git remote add <name> <url> | -v',fetch:'git fetch [<remote>]',
+ pull:'git pull [<remote>] [<branch>]',push:'git push [-u] [<remote>] [<branch>]',clean:'git clean [-n|-f]',reflog:'git reflog',help:'git help [<command>]'
+};
+
+/** A fresh repository: nothing initialised until `git init` or `git clone`. */
+export function createRepo(){
+ return {
+  initialised:false, files:{}, index:{}, commits:[], branches:{}, head:{detached:false,name:'main'},
+  previousBranch:null, remotes:{}, remoteRefs:{}, upstream:{}, stash:[], tags:{}, config:{'user.name':'','user.email':''},
+  conflict:null, reflog:[], mistakes:[], transcript:[],
+  stats:{commands:0,commits:0,branches:0,switches:0,merges:0,conflicts:0,resolves:0,stashes:0,fetches:0,pulls:0,pushes:0}
+ };
+}
+
+const short=id=>String(id||'').slice(0,7);
+const hashOf=seed=>{let h=5381;for(const ch of seed)h=((h<<5)+h+ch.charCodeAt(0))>>>0;return h.toString(16).padStart(8,'0').slice(0,7);};
+const same=a=>JSON.stringify(a);
+const headId=r=>r.head.detached?r.head.name:(r.branches[r.head.name]??null);
+const commitOf=(r,id)=>r.commits.find(c=>c.id===id)||null;
+const treeOf=(r,id)=>{const c=commitOf(r,id);return c?{...c.tree}:{};};
+const pathsOf=(...trees)=>[...new Set(trees.flatMap(t=>Object.keys(t||{})))];
+
+function reachable(r,starts){
+ const seen=new Set(),stack=[...starts];
+ while(stack.length){const id=stack.pop();if(!id||seen.has(id))continue;seen.add(id);const c=commitOf(r,id);if(c)stack.push(...c.parents);}
+ return seen;
+}
+function isAncestor(r,older,newer){
+ if(!older||!newer)return false;
+ return reachable(r,[newer]).has(older);
+}
+function mergeBase(r,a,b){
+ if(!a||!b)return null;
+ const fromA=reachable(r,[a]);
+ const stack=[b],seen=new Set();
+ while(stack.length){const id=stack.pop();if(!id||seen.has(id))continue;if(fromA.has(id))return id;seen.add(id);const c=commitOf(r,id);if(c)stack.push(...c.parents);}
+ return null;
+}
+/** Resolves HEAD, a branch, a tag, a remote branch, a short hash or `x~n` / `x^n`. */
+function resolveRef(r,ref){
+ const text=String(ref??'').trim();
+ if(!text)return null;
+ const parts=/^([^~^]+)((?:[~^]\d*)*)$/.exec(text);
+ if(!parts)return null;
+ const [,base,suffixes]=parts;
+ let id=null;
+ if(base==='HEAD')id=headId(r);
+ else if(base==='@')id=headId(r);
+ else if(base==='-')id=r.previousBranch?r.branches[r.previousBranch]:null;
+ else if(Object.hasOwn(r.branches,base))id=r.branches[base];
+ else if(Object.hasOwn(r.tags,base))id=r.tags[base];
+ else if(Object.hasOwn(r.remoteRefs,base))id=r.remoteRefs[base];
+ else if(/^[0-9a-f]{4,40}$/.test(base))id=r.commits.find(c=>c.id.startsWith(base))?.id??null;
+ if(!id)return null;
+ for(const step of suffixes.match(/[~^]\d*/g)||[]){
+  const c=commitOf(r,id);
+  if(!c)return null;
+  if(step[0]==='^'){const n=Number(step.slice(1)||1);id=c.parents[n-1]??null;}
+  else{let n=Number(step.slice(1)||1);while(n-->0){const cur=commitOf(r,id);if(!cur)return null;id=cur.parents[0]??null;}}
+  if(!id)return null;
+ }
+ return id;
+}
+/** Tokenises a command line, keeping quoted arguments together. */
+export function tokenize(line){
+ const out=[],re=/"([^"]*)"|'([^']*)'|(\S+)/g;
+ let m;
+ while((m=re.exec(String(line))))out.push(m[1]??m[2]??m[3]);
+ return out;
+}
+/**
+ * @param {any} r
+ * @param {{message: string, parents: (string|null)[], tree: Record<string,string>, branch?: string}} options
+ */
+function writeCommit(r,options){
+ const {message,parents,tree,branch}=options;
+ const id=hashOf([message,...parents,same(tree),r.commits.length].join('|'));
+ const commit={id,message,parents,tree:{...tree},branch:branch??(r.head.detached?'detached':r.head.name),at:r.commits.length};
+ r.commits.push(commit);
+ return commit;
+}
+/** Records a learner mistake and returns the lines to print. */
+function refuse(r,command,message,why,fix){
+ r.mistakes.push({command,message,why,fix});
+ return [message];
+}
+/** Honest limitation of the teaching model: not the learner's mistake. */
+const unsupported=message=>[message];
+
+/** What a commit would record right now, compared with HEAD. */
+function stagedChanges(r){
+ const head=headId(r),tree=head?treeOf(r,head):{};
+ return {
+  tree,
+  added:Object.keys(r.index).filter(p=>!(p in tree)),
+  modified:Object.keys(r.index).filter(p=>(p in tree)&&r.index[p]!==tree[p]),
+  deleted:Object.keys(tree).filter(p=>!(p in r.index))
+ };
+}
+/** Uncommitted edits, compared with the index. */
+function workChanges(r){
+ return {
+  modified:Object.keys(r.index).filter(p=>(p in r.files)&&r.files[p]!==r.index[p]),
+  deleted:Object.keys(r.index).filter(p=>!(p in r.files))
+ };
+}
+const untrackedFiles=r=>Object.keys(r.files).filter(p=>!(p in r.index));
+const stagedCount=r=>{const c=stagedChanges(r);return c.added.length+c.modified.length+c.deleted.length;};
+const unmergedPaths=r=>(r.conflict?.paths??[]);
+const dirtyPaths=r=>{
+ const w=workChanges(r),s=stagedChanges(r);
+ return [...new Set([...w.modified,...w.deleted,...s.added,...s.modified,...s.deleted])];
+};
+function writeConflictMarkers(r,path,label,ours,theirs){
+ r.files[path]=`<<<<<<< HEAD\n${ours??''}\n=======\n${theirs??''}\n>>>>>>> ${label}\n`;
+}
+/** The small project the sandbox starts with, so there is something to commit. */
+export const GIT_SEED_FILES={
+ 'README.md':'# Team project\nA small web app the team builds together.',
+ 'src/app.js':'export function validateSignup(form) {\n  return form.name.trim().length > 0;\n}',
+ 'notes.txt':'Review checklist:\n- read the diff before staging\n- keep commits small'
+};
+/** Writes a file in the working tree, which is how edits become "modified". */
+export function writeFile(repo,path,content){
+ const next=structuredClone(repo);
+ next.files[path]=String(content);
+ return next;
+}
+/** Deletes a file from the working tree. */
+export function removeFile(repo,path){
+ const next=structuredClone(repo);
+ delete next.files[path];
+ return next;
+}
+function cmdInit(r){
+ r.initialised=true;
+ r.head={detached:false,name:'main'};
+ r.branches={};
+ r.remoteRefs={};
+ r.files={...GIT_SEED_FILES};
+ r.index={};
+ r.reflog.push('repository created');
+ return ['Initialized empty Git repository in /forma/playground/.git/'];
+}
+function cmdConfig(r,args,cmd){
+ const key=args.find(a=>!a.startsWith('-'));
+ const value=args[args.indexOf(key)+1];
+ if(!key||key==='--list'||key==='-l')return Object.entries(r.config).map(([k,v])=>`${k}=${v}`);
+ if(!Object.hasOwn(r.config,key))return refuse(r,cmd,`error: key does not contain a section: ${key}`,
+  ['This sandbox stores user.name and user.email only.','这个沙盒只保存 user.name 和 user.email。','這個沙盒只儲存 user.name 和 user.email。'],
+  ['Run git config user.name "Your Name" and git config user.email "you@example.edu".','请运行 git config user.name "Your Name" 与 git config user.email "you@example.edu"。','請執行 git config user.name "Your Name" 與 git config user.email "you@example.edu"。']);
+ if(value===undefined)return [r.config[key]];
+ r.config[key]=value;
+ return [];
+}
+
+function cmdStatus(r,args){
+ const shortMode=args.includes('-s')||args.includes('--short');
+ const s=stagedChanges(r),w=workChanges(r),untracked=untrackedFiles(r),unmerged=unmergedPaths(r);
+ const branchLine=r.head.detached?`HEAD detached at ${short(r.head.name)}`:`On branch ${r.head.name}`;
+ if(shortMode){
+  const lines=[];
+  for(const p of unmerged)lines.push(`UU ${p}`);
+  for(const p of s.added)lines.push(`A  ${p}`);
+  for(const p of s.modified)lines.push(`M  ${p}`);
+  for(const p of s.deleted)lines.push(`D  ${p}`);
+  for(const p of w.modified)lines.push(` M ${p}`);
+  for(const p of w.deleted)lines.push(` D ${p}`);
+  for(const p of untracked)lines.push(`?? ${p}`);
+  return lines;
+ }
+ const lines=[branchLine];
+ if(!headId(r)&&!r.head.detached)lines.push('','No commits yet');
+ if(unmerged.length){
+  lines.push('You have unmerged paths.','  (fix conflicts and run "git commit")','  (use "git merge --abort" to abort the merge)','','Unmerged paths:','  (use "git add <file>..." to mark resolution)');
+  for(const p of unmerged)lines.push(`\tboth modified:   ${p}`);
+  return lines;
+ }
+ if(s.added.length||s.modified.length||s.deleted.length){
+  lines.push('','Changes to be committed:','  (use "git restore --staged <file>..." to unstage)');
+  for(const p of s.added)lines.push(`\tnew file:   ${p}`);
+  for(const p of s.modified)lines.push(`\tmodified:   ${p}`);
+  for(const p of s.deleted)lines.push(`\tdeleted:    ${p}`);
+ }
+ if(w.modified.length||w.deleted.length){
+  lines.push('','Changes not staged for commit:','  (use "git add <file>..." to update what will be committed)','  (use "git restore <file>..." to discard changes in working directory)');
+  for(const p of w.modified)lines.push(`\tmodified:   ${p}`);
+  for(const p of w.deleted)lines.push(`\tdeleted:    ${p}`);
+ }
+ if(untracked.length){
+  lines.push('','Untracked files:','  (use "git add <file>..." to include in what will be committed)');
+  for(const p of untracked)lines.push(`\t${p}`);
+ }
+ if(lines.length===1)lines.push('','nothing to commit, working tree clean');
+ else lines.push('','no changes added to commit (use "git add" and/or "git commit -a")');
+ return lines;
+}
+function cmdAdd(r,args,cmd){
+ const all=args.includes('-A')||args.includes('--all');
+ const update=args.includes('-u');
+ const paths=args.filter(a=>!a.startsWith('-'));
+ if(!paths.length&&!all&&!update)return refuse(r,cmd,'Nothing specified, nothing added.',
+  ['git add needs a path, or . / -A to add everything.','git add 需要路径，或用 . / -A 添加全部。','git add 需要路徑，或用 . / -A 加入全部。'],
+  ['Try git add . or git add src/app.js.','试试 git add . 或 git add src/app.js。','試試 git add . 或 git add src/app.js。']);
+ const targets=new Set();
+ for(const p of (all?['.']:paths)){
+  if(p==='.'||p==='*'||p==='-A'){
+   for(const f of Object.keys(r.files))targets.add(f);
+   for(const f of Object.keys(r.index))if(!(f in r.files))targets.add(f);
+   continue;
+  }
+  if(update&&!(p in r.index))continue;
+  if(!(p in r.files)&&!(p in r.index))return refuse(r,cmd,`fatal: pathspec '${p}' did not match any files`,
+   ['That path is not in the project, so Git has nothing to add.','项目里没有这个路径，Git 没有可添加的内容。','專案裡沒有這個路徑，Git 沒有可加入的內容。'],
+   ['Run git status to see the exact file names.','先运行 git status 查看确切文件名。','先執行 git status 查看確切檔案名稱。']);
+  targets.add(p);
+ }
+ const lines=[];
+ for(const p of targets){
+  if(p in r.files){
+   if(r.index[p]!==r.files[p])lines.push(`add '${p}'`);
+   r.index[p]=r.files[p];
+  }else if(p in r.index){delete r.index[p];lines.push(`remove '${p}'`);}
+  if(r.conflict&&r.conflict.paths.includes(p)){
+   r.conflict.paths=r.conflict.paths.filter(x=>x!==p);
+   r.stats.resolves++;
+   lines.push(`Resolved '${p}'`);
+  }
+ }
+ return lines;
+}
+
+function cmdRm(r,args,cmd){
+ const cached=args.includes('--cached');
+ const paths=args.filter(a=>!a.startsWith('-'));
+ if(!paths.length)return refuse(r,cmd,'fatal: No pathspec was given.',
+  ['git rm needs the file to remove.','git rm 需要指定要删除的文件。','git rm 需要指定要刪除的檔案。'],
+  ['Try git rm notes.txt, or git rm --cached notes.txt to keep the file on disk.','试试 git rm notes.txt，或用 git rm --cached notes.txt 保留磁盘上的文件。','試試 git rm notes.txt，或用 git rm --cached notes.txt 保留磁碟上的檔案。']);
+ const lines=[];
+ for(const p of paths){
+  if(!(p in r.index)&&!(p in r.files))return refuse(r,cmd,`fatal: pathspec '${p}' did not match any files`,
+   ['That path is not tracked, so there is nothing to remove.','这个路径没有被跟踪，没有可删除的内容。','這個路徑沒有被追蹤，沒有可刪除的內容。'],
+   ['Run git status to list the tracked files.','先运行 git status 列出已跟踪文件。','先執行 git status 列出已追蹤檔案。']);
+  delete r.index[p];
+  if(!cached)delete r.files[p];
+  lines.push(`rm '${p}'`);
+ }
+ return lines;
+}
+function cmdMv(r,args,cmd){
+ const [from,to]=args.filter(a=>!a.startsWith('-'));
+ if(!from||!to)return refuse(r,cmd,'usage: git mv <source> <destination>',
+  ['git mv needs the old name and the new name.','git mv 需要旧名称和新名称。','git mv 需要舊名稱和新名稱。'],
+  ['Try git mv notes.txt docs/notes.txt.','试试 git mv notes.txt docs/notes.txt。','試試 git mv notes.txt docs/notes.txt。']);
+ if(!(from in r.files))return refuse(r,cmd,`fatal: bad source, source=${from}`,
+  ['The source file does not exist in the working tree.','工作区里没有这个源文件。','工作區裡沒有這個來源檔案。'],
+  ['Run git status to see the file names you have.','先运行 git status 查看现有文件名。','先執行 git status 查看現有檔案名稱。']);
+ if(to in r.files)return refuse(r,cmd,`fatal: destination exists, source=${from}, destination=${to}`,
+  ['The destination name is already used, so Git refuses to overwrite it.','目标名称已被占用，Git 不会覆盖它。','目標名稱已被佔用，Git 不會覆寫它。'],
+  ['Choose another name, or remove the existing file first.','换一个名称，或先删除已存在的文件。','換一個名稱，或先刪除已存在的檔案。']);
+ r.files[to]=r.files[from];
+ delete r.files[from];
+ if(from in r.index){r.index[to]=r.index[from];delete r.index[from];}
+ return [];
+}
+function cmdRestore(r,args,cmd){
+ const staged=args.includes('--staged')||args.includes('--cached');
+ const paths=args.filter(a=>!a.startsWith('-'));
+ if(!paths.length)return refuse(r,cmd,'fatal: you must specify path(s) to restore.',
+  ['git restore needs the file to restore.','git restore 需要指定要恢复的文件。','git restore 需要指定要還原的檔案。'],
+  ['Try git restore src/app.js, or git restore --staged src/app.js to unstage it.','试试 git restore src/app.js，或用 git restore --staged src/app.js 取消暂存。','試試 git restore src/app.js，或用 git restore --staged src/app.js 取消暫存。']);
+ const head=headId(r),tree=head?treeOf(r,head):{};
+ for(const p of paths){
+  if(!(p in r.index)&&!(p in tree))return refuse(r,cmd,`error: pathspec '${p}' did not match any file(s) known to git`,
+   ['That file is not tracked, so there is no saved version to restore.','这个文件未被跟踪，没有可恢复的版本。','這個檔案未被追蹤，沒有可還原的版本。'],
+   ['Run git status to see the tracked files.','先运行 git status 查看已跟踪文件。','先執行 git status 查看已追蹤檔案。']);
+  if(staged){
+   if(p in tree)r.index[p]=tree[p];
+   else delete r.index[p];
+  }else if(p in r.index)r.files[p]=r.index[p];
+  else delete r.files[p];
+ }
+ return [];
+}
+
+function cmdReset(r,args,cmd){
+ const mode=args.includes('--soft')?'soft':args.includes('--hard')?'hard':'mixed';
+ const target=args.find(a=>!a.startsWith('-'))||'HEAD';
+ const id=resolveRef(r,target);
+ if(!id)return refuse(r,cmd,`fatal: ambiguous argument '${target}': unknown revision or path not in the working tree.`,
+  ['That commit, branch or tag does not exist in this repository.','这个提交、分支或标签在仓库里不存在。','這個提交、分支或標籤在倉庫裡不存在。'],
+  ['Run git log --oneline and copy a real commit id.','先运行 git log --oneline 复制真实提交号。','先執行 git log --oneline 複製真實提交號。']);
+ if(r.head.detached)r.head.name=id;
+ else r.branches[r.head.name]=id;
+ const tree=treeOf(r,id);
+ if(mode!=='soft')r.index={...tree};
+ if(mode==='hard')r.files={...tree};
+ r.conflict=null;
+ return [`HEAD is now at ${short(id)} ${commitOf(r,id).message}`];
+}
+function cmdCommit(r,args,cmd){
+ const amend=args.includes('--amend');
+ const messageFlag=args.findIndex(a=>a==='-m'||a==='--message');
+ const given=messageFlag>=0?args[messageFlag+1]:null;
+ const all=args.some(a=>/^-[a-z]*a$/.test(a))||args.includes('--all');
+ if(all){
+  const w=workChanges(r);
+  for(const p of w.modified)r.index[p]=r.files[p];
+  for(const p of w.deleted)delete r.index[p];
+ }
+ if(unmergedPaths(r).length)return refuse(r,cmd,'error: Committing is not possible because you have unmerged files.',
+  ['A merge stopped with a conflict, so there is no single version to record yet.','合并因冲突停下，还没有可以记录的版本。','合併因衝突停下，還沒有可以記錄的版本。'],
+  ['Edit each file, keep the lines you want, then run git add <file> and git commit.','编辑文件保留需要的行，然后运行 git add <file> 和 git commit。','編輯檔案保留需要的行，然後執行 git add <file> 和 git commit。']);
+ const head=headId(r);
+ const merging=!!r.conflict;
+ if(!stagedCount(r)&&!amend&&!merging)return refuse(r,cmd,'nothing added to commit but untracked files present (use "git add" to track)',
+  ['The index is empty: Git records the staged snapshot, not the working tree.','暂存区是空的：Git 记录的是暂存快照，不是工作区。','暫存區是空的：Git 記錄的是暫存快照，不是工作區。'],
+  ['Run git add <file> (or git commit -a) and then commit again.','先运行 git add <file>（或 git commit -a），再提交。','先執行 git add <file>（或 git commit -a），再提交。']);
+ if(amend&&!head)return refuse(r,cmd,'fatal: You have nothing to amend.',
+  ['There is no commit yet, so there is nothing to replace.','还没有提交，没有可修改的内容。','還沒有提交，沒有可修改的內容。'],
+  ['Commit once first, then use --amend to correct it.','先完成一次提交，再用 --amend 修正。','先完成一次提交，再用 --amend 修正。']);
+ if(!given&&!amend&&!merging)return refuse(r,cmd,'Aborting commit due to empty commit message.',
+  ['A commit message explains why the change happened.','提交说明要解释改动的理由。','提交說明要解釋改動的理由。'],
+  ['Run git commit -m "Reject blank sign-up names".','运行 git commit -m "Reject blank sign-up names"。','執行 git commit -m "Reject blank sign-up names"。']);
+ const message=given||(merging?`Merge branch '${r.conflict.from}'`:commitOf(r,head)?.message||'Change');
+ const parents=merging?[head,r.conflict.from]:head?[head]:[];
+ const tree={...r.index};
+ if(amend){
+  const replaced=commitOf(r,head);
+  r.commits=r.commits.filter(c=>c.id!==head);
+  for(const c of r.commits)c.parents=c.parents.map(p=>p===head?(replaced.parents[0]??null):p);
+ }
+ const commit=writeCommit(r,{message,parents,tree,branch:r.head.detached?'detached':r.head.name});
+ if(r.head.detached)r.head.name=commit.id;
+ else r.branches[r.head.name]=commit.id;
+ r.conflict=null;
+ r.stats.commits++;
+ r.reflog.push(`${amend?'commit (amend)':'commit'}: ${message}`);
+ const changed=Object.keys(tree).length;
+ if(r.head.detached)return [`[detached HEAD ${short(commit.id)}] ${message}`,` ${changed} file${changed===1?'':'s'} changed`,'You are not currently on a branch: save this work with git switch -c <name>.'];
+ return [`[${r.head.name} ${short(commit.id)}] ${message}`,` ${changed} file${changed===1?'':'s'} changed`];
+}
+
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/** Commit dates are simulated from the commit order so runs stay reproducible. */
+function logDate(at){
+ const d=new Date(Date.UTC(2026,0,5+at,9,0,0));
+ return `${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2,'0')}:00:00 2026 +0000`;
+}
+/** A compact hunk: unchanged edges are trimmed, the middle is shown as -/+. */
+function diffLines(path,before,after){
+ const a=String(before??'').split('\n'),b=String(after??'').split('\n');
+ const out=[`diff --git a/${path} b/${path}`];
+ if(before===undefined)out.push('new file mode 100644');
+ if(after===undefined)out.push('deleted file mode 100644');
+ out.push(`--- ${before===undefined?'/dev/null':'a/'+path}`,`+++ ${after===undefined?'/dev/null':'b/'+path}`);
+ let start=0;
+ while(start<a.length&&start<b.length&&a[start]===b[start])start++;
+ let endA=a.length,endB=b.length;
+ while(endA>start&&endB>start&&a[endA-1]===b[endB-1]){endA--;endB--;}
+ const ctx=2,from=Math.max(0,start-ctx),toA=Math.min(a.length,endA+ctx),toB=Math.min(b.length,endB+ctx);
+ out.push(`@@ -${from+1},${toA-from} +${from+1},${toB-from} @@`);
+ for(let i=from;i<start;i++)out.push(' '+a[i]);
+ for(let i=start;i<endA;i++)out.push('-'+a[i]);
+ for(let i=start;i<endB;i++)out.push('+'+b[i]);
+ for(let i=endA;i<toA;i++)out.push(' '+a[i]);
+ return out;
+}
+function diffTrees(r,before,after){
+ const lines=[];
+ for(const p of pathsOf(before,after).sort()){
+  if(before[p]===after[p])continue;
+  lines.push(...diffLines(p,before[p],after[p]));
+ }
+ return lines;
+}
+function cmdDiff(r,args,cmd){
+ const staged=args.includes('--staged')||args.includes('--cached');
+ const ref=args.find(a=>!a.startsWith('-'));
+ if(ref){
+  const id=resolveRef(r,ref);
+  if(!id)return refuse(r,cmd,`fatal: bad revision '${ref}'`,
+   ['That commit or branch does not exist here.','这个提交或分支在这里不存在。','這個提交或分支在這裡不存在。'],
+   ['Run git log --oneline to see the real commit ids.','先运行 git log --oneline 查看真实提交号。','先執行 git log --oneline 查看真實提交號。']);
+  return diffTrees(r,treeOf(r,id),r.files);
+ }
+ if(staged){
+  const head=headId(r);
+  return diffTrees(r,head?treeOf(r,head):{},r.index);
+ }
+ return diffTrees(r,r.index,r.files);
+}
+function cmdShow(r,args,cmd){
+ const ref=args.find(a=>!a.startsWith('-'))||'HEAD';
+ const id=resolveRef(r,ref);
+ if(!id)return refuse(r,cmd,`fatal: ambiguous argument '${ref}': unknown revision or path not in the working tree.`,
+  ['There is no commit with that name.','没有这个名称的提交。','沒有這個名稱的提交。'],
+  ['Run git log --oneline to see the commits you have.','先运行 git log --oneline 查看已有提交。','先執行 git log --oneline 查看已有提交。']);
+ const c=commitOf(r,id);
+ const lines=[`commit ${c.id}`,`Author: ${r.config['user.name']||'Forma learner'} <${r.config['user.email']||'learner@example.edu'}>`,`Date:   ${logDate(c.at)}`,'',`    ${c.message}`,''];
+ lines.push(...diffTrees(r,c.parents[0]?treeOf(r,c.parents[0]):{},c.tree));
+ return lines;
+}
+
+/** Lays commits out in lanes so `git log --graph` looks like Git's own output. */
+function graphRows(r,list){
+ const lanes=[],rows=[];
+ for(const c of list){
+  let col=lanes.indexOf(c.id);
+  if(col<0){lanes.push(c.id);col=lanes.length-1;}
+  rows.push(`${lanes.map((_,i)=>i===col?'*':'|').join(' ')} ${c.id.slice(0,7)} ${c.message}`);
+  lanes.splice(col,1,...c.parents.filter(Boolean));
+  for(let i=lanes.length-1;i>=0;i--)if(lanes.indexOf(lanes[i])!==i)lanes.splice(i,1);
+ }
+ return rows;
+}
+function cmdLog(r,args){
+ const oneline=args.includes('--oneline');
+ const graph=args.includes('--graph');
+ const all=args.includes('--all');
+ const nArg=args.find(a=>/^-\d+$/.test(a));
+ const limit=nArg?Number(nArg.slice(1)):20;
+ const starts=(all?[...Object.values(r.branches),...Object.values(r.tags),...Object.values(r.remoteRefs)]:[headId(r)]).filter(Boolean);
+ const seen=reachable(r,starts);
+ const list=r.commits.filter(c=>seen.has(c.id)).sort((a,b)=>b.at-a.at).slice(0,limit);
+ if(!list.length)return [`fatal: your current branch '${r.head.name}' does not have any commits yet`];
+ if(graph)return graphRows(r,list);
+ const lines=[];
+ for(const c of list){
+  if(oneline){lines.push(`${c.id.slice(0,7)} ${c.message}`);continue;}
+  const refs=[];
+  if(c.id===headId(r)&&!r.head.detached)refs.push(`HEAD -> ${r.head.name}`);
+  for(const [n,tip] of Object.entries(r.branches))if(tip===c.id&&n!==r.head.name)refs.push(n);
+  for(const [n,tip] of Object.entries(r.remoteRefs))if(tip===c.id)refs.push(n);
+  for(const [n,tip] of Object.entries(r.tags))if(tip===c.id)refs.push(`tag: ${n}`);
+  lines.push(`commit ${c.id}${refs.length?` (${refs.join(', ')})`:''}`);
+  if(c.parents.length>1)lines.push(`Merge: ${c.parents.map(p=>p.slice(0,7)).join(' ')}`);
+  lines.push(`Author: ${r.config['user.name']||'Forma learner'} <${r.config['user.email']||'learner@example.edu'}>`,`Date:   ${logDate(c.at)}`,'',`    ${c.message}`,'');
+ }
+ return lines;
+}
+function cmdBranch(r,args,cmd){
+ const remove=args.includes('-d')||args.includes('-D')||args.includes('--delete');
+ const force=args.includes('-D');
+ const all=args.includes('-a')||args.includes('--all');
+ const name=args.find(a=>!a.startsWith('-'));
+ if(remove){
+  if(!name)return refuse(r,cmd,'fatal: branch name required.',
+   ['git branch -d needs the branch name to delete.','git branch -d 需要指定要删除的分支名。','git branch -d 需要指定要刪除的分支名。'],
+   ['Run git branch to see the branch names.','先运行 git branch 查看分支名。','先執行 git branch 查看分支名。']);
+  if(!Object.hasOwn(r.branches,name))return refuse(r,cmd,`error: branch '${name}' not found.`,
+   ['There is no branch with that name.','没有这个名称的分支。','沒有這個名稱的分支。'],
+   ['Run git branch to list the branches you have.','先运行 git branch 列出已有分支。','先執行 git branch 列出已有分支。']);
+  if(name===r.head.name&&!r.head.detached)return refuse(r,cmd,`error: Cannot delete branch '${name}' checked out at '/forma/playground'`,
+   ['You are standing on that branch, so deleting it would lose your place.','你正在这个分支上，删除它会失去当前位置。','你正在這個分支上，刪除它會失去目前位置。'],
+   ['Switch to another branch first: git switch main.','先切换到别的分支：git switch main。','先切換到別的分支：git switch main。']);
+  const tip=r.branches[name];
+  if(!force&&!isAncestor(r,tip,headId(r)))return refuse(r,cmd,`error: The branch '${name}' is not fully merged.`,
+   ['That branch has commits that are not in your current history yet.','该分支上有还没进入当前历史的提交。','該分支上有還沒進入目前歷史的提交。'],
+   ['Merge it first (git merge '+name+'), or delete it with git branch -D '+name+' if the work is unwanted.','先合并它（git merge '+name+'），或确认不要这些工作后用 git branch -D '+name+' 删除。','先合併它（git merge '+name+'），或確認不要這些工作後用 git branch -D '+name+' 刪除。']);
+  delete r.branches[name];
+  return [`Deleted branch ${name} (was ${short(tip)}).`];
+ }
+ if(name){
+  if(Object.hasOwn(r.branches,name))return refuse(r,cmd,`fatal: a branch named '${name}' already exists.`,
+   ['Branch names must be unique: the name is already taken.','分支名必须唯一，这个名字已被使用。','分支名必須唯一，這個名稱已被使用。'],
+   ['Pick another name, or switch to it with git switch '+name+'.','换一个名字，或用 git switch '+name+' 切换过去。','換一個名稱，或用 git switch '+name+' 切換過去。']);
+  if(!/^[A-Za-z][\w./-]{0,35}$/.test(name))return refuse(r,cmd,`fatal: '${name}' is not a valid branch name.`,
+   ['A branch name starts with a letter and uses letters, digits, - . / _ only.','分支名以字母开头，只能使用字母、数字和 - . / _。','分支名以字母開頭，只能使用字母、數字和 - . / _。'],
+   ['Try git branch feature/form.','试试 git branch feature/form。','試試 git branch feature/form。']);
+  if(!headId(r))return refuse(r,cmd,`fatal: not a valid object name: '${r.head.name}'`,
+   ['A branch is a name for a commit, and there is no commit yet.','分支是提交的名字，而现在还没有提交。','分支是提交的名稱，而現在還沒有提交。'],
+   ['Run git add . and git commit -m "Initial version" first.','先运行 git add . 和 git commit -m "Initial version"。','先執行 git add . 和 git commit -m "Initial version"。']);
+  r.branches[name]=headId(r);
+  r.stats.branches++;
+  return [];
+ }
+ const lines=Object.keys(r.branches).sort().map(n=>`${n===r.head.name&&!r.head.detached?'* ':'  '}${n}`);
+ if(all)for(const ref of Object.keys(r.remoteRefs).sort())lines.push(`  remotes/${ref}`);
+ return lines.length?lines:['(no branches yet)'];
+}
+
+function cmdSwitch(r,args,cmd){
+ const create=args.includes('-c')||args.includes('--create')||args.includes('-b');
+ const previous=args.includes('-');
+ const target=previous?'-':(args.filter(a=>!a.startsWith('-')).at(-1)??null);
+ if(!target)return refuse(r,cmd,'fatal: missing branch name.',
+  ['The command needs the branch to switch to.','命令需要指定要切换的分支。','指令需要指定要切換的分支。'],
+  ['Try git switch feature/form, or git switch -c feature/form to create it.','试试 git switch feature/form，或用 git switch -c feature/form 创建。','試試 git switch feature/form，或用 git switch -c feature/form 建立。']);
+ let branch=null,id=null;
+ if(previous){
+  if(!r.previousBranch||!Object.hasOwn(r.branches,r.previousBranch))return refuse(r,cmd,'fatal: no previous branch to switch to.',
+   ['Nothing has been switched yet in this session.','本次会话还没有切换过分支。','本次工作階段還沒有切換過分支。'],
+   ['Run git branch to pick a branch by name.','先运行 git branch 按名称选择分支。','先執行 git branch 依名稱選擇分支。']);
+  branch=r.previousBranch;
+  id=r.branches[branch];
+ }else if(create){
+  if(Object.hasOwn(r.branches,target))return refuse(r,cmd,`fatal: a branch named '${target}' already exists.`,
+   ['Branch names must be unique: the name is already taken.','分支名必须唯一，这个名字已被使用。','分支名必須唯一，這個名稱已被使用。'],
+   ['Switch to it with git switch '+target+', or pick another name.','用 git switch '+target+' 切换过去，或换一个名字。','用 git switch '+target+' 切換過去，或換一個名稱。']);
+  if(!/^[A-Za-z][\w./-]{0,35}$/.test(target))return refuse(r,cmd,`fatal: '${target}' is not a valid branch name.`,
+   ['A branch name starts with a letter and uses letters, digits, - . / _ only.','分支名以字母开头，只能使用字母、数字和 - . / _。','分支名以字母開頭，只能使用字母、數字和 - . / _。'],
+   ['Try git switch -c feature/form.','试试 git switch -c feature/form。','試試 git switch -c feature/form。']);
+  const base=resolveRef(r,target)??headId(r);
+  if(!base)return refuse(r,cmd,`fatal: not a valid object name: '${r.head.name}'`,
+   ['A branch is a name for a commit, and there is no commit yet.','分支是提交的名字，而现在还没有提交。','分支是提交的名稱，而現在還沒有提交。'],
+   ['Run git add . and git commit -m "Initial version" first.','先运行 git add . 和 git commit -m "Initial version"。','先執行 git add . 和 git commit -m "Initial version"。']);
+  r.branches[target]=base;
+  r.stats.branches++;
+  branch=target;
+  id=base;
+ }else if(Object.hasOwn(r.branches,target)){
+  branch=target;
+  id=r.branches[target];
+ }else{
+  const found=resolveRef(r,target);
+  if(!found)return refuse(r,cmd,`fatal: invalid reference: ${target}`,
+   ['No branch, tag or commit has that name in this repository.','仓库里没有这个名称的分支、标签或提交。','倉庫裡沒有這個名稱的分支、標籤或提交。'],
+   ['Run git branch to list branches, or git log --oneline to copy a commit id.','先运行 git branch 列出分支，或 git log --oneline 复制提交号。','先執行 git branch 列出分支，或 git log --oneline 複製提交號。']);
+  id=found;
+ }
+ const nextTree=id?treeOf(r,id):{};
+ const headTree=headId(r)?treeOf(r,headId(r)):{};
+ const blocked=dirtyPaths(r).filter(p=>headTree[p]!==nextTree[p]);
+ if(blocked.length)return refuse(r,cmd,`error: Your local changes to the following files would be overwritten by ${/^git checkout/.test(cmd)?'checkout':'switch'}:\n\t${blocked.join('\n\t')}`,
+  ['You have edits that are not saved in a commit, and the other branch has a different version of those files.','你有未提交的修改，而目标分支上这些文件是不同的版本。','你有未提交的修改，而目標分支上這些檔案是不同的版本。'],
+  ['Commit the work (git add . then git commit -m "...") or set it aside with git stash, then switch.','先提交（git add . 与 git commit -m "..."），或用 git stash 暂存后再切换。','先提交（git add . 與 git commit -m "..."），或用 git stash 暫存後再切換。']);
+ if(r.head.name&&!r.head.detached)r.previousBranch=r.head.name;
+ r.head=branch?{detached:false,name:branch}:{detached:true,name:id};
+ r.files={...nextTree};
+ r.index={...nextTree};
+ r.stats.switches++;
+ if(!branch)return [`Note: switching to '${target}'.`,"You are in 'detached HEAD' state. You can look around and commit, but those commits belong to no branch."];
+ return [create?`Switched to a new branch '${branch}'`:`Switched to branch '${branch}'`];
+}
+
+/** Three-way merge. Returns the lines to print and may leave a conflict behind. */
+function mergeInto(r,theirId,label,message){
+ const ours=headId(r);
+ if(!ours){
+  if(r.head.detached)r.head.name=theirId;
+  else r.branches[r.head.name]=theirId;
+  const tree=treeOf(r,theirId);
+  r.files={...tree};
+  r.index={...tree};
+  r.stats.merges++;
+  return [`Updating ${short(theirId)}`,'Fast-forward'];
+ }
+ if(isAncestor(r,theirId,ours))return ['Already up to date.'];
+ if(isAncestor(r,ours,theirId)){
+  if(r.head.detached)r.head.name=theirId;
+  else r.branches[r.head.name]=theirId;
+  const tree=treeOf(r,theirId);
+  r.files={...tree};
+  r.index={...tree};
+  r.stats.merges++;
+  return [`Updating ${short(ours)}..${short(theirId)}`,'Fast-forward'];
+ }
+ const base=mergeBase(r,ours,theirId);
+ const baseTree=base?treeOf(r,base):{};
+ const ourTree=treeOf(r,ours),theirTree=treeOf(r,theirId);
+ /** @type {Record<string,string|undefined>} */
+ const merged={};
+ /** @type {string[]} */
+ const conflicts=[];
+ for(const p of pathsOf(baseTree,ourTree,theirTree)){
+  const b=baseTree[p],o=ourTree[p],t=theirTree[p];
+  if(o===t)merged[p]=o;
+  else if(o===b)merged[p]=t;
+  else if(t===b)merged[p]=o;
+  else conflicts.push(p);
+ }
+ /** @type {Record<string,string>} */
+ const clean={};
+ for(const p of Object.keys(merged))if(merged[p]!==undefined)clean[p]=merged[p];
+ const snapshot={files:{...r.files},index:{...r.index},branches:{...r.branches},head:{...r.head}};
+ if(conflicts.length){
+  r.index={...clean};
+  r.files={...clean};
+  for(const p of conflicts)writeConflictMarkers(r,p,label,ourTree[p],theirTree[p]);
+  r.conflict={from:label,fromId:theirId,into:r.head.detached?'detached':r.head.name,paths:conflicts,snapshot};
+  r.stats.conflicts++;
+  return [
+   ...conflicts.map(p=>`Auto-merging ${p}`),
+   ...conflicts.map(p=>`CONFLICT (content): Merge conflict in ${p}`),
+   'Automatic merge failed; fix conflicts and then commit the result.'
+  ];
+ }
+ const id=writeCommit(r,{message:message||`Merge branch '${label}'`,parents:[ours,theirId],tree:clean});
+ if(r.head.detached)r.head.name=id;
+ else r.branches[r.head.name]=id;
+ r.files={...clean};
+ r.index={...clean};
+ r.stats.merges++;
+ return ["Merge made by the 'ort' strategy.",` ${pathsOf(baseTree,ourTree,theirTree).length} files merged`];
+}
+function cmdMerge(r,args,cmd){
+ if(args.includes('--abort')){
+  if(!r.conflict)return refuse(r,cmd,'fatal: There is no merge to abort (MERGE_HEAD missing).',
+   ['No merge is waiting to be finished, so there is nothing to undo.','没有正在进行的合并，所以没有可撤销的内容。','沒有正在進行的合併，所以沒有可撤銷的內容。'],
+   ['Check the state with git status.','先用 git status 查看当前状态。','先用 git status 查看目前狀態。']);
+  const s=r.conflict.snapshot;
+  r.files={...s.files};
+  r.index={...s.index};
+  r.branches={...s.branches};
+  r.head={...s.head};
+  r.conflict=null;
+  return ['Merge aborted.'];
+ }
+ if(args.includes('--continue')){
+  if(!r.conflict)return refuse(r,cmd,'fatal: There is no merge in progress (MERGE_HEAD missing).',
+   ['Nothing is being merged right now.','当前没有正在进行的合并。','目前沒有正在進行的合併。'],
+   ['Start one with git merge <branch>.','用 git merge <branch> 开始一次合并。','用 git merge <branch> 開始一次合併。']);
+  return cmdCommit(r,['-m',`Merge branch '${r.conflict.from}'`],cmd);
+ }
+ if(r.conflict)return refuse(r,cmd,'error: You have not concluded your merge (MERGE_HEAD exists).',
+  ['The earlier merge still has unresolved conflicts.','之前的合并还有未解决的冲突。','之前的合併還有未解決的衝突。'],
+  ['Finish it with git add <file> then git commit, or undo it with git merge --abort.','用 git add <file> 与 git commit 完成，或用 git merge --abort 撤销。','用 git add <file> 與 git commit 完成，或用 git merge --abort 撤銷。']);
+ const name=args.find(a=>!a.startsWith('-'));
+ if(!name)return refuse(r,cmd,'fatal: No branch specified.',
+  ['git merge needs the branch to merge in.','git merge 需要指定要合并进来的分支。','git merge 需要指定要合併進來的分支。'],
+  ['Try git merge feature/form.','试试 git merge feature/form。','試試 git merge feature/form。']);
+ if(name===r.head.name&&!r.head.detached)return refuse(r,cmd,`Already on '${name}'`,
+  ['A branch cannot be merged into itself.','分支不能合并到自己。','分支不能合併到自己。'],
+  ['Switch to the branch that should receive the work, then merge: git switch main.','先切换到要接收工作的分支，再合并：git switch main。','先切換到要接收工作的分支，再合併：git switch main。']);
+ let theirId=null;
+ if(Object.hasOwn(r.branches,name))theirId=r.branches[name];
+ else if(Object.hasOwn(r.remoteRefs,name))theirId=r.remoteRefs[name];
+ else{
+  const found=resolveRef(r,name);
+  if(!found)return refuse(r,cmd,`merge: ${name} - not something we can merge`,
+   ['No branch, tag or remote branch has that name.','没有这个名称的分支、标签或远程分支。','沒有這個名稱的分支、標籤或遠端分支。'],
+   ['Run git branch to list branches, or git fetch to update origin/main.','先运行 git branch 列出分支，或用 git fetch 更新 origin/main。','先執行 git branch 列出分支，或用 git fetch 更新 origin/main。']);
+  theirId=found;
+ }
+ return mergeInto(r,theirId,name);
+}
+
+/** Replays one commit's changes on top of `baseTree`, reporting any conflict first. */
+function replay(r,commitId,baseTree){
+ const c=commitOf(r,commitId);
+ const parentTree=c.parents[0]?treeOf(r,c.parents[0]):{};
+ const next={...baseTree},conflicts=[];
+ for(const p of pathsOf(parentTree,c.tree)){
+  if(parentTree[p]===c.tree[p])continue;
+  if(baseTree[p]===parentTree[p])next[p]=c.tree[p];
+  else if(baseTree[p]===c.tree[p]){/* already applied */}
+  else conflicts.push(p);
+ }
+ return {next,conflicts};
+}
+function cmdRebase(r,args,cmd){
+ const onto=args.find(a=>!a.startsWith('-'));
+ if(!onto)return refuse(r,cmd,'fatal: no upstream specified',
+  ['git rebase needs the branch to replay onto.','git rebase 需要指定要重放到的分支。','git rebase 需要指定要重放到的分支。'],
+  ['Try git rebase main.','试试 git rebase main。','試試 git rebase main。']);
+ const ontoId=resolveRef(r,onto);
+ if(!ontoId)return refuse(r,cmd,`fatal: invalid upstream '${onto}'`,
+  ['That branch or commit does not exist here.','这个分支或提交在这里不存在。','這個分支或提交在這裡不存在。'],
+  ['Run git branch to list the branches you have.','先运行 git branch 列出已有分支。','先執行 git branch 列出已有分支。']);
+ if(r.conflict)return refuse(r,cmd,'error: It seems that there is already a merge in progress.',
+  ['Finish or abort the merge before rebasing.','请先完成或撤销当前合并，再执行 rebase。','請先完成或撤銷目前合併，再執行 rebase。'],
+  ['Run git merge --abort, or git add <file> and git commit to finish it.','运行 git merge --abort，或用 git add <file> 与 git commit 完成。','執行 git merge --abort，或用 git add <file> 與 git commit 完成。']);
+ const head=headId(r);
+ if(!head)return refuse(r,cmd,`fatal: invalid upstream '${onto}'`,
+  ['There is no commit to replay yet.','还没有可以重放的提交。','還沒有可以重放的提交。'],
+  ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const base=mergeBase(r,head,ontoId);
+ const chain=[];
+ let cur=head;
+ while(cur&&cur!==base){chain.unshift(cur);cur=commitOf(r,cur)?.parents[0]??null;}
+ if(!chain.length)return ['Current branch is up to date.'];
+ let probe={...treeOf(r,ontoId)};
+ for(const id of chain){
+  const step=replay(r,id,probe);
+  if(step.conflicts.length)return unsupported([
+   `CONFLICT (content): ${step.conflicts.join(', ')} would conflict while replaying ${short(id)}.`,
+   'This teaching model checks the whole rebase first, so nothing has been changed.',
+   'Use git merge to keep both histories, or resolve the conflict by hand.'
+  ]);
+  probe=step.next;
+ }
+ let current=ontoId;
+ for(const id of chain){
+  const step=replay(r,id,treeOf(r,current));
+  current=writeCommit(r,{message:commitOf(r,id).message,parents:[current],tree:step.next,branch:r.head.detached?'detached':r.head.name}).id;
+ }
+ if(r.head.detached)r.head.name=current;
+ else r.branches[r.head.name]=current;
+ const tree=treeOf(r,current);
+ r.files={...tree};
+ r.index={...tree};
+ r.reflog.push(`rebase: onto ${onto}`);
+ return [`Successfully rebased and updated refs/heads/${r.head.detached?'HEAD':r.head.name}.`];
+}
+
+function cmdCherryPick(r,args,cmd){
+ const ref=args.find(a=>!a.startsWith('-'));
+ const id=ref?resolveRef(r,ref):null;
+ if(!id)return refuse(r,cmd,`fatal: bad revision '${ref??''}'`,
+  ['That commit does not exist here.','这个提交在这里不存在。','這個提交在這裡不存在。'],
+  ['Run git log --oneline to copy a real commit id.','先运行 git log --oneline 复制真实提交号。','先執行 git log --oneline 複製真實提交號。']);
+ if(r.conflict)return refuse(r,cmd,'error: A merge is still in progress.',
+  ['Finish or abort the merge first.','请先完成或撤销当前合并。','請先完成或撤銷目前合併。'],
+  ['Run git merge --abort, or git add <file> and git commit.','运行 git merge --abort，或用 git add <file> 与 git commit。','執行 git merge --abort，或用 git add <file> 與 git commit。']);
+ const head=headId(r);
+ if(!head)return refuse(r,cmd,'fatal: cannot cherry-pick onto an empty branch',
+  ['There is no commit to build on yet.','还没有可以继续的提交。','還沒有可以繼續的提交。'],
+  ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const step=replay(r,id,treeOf(r,head));
+ if(step.conflicts.length)return unsupported([
+  `CONFLICT (content): ${step.conflicts.join(', ')} would conflict when applying ${short(id)}.`,
+  'This model stops before changing anything rather than guessing a resolution.',
+  'Merge the branch instead, or apply the change by hand.'
+ ]);
+ const c=commitOf(r,id);
+ const commit=writeCommit(r,{message:`${c.message} (cherry picked from ${short(id)})`,parents:[head],tree:step.next,branch:r.head.detached?'detached':r.head.name});
+ if(r.head.detached)r.head.name=commit.id;
+ else r.branches[r.head.name]=commit.id;
+ r.files={...step.next};
+ r.index={...step.next};
+ r.stats.commits++;
+ return [`[${r.head.detached?'detached HEAD':r.head.name} ${short(commit.id)}] ${c.message}`];
+}
+function cmdRevert(r,args,cmd){
+ const ref=args.find(a=>!a.startsWith('-'));
+ const id=ref?resolveRef(r,ref):null;
+ if(!id)return refuse(r,cmd,`fatal: bad revision '${ref??''}'`,
+  ['That commit does not exist here.','这个提交在这里不存在。','這個提交在這裡不存在。'],
+  ['Run git log --oneline to copy a real commit id.','先运行 git log --oneline 复制真实提交号。','先執行 git log --oneline 複製真實提交號。']);
+ const head=headId(r);
+ if(!head)return refuse(r,cmd,'fatal: nothing to revert',
+  ['There is no commit to undo yet.','还没有可以撤销的提交。','還沒有可以撤銷的提交。'],
+  ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const c=commitOf(r,id),parentTree=c.parents[0]?treeOf(r,c.parents[0]):{},headTree=treeOf(r,head);
+ const next={...headTree},conflicts=[];
+ for(const p of pathsOf(parentTree,c.tree)){
+  if(parentTree[p]===c.tree[p])continue;
+  if(headTree[p]===c.tree[p])next[p]=parentTree[p];
+  else conflicts.push(p);
+ }
+ if(conflicts.length)return unsupported([
+  `CONFLICT (content): ${conflicts.join(', ')} changed after ${short(id)}, so undoing it is ambiguous.`,
+  'This model stops before changing anything rather than guessing.',
+  'Fix the file by hand, or revert an earlier commit instead.'
+ ]);
+ const commit=writeCommit(r,{message:`Revert "${c.message}"`,parents:[head],tree:next,branch:r.head.detached?'detached':r.head.name});
+ if(r.head.detached)r.head.name=commit.id;
+ else r.branches[r.head.name]=commit.id;
+ r.files={...next};
+ r.index={...next};
+ r.stats.commits++;
+ return [`[${r.head.detached?'detached HEAD':r.head.name} ${short(commit.id)}] Revert "${c.message}"`];
+}
+
+function cmdTag(r,args,cmd){
+ const remove=args.includes('-d')||args.includes('--delete');
+ const named=args.filter(a=>!a.startsWith('-'));
+ if(!named.length)return Object.keys(r.tags).sort();
+ const [name,ref]=named;
+ if(remove){
+  if(!Object.hasOwn(r.tags,name))return refuse(r,cmd,`error: tag '${name}' not found.`,
+   ['There is no tag with that name.','没有这个名称的标签。','沒有這個名稱的標籤。'],
+   ['Run git tag to list the tags you have.','先运行 git tag 列出已有标签。','先執行 git tag 列出已有標籤。']);
+  delete r.tags[name];
+  return [`Deleted tag '${name}'`];
+ }
+ if(Object.hasOwn(r.tags,name))return refuse(r,cmd,`fatal: tag '${name}' already exists`,
+  ['Tag names must be unique, and this one is taken.','标签名必须唯一，这个名字已被使用。','標籤名必須唯一，這個名稱已被使用。'],
+  ['Pick another name, or delete it first with git tag -d '+name+'.','换一个名字，或先用 git tag -d '+name+' 删除。','換一個名稱，或先用 git tag -d '+name+' 刪除。']);
+ const id=ref?resolveRef(r,ref):headId(r);
+ if(!id)return refuse(r,cmd,'fatal: Failed to resolve HEAD as a valid ref.',
+  ['A tag names a commit, and there is no commit yet.','标签是提交的名字，而现在还没有提交。','標籤是提交的名稱，而現在還沒有提交。'],
+  ['Commit something first, then tag it.','先完成一次提交，再打标签。','先完成一次提交，再打標籤。']);
+ r.tags[name]=id;
+ return [];
+}
+function cmdStash(r,args,cmd){
+ const action=args.find(a=>!a.startsWith('-'))||'push';
+ if(action==='list')return r.stash.map((s,i)=>`stash@{${i}}: ${s.message}`);
+ if(action==='push'||action==='save'){
+  const w=workChanges(r),s=stagedChanges(r);
+  if(!w.modified.length&&!w.deleted.length&&!s.added.length&&!s.modified.length&&!s.deleted.length)return ['No local changes to save'];
+  const head=headId(r);
+  r.stash.unshift({message:`WIP on ${r.head.detached?'detached':r.head.name}: ${short(head)} ${head?commitOf(r,head).message:''}`,files:{...r.files},index:{...r.index}});
+  const tree=head?treeOf(r,head):{};
+  r.files={...tree};
+  r.index={...tree};
+  r.stats.stashes++;
+  return [`Saved working directory and index state ${r.stash[0].message}`];
+ }
+ if(action==='pop'||action==='apply'){
+  if(!r.stash.length)return refuse(r,cmd,'No stash entries found.',
+   ['Nothing has been set aside yet.','还没有暂存过任何改动。','還沒有暫存過任何改動。'],
+   ['Run git stash to save unfinished work, then git stash pop to bring it back.','先用 git stash 保存未完成的工作，再用 git stash pop 取回。','先用 git stash 儲存未完成的工作，再用 git stash pop 取回。']);
+  const entry=r.stash[0];
+  const conflicts=Object.keys(entry.files).filter(p=>(p in r.files)&&r.files[p]!==r.index[p]&&r.files[p]!==entry.files[p]);
+  if(conflicts.length)return unsupported([
+   `CONFLICT (content): restoring the stash would overwrite unsaved edits in ${conflicts.join(', ')}.`,
+   'This model applies a stash only when nothing would be lost.',
+   'Commit or discard those edits, then run git stash pop again.'
+  ]);
+  for(const [p,v] of Object.entries(entry.files))r.files[p]=v;
+  for(const [p,v] of Object.entries(entry.index))r.index[p]=v;
+  if(action==='pop')r.stash.shift();
+  return [`On branch ${r.head.detached?'detached HEAD':r.head.name}`,'Changes restored from the stash'];
+ }
+ if(action==='drop'){
+  if(!r.stash.length)return refuse(r,cmd,'No stash entries found.',
+   ['Nothing has been set aside yet.','还没有暂存过任何改动。','還沒有暫存過任何改動。'],
+   ['Run git stash list to check.','先用 git stash list 查看。','先用 git stash list 查看。']);
+  r.stash.shift();
+  return [`Dropped refs/stash@{0}`];
+ }
+ return refuse(r,cmd,`error: unknown subcommand: ${action}`,
+  ['This sandbox supports git stash push, list, pop, apply and drop.','这个沙盒支持 git stash push、list、pop、apply 和 drop。','這個沙盒支援 git stash push、list、pop、apply 和 drop。'],
+  ['Run git stash list to see the entries.','运行 git stash list 查看暂存条目。','執行 git stash list 查看暫存條目。']);
+}
+
+function cmdRemote(r,args,cmd){
+ const sub=(args[0]||'').toLowerCase();
+ const rest=args.slice(1).filter(a=>!a.startsWith('-'));
+ if(!sub||sub==='-v'||sub==='--verbose')return Object.entries(r.remotes).flatMap(([n,x])=>[`${n}\t${x.url} (fetch)`,`${n}\t${x.url} (push)`]);
+ if(sub==='add'){
+  const [name,url]=rest;
+  if(!name||!url)return refuse(r,cmd,'usage: git remote add <name> <url>',
+   ['git remote add needs a name and a URL.','git remote add 需要名称和 URL。','git remote add 需要名稱和 URL。'],
+   ['Try git remote add origin https://example.edu/team/project.git.','试试 git remote add origin https://example.edu/team/project.git。','試試 git remote add origin https://example.edu/team/project.git。']);
+  if(Object.hasOwn(r.remotes,name))return refuse(r,cmd,`error: remote ${name} already exists.`,
+   ['A remote with that name is already configured.','该名称的远程仓库已经配置过。','該名稱的遠端倉庫已經設定過。'],
+   ['Run git remote -v to see it, or pick another name.','运行 git remote -v 查看，或换一个名称。','執行 git remote -v 查看，或換一個名稱。']);
+  r.remotes[name]={url,branches:{}};
+  return [];
+ }
+ if(sub==='remove'||sub==='rm'){
+  const [name]=rest;
+  if(!name||!Object.hasOwn(r.remotes,name))return refuse(r,cmd,`error: No such remote: '${name??''}'`,
+   ['No remote with that name is configured.','没有配置这个名称的远程仓库。','沒有設定這個名稱的遠端倉庫。'],
+   ['Run git remote -v to list the remotes you have.','运行 git remote -v 列出已有远程仓库。','執行 git remote -v 列出已有遠端倉庫。']);
+  delete r.remotes[name];
+  for(const ref of Object.keys(r.remoteRefs))if(ref.startsWith(name+'/'))delete r.remoteRefs[ref];
+  return [];
+ }
+ return refuse(r,cmd,`error: Unknown subcommand: ${sub}`,
+  ['This sandbox supports git remote, add, -v and remove.','这个沙盒支持 git remote、add、-v 和 remove。','這個沙盒支援 git remote、add、-v 和 remove。'],
+  ['Run git remote -v to list the remotes.','运行 git remote -v 列出远程仓库。','執行 git remote -v 列出遠端倉庫。']);
+}
+/** Copies the remote's objects and branches into the local repository. */
+function fetchRemote(r,name){
+ const remote=r.remotes[name];
+ const lines=[`From ${remote.url}`];
+ remote.objects??={};
+ for(const [branch,tip] of Object.entries(remote.branches)){
+  const ref=`${name}/${branch}`,before=r.remoteRefs[ref]??null;
+  for(const id of Object.keys(remote.objects))if(!commitOf(r,id))r.commits.push(structuredClone(remote.objects[id]));
+  r.remoteRefs[ref]=tip;
+  lines.push(before?`   ${short(before)}..${short(tip)}  ${branch}     -> ${ref}`:` * [new branch]      ${branch}     -> ${ref}`);
+ }
+ r.stats.fetches++;
+ if(lines.length===1)lines.push('Everything up to date.');
+ return lines;
+}
+function cmdFetch(r,args,cmd){
+ const name=args.find(a=>!a.startsWith('-'))||'origin';
+ if(!Object.hasOwn(r.remotes,name))return refuse(r,cmd,`fatal: '${name}' does not appear to be a git repository`,
+  ['No remote with that name is configured.','没有配置这个名称的远程仓库。','沒有設定這個名稱的遠端倉庫。'],
+  ['Run git remote -v to see the remotes, or git clone <url> to start from one.','运行 git remote -v 查看远程仓库，或用 git clone <url> 从远程开始。','執行 git remote -v 查看遠端倉庫，或用 git clone <url> 從遠端開始。']);
+ return fetchRemote(r,name);
+}
+function cmdPush(r,args,cmd){
+ const positional=args.filter(a=>!a.startsWith('-'));
+ const remoteName=positional[0]||r.upstream[r.head.name]?.remote||'origin';
+ if(!Object.hasOwn(r.remotes,remoteName))return refuse(r,cmd,`fatal: '${remoteName}' does not appear to be a git repository`,
+  ['No remote with that name is configured, so there is nowhere to push.','没有配置这个名称的远程仓库，没有可推送的目标。','沒有設定這個名稱的遠端倉庫，沒有可推送的目標。'],
+  ['Run git remote -v to see the remotes, or git clone <url> to start from one.','运行 git remote -v 查看远程仓库，或用 git clone <url> 从远程开始。','執行 git remote -v 查看遠端倉庫，或用 git clone <url> 從遠端開始。']);
+ if(r.head.detached)return refuse(r,cmd,'fatal: You are not currently on a branch.',
+  ['A push sends a branch, and a detached HEAD is not one.','推送需要分支，而 detached HEAD 不是分支。','推送需要分支，而 detached HEAD 不是分支。'],
+  ['Save the work on a branch first: git switch -c my-work.','先把工作放到分支上：git switch -c my-work。','先把工作放到分支上：git switch -c my-work。']);
+ const branch=positional[1]||r.head.name;
+ const local=r.branches[branch];
+ if(!local)return refuse(r,cmd,`error: src refspec ${branch} does not match any`,
+  ['That branch does not exist locally.','本地没有这个分支。','本地沒有這個分支。'],
+  ['Run git branch to list your branches.','运行 git branch 列出你的分支。','執行 git branch 列出你的分支。']);
+ const remote=r.remotes[remoteName];
+ const remoteTip=remote.branches[branch]??null;
+ if(remoteTip===local)return [`To ${remote.url}`,'Everything up-to-date'];
+ if(remoteTip&&!isAncestor(r,remoteTip,local))return refuse(r,cmd,
+  `! [rejected]        ${branch} -> ${branch} (non-fast-forward)\nerror: failed to push some refs to '${remote.url}'\nhint: Updates were rejected because the remote contains work that you do not have locally.`,
+  ['The remote has commits you do not have, so this push would erase someone else\'s work.','远程有你没有的提交，这次推送会抹掉别人的工作。','遠端有你沒有的提交，這次推送會抹掉別人的工作。'],
+  ['Run git pull first, then push again.','先运行 git pull，然后再推送。','先執行 git pull，然後再推送。']);
+ remote.objects??={};
+ for(const c of r.commits)remote.objects[c.id]=structuredClone(c);
+ remote.branches[branch]=local;
+ if(args.includes('-u')||args.includes('--set-upstream'))r.upstream[branch]={remote:remoteName,branch};
+ r.stats.pushes++;
+ r.reflog.push(`push: ${branch} -> ${remoteName}/${branch}`);
+ return [`To ${remote.url}`,remoteTip?`   ${short(remoteTip)}..${short(local)}  ${branch} -> ${branch}`:` * [new branch]      ${branch} -> ${branch}`];
+}
+
+function cmdPull(r,args,cmd){
+ const positional=args.filter(a=>!a.startsWith('-'));
+ const remoteName=positional[0]||r.upstream[r.head.name]?.remote||'origin';
+ if(!Object.hasOwn(r.remotes,remoteName))return refuse(r,cmd,`fatal: '${remoteName}' does not appear to be a git repository`,
+  ['No remote with that name is configured, so there is nothing to pull from.','没有配置这个名称的远程仓库，没有可拉取的内容。','沒有設定這個名稱的遠端倉庫，沒有可拉取的內容。'],
+  ['Run git remote -v to see the remotes, or git clone <url> to start from one.','运行 git remote -v 查看远程仓库，或用 git clone <url> 从远程开始。','執行 git remote -v 查看遠端倉庫，或用 git clone <url> 從遠端開始。']);
+ const branch=positional[1]||r.upstream[r.head.name]?.branch||r.head.name;
+ const ref=`${remoteName}/${branch}`;
+ const lines=fetchRemote(r,remoteName);
+ const theirId=r.remoteRefs[ref]??null;
+ if(!theirId)return refuse(r,cmd,`fatal: couldn't find remote ref ${branch}`,
+  ['The remote has no branch with that name.','远程没有这个名称的分支。','遠端沒有這個名稱的分支。'],
+  ['Run git branch -a to list local and remote branches.','运行 git branch -a 列出本地和远程分支。','執行 git branch -a 列出本地和遠端分支。']);
+ lines.push(...mergeInto(r,theirId,ref));
+ r.stats.pulls++;
+ return lines;
+}
+/** A small shared project so clone, fetch, pull and push have something to move. */
+function seedRemote(url){
+ const first={'README.md':'# Team project\nA small web app the team builds together.'};
+ const second={...first,'src/app.js':'export function validateSignup(form) {\n  return form.name.trim().length > 0;\n}'};
+ const a=hashOf('forma-clone-seed-readme'),b=hashOf('forma-clone-seed-validate');
+ const commits=[
+  {id:a,message:'Add the project README',parents:[],tree:{...first},branch:'main',at:0},
+  {id:b,message:'Reject blank sign-up names',parents:[a],tree:{...second},branch:'main',at:1}
+ ];
+ return {url,commits,tip:b,tree:second};
+}
+function cmdClone(r,args,cmd){
+ const url=args.find(a=>!a.startsWith('-'));
+ if(!url)return refuse(r,cmd,'fatal: You must specify a repository to clone.',
+  ['git clone needs the URL of the repository.','git clone 需要仓库的 URL。','git clone 需要倉庫的 URL。'],
+  ['Try git clone https://example.edu/team/project.git.','试试 git clone https://example.edu/team/project.git。','試試 git clone https://example.edu/team/project.git。']);
+ if(r.initialised)return refuse(r,cmd,"fatal: destination path '.' already exists and is not an empty directory.",
+  ['A repository already exists here, and cloning would replace it.','这里已经有仓库，克隆会覆盖它。','這裡已經有倉庫，複製會覆蓋它。'],
+  ['Reset the lab to start from an empty directory, then clone again.','先重置实验，从空目录开始再克隆。','先重設實驗，從空目錄開始再複製。']);
+ const seed=seedRemote(url);
+ r.initialised=true;
+ r.commits=structuredClone(seed.commits);
+ r.branches={main:seed.tip};
+ r.head={detached:false,name:'main'};
+ r.files={...seed.tree};
+ r.index={...seed.tree};
+ r.remotes={origin:{url,branches:{main:seed.tip},objects:Object.fromEntries(seed.commits.map(c=>[c.id,structuredClone(c)]))}};
+ r.remoteRefs={'origin/main':seed.tip};
+ r.upstream={main:{remote:'origin',branch:'main'}};
+ r.reflog=['clone: from '+url];
+ return [`Cloning into '${url.split('/').filter(Boolean).pop()?.replace(/\.git$/,'')||'project'}'...`,'remote: Enumerating objects: 2, done.','Receiving objects: 100% (2/2), done.','Checking out files: 100% (2/2), done.'];
+}
+function cmdClean(r,args,cmd){
+ const dry=args.includes('-n')||args.includes('--dry-run');
+ const force=args.includes('-f')||args.includes('--force');
+ if(!dry&&!force)return refuse(r,cmd,'fatal: clean.requireForce defaults to true and neither -i, -n, nor -f given; refusing to clean',
+  ['git clean deletes files that Git is not tracking, so it asks for -n or -f first.','git clean 会删除未被跟踪的文件，所以需要先给出 -n 或 -f。','git clean 會刪除未被追蹤的檔案，所以需要先給出 -n 或 -f。'],
+  ['Run git clean -n to preview, then git clean -f to delete.','先用 git clean -n 预览，再用 git clean -f 删除。','先用 git clean -n 預覽，再用 git clean -f 刪除。']);
+ const untracked=untrackedFiles(r);
+ for(const p of untracked)if(!dry)delete r.files[p];
+ return untracked.map(p=>dry?`Would remove ${p}`:`Removing ${p}`);
+}
+function cmdReflog(r){
+ return [...r.reflog].reverse().map((entry,i)=>`${short(headId(r))} HEAD@{${i}}: ${entry}`);
+}
+function cmdHelp(r,args){
+ const name=args.find(a=>!a.startsWith('-'));
+ if(name&&GIT_USAGE[name])return [`usage: ${GIT_USAGE[name]}`,'',`${name} runs for real in this teaching repository.`];
+ if(name)return [`No manual entry for ${name}`];
+ return [
+  'usage: git <command> [<args>]',
+  '',
+  'These commands run in this teaching repository:',
+  '',
+  ...GIT_COMMANDS.map(c=>`   ${GIT_USAGE[c]}`),
+  '',
+  'Real Git has many more commands. This sandbox keeps the everyday workflow and refuses anything else instead of pretending.'
+ ];
+}
+
+const HANDLERS={
+ init:r=>cmdInit(r),
+ clone:cmdClone,
+ config:cmdConfig,
+ status:(r,args)=>cmdStatus(r,args),
+ add:cmdAdd,
+ rm:cmdRm,
+ mv:cmdMv,
+ restore:cmdRestore,
+ reset:cmdReset,
+ commit:cmdCommit,
+ log:(r,args)=>cmdLog(r,args),
+ diff:cmdDiff,
+ show:cmdShow,
+ branch:cmdBranch,
+ switch:cmdSwitch,
+ checkout:cmdSwitch,
+ merge:cmdMerge,
+ rebase:cmdRebase,
+ 'cherry-pick':cmdCherryPick,
+ revert:cmdRevert,
+ tag:cmdTag,
+ stash:cmdStash,
+ remote:cmdRemote,
+ fetch:cmdFetch,
+ pull:cmdPull,
+ push:cmdPush,
+ clean:cmdClean,
+ reflog:r=>cmdReflog(r),
+ help:(r,args)=>cmdHelp(r,args),
+ version:()=>['git version 2.43.0 (Forma teaching sandbox)']
+};
+function editDistance(a,b){
+ const rows=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);
+ for(let j=0;j<=b.length;j++)rows[0][j]=j;
+ for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)rows[i][j]=Math.min(rows[i-1][j]+1,rows[i][j-1]+1,rows[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+ return rows[a.length][b.length];
+}
+function closestCommand(name){
+ let best=null,score=99;
+ for(const c of GIT_COMMANDS){const d=editDistance(name,c);if(d<score){score=d;best=c;}}
+ return score<=3?best:null;
+}
+/**
+ * Runs one command line against a copy of the repository.
+ * Returns the new repository, the lines to print, and — when the learner made a
+ * mistake — the recorded explanation that the review panel shows afterwards.
+ * @param {ReturnType<typeof createRepo>} repo
+ * @param {string} input
+ */
+export function runGit(repo,input){
+ const next=structuredClone(repo);
+ const base=createRepo();
+ next.transcript??=[];
+ next.mistakes??=[];
+ next.stats??={...base.stats};
+ for(const key of Object.keys(base.stats))next.stats[key]??=0;
+ const raw=String(input??'').trim().replace(/^git\s+/,'');
+ const command='git '+raw;
+ const argv=tokenize(raw);
+ const name=(argv[0]||'').toLowerCase();
+ const before=next.mistakes.length;
+ let lines;
+ if(!raw)lines=refuse(next,command,'usage: git <command> [<args>]',
+  ['A Git command needs a subcommand.','Git 命令需要子命令。','Git 指令需要子指令。'],
+  ['Try git status, or git help for the full list.','试试 git status，或用 git help 查看全部命令。','試試 git status，或用 git help 查看全部指令。']);
+ else if(name==='--help'||name==='-h')lines=cmdHelp(next,[]);
+ else if(!next.initialised&&!['init','clone','help','version','config'].includes(name))lines=refuse(next,command,'fatal: not a git repository (or any of the parent directories): .git',
+  ['There is no repository here yet, so Git has nothing to work on.','这里还没有仓库，Git 没有可操作的内容。','這裡還沒有倉庫，Git 沒有可操作的內容。'],
+  ['Run git init, or git clone <url> to start from a shared project.','先运行 git init，或用 git clone <url> 从共享项目开始。','先執行 git init，或用 git clone <url> 從共享專案開始。']);
+ else if(!Object.hasOwn(HANDLERS,name)){
+  const guess=closestCommand(name);
+  lines=refuse(next,command,`git: '${name}' is not a git command. See 'git help'.${guess?`\nDid you mean '${guess}'?`:''}`,
+   ['This sandbox runs the commands listed by git help, and nothing else.','这个沙盒只运行 git help 列出的命令。','這個沙盒只執行 git help 列出的指令。'],
+   guess
+    ?[`Try git ${guess}, or run git help for the full list.`,'试试 git '+guess+'，或用 git help 查看全部命令。','試試 git '+guess+'，或用 git help 查看全部指令。']
+    :['Run git help for the full list.','运行 git help 查看全部命令。','執行 git help 查看全部指令。']);
+ }else lines=HANDLERS[name](next,argv.slice(1),command);
+ if(!Array.isArray(lines))lines=[];
+ next.stats.commands++;
+ next.transcript.push('$ '+command,...lines,'');
+ // Keep the stored state small: the terminal shows the recent session and the
+ // review keeps the most recent mistakes.
+ if(next.transcript.length>600)next.transcript=next.transcript.slice(-600);
+ if(next.mistakes.length>60)next.mistakes=next.mistakes.slice(-60);
+ return {repo:next,output:lines,mistake:next.mistakes.length>before?next.mistakes.at(-1):null};
+}
+/**
+ * The goals a learner works through. Four of them are required before the lab
+ * counts as practised; the rest are there to explore.
+ * @param {ReturnType<typeof createRepo>} repo
+ */
+export function gitMilestones(repo){
+ const s={...createRepo().stats,...(repo.stats??{})};
+ return [
+  {id:'repository',core:false,done:repo.initialised,label:['Create a repository','创建仓库','建立倉庫']},
+  {id:'commit',core:true,done:(s.commits??0)>0,label:['Make a commit','完成一次提交','完成一次提交']},
+  {id:'branch',core:true,done:Object.keys(repo.branches).length>1,label:['Create a branch','创建分支','建立分支']},
+  {id:'switch',core:true,done:(s.switches??0)>0,label:['Switch branches','切换分支','切換分支']},
+  {id:'merge',core:true,done:(s.merges??0)>0,label:['Merge a branch back','把分支合并回来','把分支合併回來']},
+  {id:'conflict',core:false,done:(s.resolves??0)>0,label:['Resolve a conflict','解决一次冲突','解決一次衝突']},
+  {id:'stash',core:false,done:(s.stashes??0)>0,label:['Set work aside with git stash','用 git stash 暂存工作','用 git stash 暫存工作']},
+  {id:'remote',core:false,done:Object.keys(repo.remotes).length>0,label:['Connect a remote','连接远程仓库','連接遠端倉庫']},
+  {id:'push',core:false,done:(s.pushes??0)>0,label:['Push to the remote','推送到远程','推送到遠端']},
+  {id:'fetch',core:false,done:(s.fetches??0)>0||(s.pulls??0)>0,label:['Fetch or pull changes','获取远程改动','取得遠端改動']},
+  {id:'undo',core:false,done:repo.commits.some(c=>/^Revert /.test(c.message)),label:['Undo a commit safely','安全撤销一次提交','安全撤銷一次提交']}
+ ];
+}
+/** True once every required goal has been met. */
+export const gitComplete=repo=>gitMilestones(repo).filter(m=>m.core).every(m=>m.done);
