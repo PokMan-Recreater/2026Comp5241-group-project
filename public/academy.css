@@ -232,4 +232,19 @@
 .quest-hero+.quest-langbar,.quest-langbar+.quest-hero{margin-top:14px}
 @media(max-width:700px){.quest-tips{grid-template-columns:1fr}}
 .academy-output.failed{background:#fff5f4;border-color:#e3b3ad;color:#8a332c}
+.git-state{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}
+.git-state h3,.git-files h3,.git-review h2,.git-goals h2{font-size:1rem;margin:0 0 10px}
+.git-state p{font-size:.92rem;margin:0 0 10px;overflow-wrap:anywhere}
+.git-files{border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}
+.git-files textarea{min-height:140px}
+.git-review ol{padding-left:22px;margin:12px 0 0}
+.git-review li{margin-bottom:20px}
+.git-review code{display:inline-block;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f7f5fc;border:1px solid var(--line);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
+.git-review-message{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8a332c;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+.git-review p{font-size:.92rem;margin:6px 0}
+.git-goals{margin:22px 0}
+.git-goal-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.git-goal-list li{font-size:.94rem;color:#605a8a}
+.git-goal-list li.done{color:#31593e;font-weight:650}
+@media(max-width:700px){.git-state{grid-template-columns:1fr}}
 

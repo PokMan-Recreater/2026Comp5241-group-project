@@ -144,3 +144,4 @@ export function gitStep(state,action,value=''){
  s.log.push(`${action} ${value}`.trim());return s;
 }
 export {promptReview,promptAnalysis,retrieve,rankDocuments,initialDocker,dockerStep,gradientStep,pipelineResult,diagnosePipeline} from './academy-models.js';
+export {createRepo,runGit,writeFile,removeFile,gitMilestones,gitComplete,GIT_SEED_FILES} from './git-sim.js';
