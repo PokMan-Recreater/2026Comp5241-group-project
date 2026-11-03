@@ -3,7 +3,7 @@
 // Usage: node scripts/course-eval.mjs [--lang zh-CN] [--lessons 2] [topic ...]
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {providerMessages} from './course-ai-prompts.mjs';
+import {providerMessages,repairMessages} from './course-ai-prompts.mjs';
 import {outlineProblems,fullLessonProblems,normalizeLesson,normalizeOutline} from './course-ai-shape.mjs';
 
 async function loadEnv(){
@@ -30,6 +30,12 @@ async function generate(payload,maxTokens){
  catch(error){if(!freeFallback||!(error.status===429||error.name==='TimeoutError'))throw error;return ask('glm-4-flash-250414',messages,maxTokens);}
 }
 const parse=content=>JSON.parse(String(content).replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
+async function repair(payload,raw,problems){
+ const messages=repairMessages(payload,raw,problems),maxTokens=payload.action==='outline'?2000:5200;
+ try{return await ask(primary,messages,maxTokens);}
+ catch(error){if(!freeFallback||!(error.status===429||error.name==='TimeoutError'))return null;try{return await ask('glm-4-flash-250414',messages,maxTokens);}catch{return null;}}
+}
+const lessonProblemsOf=value=>{const problems=fullLessonProblems(value);if(!Array.isArray(value?.questions)||value.questions.length<1)problems.push('at least one multiple-choice question is required');return problems;};
 const lessonMetrics=l=>({
  slides:l.slides?.length??0,
  scenes:[...new Set((l.slides||[]).map(s=>s.art?.scene))],
@@ -48,22 +54,32 @@ async function main(){
  for(const topic of topics){
   const report={topic,language,stages:[]};
   const requirements='面向大学一年级学生，用具体例子讲清原理，避免未经证实的说法。';
-  const outlineResult=await generate({action:'outline',language,topic,requirements,instruction:'',current:''},2000);
-  let outline=null;
+  const outlinePayload={action:'outline',language,topic,requirements,instruction:'',current:''};
+  const outlineResult=await generate(outlinePayload,2000);
+  let outline=null,outlineRaw=outlineResult.content,outlineModel=outlineResult.model,outlineUsage=outlineResult.usage,outlineRepaired=false;
   try{outline=parse(outlineResult.content);}catch{report.stages.push({stage:'outline',ok:false,error:'invalid_json'});}
   if(outline){
-   const problems=outlineProblems(outline),ok=problems.length===0;
-   report.stages.push({stage:'outline',ok,model:outlineResult.model,usage:outlineResult.usage,metrics:ok?{lessons:outline.lessons.length,titles:new Set(outline.lessons.map(l=>l.title.trim())).size,bodies:outline.lessons.map(l=>l.body.split(/\s+/).length)}:{problems},...(ok?{}:{raw:outlineResult.content})});
-   if(ok)outline=normalizeOutline(outline,language);
+   let problems=outlineProblems(outline);
+   if(problems.length){
+    const fix=await repair(outlinePayload,outlineResult.content,problems);
+    if(fix){try{const fixed=parse(fix.content);if(!outlineProblems(fixed).length){outline=fixed;problems=[];outlineRepaired=true;outlineRaw=fix.content;outlineModel=fix.model;outlineUsage=fix.usage;}}catch{/* keep the original failure */}}
+   }
+   const ok=problems.length===0;
+   report.stages.push({stage:'outline',ok,repaired:outlineRepaired,model:outlineModel,usage:outlineUsage,metrics:ok?{lessons:outline.lessons.length,titles:new Set(outline.lessons.map(l=>l.title.trim())).size,bodies:outline.lessons.map(l=>l.body.split(/\s+/).length)}:{problems},...(ok?{}:{raw:outlineRaw})});
+   outline=ok?normalizeOutline(outline,language):null;
   }
   if(outline){
    for(const lesson of outline.lessons.slice(0,maxLessons)){
-    const result=await generate({action:'lesson',language,topic:outline.title+' · '+lesson.title,requirements,instruction:'',current:JSON.stringify(lesson)},5200);
+    const payload={action:'lesson',language,topic:outline.title+' · '+lesson.title,requirements,instruction:'',current:JSON.stringify(lesson)};
+    const result=await generate(payload,5200);
     let value;try{value=parse(result.content);}catch{report.stages.push({stage:'lesson',topic:lesson.title,ok:false,error:'invalid_json'});continue;}
-    const problems=fullLessonProblems(value);
-    if(!Array.isArray(value?.questions)||value.questions.length<1)problems.push('at least one multiple-choice question is required');
+    let problems=lessonProblemsOf(value),repaired=false,model=result.model,usage=result.usage;
+    if(problems.length){
+     const fix=await repair(payload,result.content,problems);
+     if(fix){try{const fixed=parse(fix.content);if(!lessonProblemsOf(fixed).length){value=fixed;problems=[];repaired=true;model=fix.model;usage=fix.usage;}}catch{/* keep the original failure */}}
+    }
     const ok=problems.length===0;
-    report.stages.push({stage:'lesson',topic:lesson.title,ok,model:result.model,usage:result.usage,metrics:ok?lessonMetrics(normalizeLesson(value)):{problems},...(ok?{lesson:normalizeLesson(value)}:{raw:result.content})});
+    report.stages.push({stage:'lesson',topic:lesson.title,ok,repaired,model,usage,metrics:ok?lessonMetrics(normalizeLesson(value)):{problems},...(ok?{lesson:normalizeLesson(value)}:{raw:result.content})});
    }
   }
   const bad=report.stages.filter(s=>!s.ok).length;failed+=bad;
