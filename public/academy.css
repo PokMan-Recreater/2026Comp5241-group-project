@@ -228,9 +228,8 @@
 @media(max-width:700px){.quest-hero-copy{max-width:none;background:#fffdf1ee}.quest-chapter-body{padding-left:18px}.quest-ex{grid-template-columns:minmax(0,1fr) auto}.quest-ex-n{display:none}.quest-badges{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:1150px){.quest-course,.quest-lesson{grid-template-columns:1fr}.quest-sidebar{position:static}}
 .quest-terminal{overflow-x:auto}
-.quest-tips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.quest-tips b{font-size:11px;color:#605a8a}.quest-tips pre{margin:3px 0 0;padding:8px 10px;border-radius:8px;background:#eeeaff;font:400 12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto}
+.quest-tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px;margin-top:10px}.quest-tips>div{min-width:0}.quest-tips b{font-size:11px;color:#605a8a}.quest-tips pre{max-width:100%;margin:3px 0 0;padding:8px 10px;border-radius:8px;background:#eeeaff;font:400 12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre}
 .quest-hero+.quest-langbar,.quest-langbar+.quest-hero{margin-top:14px}
-@media(max-width:700px){.quest-tips{grid-template-columns:1fr}}
 .academy-output.failed{background:#fff5f4;border-color:#e3b3ad;color:#8a332c}
 .git-state{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-bottom:1px solid #e4def1;padding-bottom:20px;margin-bottom:20px}
 .git-state h3,.git-files h3,.git-review h2,.git-goals h2{font-size:1rem;margin:0 0 10px}
@@ -332,3 +331,5 @@
 @keyframes px-drift{to{transform:translateX(28px)}}
 @media(max-width:700px){.quest-story.wide{grid-template-columns:1fr}.quest-story.wide .quest-scene{border-right:0;border-bottom:2px solid #050038}}
 .quest-story-tags{display:flex;gap:6px;flex-wrap:wrap}
+/* Keep every card in the exercise columns inside its column at any zoom level. */
+.quest-brief,.quest-hint,.quest-work,.quest-codewrap,.quest-story{min-width:0;max-width:100%}.quest-hint{overflow:hidden}.quest-goal,.quest-terminal{overflow-x:auto}
