@@ -9,3 +9,4 @@ export const providerMessages=({action,language,topic,requirements,instruction,c
  {role:'system',content:systemPrompt({action,language})},
  {role:'user',content:JSON.stringify({topic,requirements,instruction,currentLesson:current})}
 ];
+export const repairMessages=(payload,raw,problems)=>[...providerMessages(payload),{role:'assistant',content:String(raw)},{role:'user',content:'Your previous JSON failed validation: '+problems.slice(0,10).join('; ')+'. Return the complete corrected JSON only, keeping every part that was already valid.'}];

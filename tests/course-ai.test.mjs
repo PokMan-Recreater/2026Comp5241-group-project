@@ -49,6 +49,23 @@ test('structured slide lessons are accepted and derive outline fields',()=>scena
  assert.deepEqual(lesson.questions,slideLesson.questions);
 }));
 
+test('an invalid first answer is repaired with the validation feedback instead of failing',()=>scenario(async()=>{
+ const bad=JSON.parse(JSON.stringify(slideLesson));bad.slides[0].art={scene:'document',items:['甲','乙','丙','丁']};
+ const calls=[];
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes('/auth/v1/user'))return new Response(JSON.stringify({id:'repair-teacher',app_metadata:{role:'teacher'}}));
+  calls.push(JSON.parse(options.body));
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(calls.length===1?bad:slideLesson)}}]}));
+ };
+ const res=response();await handler(request(body),res);
+ assert.equal(res.statusCode,200);
+ assert.deepEqual(res.data.lesson.slides,slideLesson.slides);
+ assert.equal(calls.length,2);
+ assert.equal(calls[1].messages.length,4);
+ assert.match(calls[1].messages[3].content,/failed validation/);
+ assert.match(calls[1].messages[3].content,/art must use a known scene/);
+}));
+
 test('a slide illustration scene must come from the bounded vocabulary',()=>scenario(async()=>{
  const bad=JSON.parse(JSON.stringify(slideLesson));bad.slides[0].art.scene='script';
  globalThis.fetch=async url=>new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'scene-teacher',app_metadata:{role:'teacher'}}:{choices:[{message:{content:JSON.stringify(bad)}}]}));
