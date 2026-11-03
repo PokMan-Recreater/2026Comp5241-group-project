@@ -99,7 +99,7 @@ function conflicted(){
  return runGit(repo,'git merge feature/validation');
 }
 
-test('a conflicting merge writes markers, blocks the commit and finishes after staging',()=>{
+test('a conflicting merge writes markers, refuses to stage them, and finishes after the edit',()=>{
  const merge=conflicted();
  assert.deepEqual(merge.repo.conflict.paths,['src/app.js']);
  assert.match(merge.output.join('\n'),/CONFLICT \(content\): Merge conflict in src\/app\.js/);
@@ -108,7 +108,12 @@ test('a conflicting merge writes markers, blocks the commit and finishes after s
  assert.match(runGit(merge.repo,'git status').output.join('\n'),/both modified: {3}src\/app\.js/);
  const blocked=runGit(merge.repo,'git commit -m "during conflict"');
  assert.match(blocked.output.join('\n'),/unmerged files/);
- const staged=runGit(merge.repo,'git add src/app.js');
+ const markers=runGit(merge.repo,'git add src/app.js');
+ assert.match(markers.output.join('\n'),/still contains conflict markers/);
+ assert.deepEqual(markers.repo.conflict.paths,['src/app.js'],'the merge must stay open while the markers are there');
+ assert.equal(markers.repo.mistakes.length,1);
+ assert.match(runGit(markers.repo,'git commit -m "commit the markers"').output.join('\n'),/unmerged files/);
+ const staged=runGit(writeFile(markers.repo,'src/app.js',APP_RESOLVED),'git add src/app.js');
  assert.deepEqual(staged.repo.conflict.paths,[]);
  assert.match(staged.output.join('\n'),/Resolved 'src\/app\.js'/);
  const done=runGit(staged.repo,'git commit -m "Merge the validation rules"');
@@ -116,6 +121,7 @@ test('a conflicting merge writes markers, blocks the commit and finishes after s
  assert.equal(done.repo.commits.at(-1).parents.length,2);
  for(const parent of done.repo.commits.at(-1).parents)assert.ok(done.repo.commits.some(c=>c.id===parent),'a resolved merge must point at real commits');
  assert.ok(done.repo.commits.some(c=>c.id===done.repo.branches.main));
+ assert.equal(/<<<<<<</.test(String(done.repo.commits.at(-1).tree['src/app.js'])),false,'no markers may reach the commit');
 });
 
 test('merge --abort restores the branch, index and files from before the merge',()=>{
@@ -334,6 +340,58 @@ test('every production situation is split into small ordered tasks that its docu
  assert.deepEqual(scenarioTasks(createRepo()),[]);
  assert.equal(scenarioById('nope'),null);
  assert.equal(startScenario('nope').scenario.id,GIT_SCENARIOS[0].id);
+});
+
+test('uncommitted work is carried across a switch and never silently discarded',()=>{
+ let repo=committed();
+ repo=runGit(repo,'git switch -c feature/form').repo;
+ repo=writeFile(repo,'notes.txt','Review checklist:\n- unfinished thought');
+ const carried=runGit(repo,'git switch main');
+ assert.match(carried.output.join('\n'),/Switched to branch 'main'/);
+ assert.match(carried.repo.files['notes.txt'],/unfinished thought/,'the unsaved edit must survive the switch');
+ assert.match(runGit(carried.repo,'git stash').output.join('\n'),/Saved working directory/,'the carried work can still be stashed');
+ let clean=committed();
+ clean=runGit(clean,'git switch -c feature/form').repo;
+ clean=runGit(writeFile(clean,'docs/form.md','# Form notes'),'git add .').repo;
+ clean=runGit(clean,'git commit -m "Document the form"').repo;
+ const onMain=runGit(clean,'git switch main').repo;
+ assert.equal(onMain.files['docs/form.md'],undefined,'a committed file absent from main leaves the working tree');
+ assert.equal(onMain.branches.main,clean.commits[0].id,'main must not gain the feature commit');
+ assert.match(runGit(onMain,'git switch feature/form').repo.files['docs/form.md'],/Form notes/);
+});
+
+test('a merge, pull, rebase, cherry-pick or revert refuses to replace uncommitted work',()=>{
+ const expectRefusal=(repo,command,action)=>{
+  const result=runGit(repo,command);
+  assert.match(result.output.join('\n'),new RegExp('would be overwritten by '+action),command);
+  assert.equal(result.mistake.why.length,3);
+  assert.match(result.mistake.fix[0],/git stash/);
+  return result;
+ };
+ let merge=committed();
+ merge=runGit(merge,'git switch -c feature/form').repo;
+ merge=runGit(writeFile(merge,'README.md','# Team project\nFeature change'),'git add .').repo;
+ merge=runGit(merge,'git commit -m "Feature change"').repo;
+ merge=runGit(merge,'git switch main').repo;
+ const refusedMerge=expectRefusal(writeFile(merge,'README.md','# Team project\nUnsaved local edit'),'git merge feature/form','merge');
+ assert.match(refusedMerge.repo.files['README.md'],/Unsaved local edit/,'the local edit must survive a refused merge');
+ const cloned=play('git clone https://example.edu/team/project.git').repo;
+ const teammate={id:'fffffff',message:'Teammate work',parents:[cloned.branches.main],tree:{...cloned.files,'src/app.js':'teammate version'},branch:'main',at:9};
+ cloned.remotes.origin.objects[teammate.id]=teammate;
+ cloned.remotes.origin.branches.main=teammate.id;
+ expectRefusal(writeFile(cloned,'src/app.js','my unsaved version'),'git pull origin main','merge');
+ let rebase=committed();
+ rebase=runGit(rebase,'git switch -c feature/form').repo;
+ rebase=runGit(writeFile(rebase,'notes.txt','Review checklist:\n- feature'),'git add .').repo;
+ rebase=runGit(rebase,'git commit -m "Feature change"').repo;
+ expectRefusal(writeFile(rebase,'notes.txt','Review checklist:\n- unsaved'),'git rebase main','rebase');
+ let pick=committed();
+ pick=runGit(writeFile(pick,'notes.txt','Review checklist:\n- second'),'git add .').repo;
+ pick=runGit(pick,'git commit -m "Change the checklist"').repo;
+ const target=pick.branches.main;
+ pick=runGit(pick,'git reset --hard HEAD~1').repo;
+ expectRefusal(writeFile(pick,'notes.txt','Review checklist:\n- unsaved'),'git cherry-pick '+target,'cherry-pick');
+ expectRefusal(writeFile(pick,'notes.txt','Review checklist:\n- unsaved'),'git revert '+target,'revert');
 });
 
 test('tasks are worked through one at a time, in order',()=>{
