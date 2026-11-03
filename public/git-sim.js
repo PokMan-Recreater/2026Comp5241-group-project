@@ -40,6 +40,8 @@ export function createRepo(){
 const short=id=>String(id||'').slice(0,7);
 const hashOf=seed=>{let h=5381;for(const ch of seed)h=((h<<5)+h+ch.charCodeAt(0))>>>0;return h.toString(16).padStart(8,'0').slice(0,7);};
 const same=a=>JSON.stringify(a);
+/** The lines Git leaves in a file when a merge conflicts. */
+const CONFLICT_MARKERS=/^(<{7}|={7}|>{7})/m;
 const headId=r=>r.head.detached?r.head.name:(r.branches[r.head.name]??null);
 const commitOf=(r,id)=>r.commits.find(c=>c.id===id)||null;
 const treeOf=(r,id)=>{const c=commitOf(r,id);return c?{...c.tree}:{};};
@@ -111,6 +113,38 @@ function refuse(r,command,message,why,fix){
 }
 /** Honest limitation of the teaching model: not the learner's mistake. */
 const unsupported=message=>[message];
+/** Paths whose uncommitted work would be replaced by moving to `tree`. */
+function overwriteRisk(r,tree){
+ const head=headId(r)?treeOf(r,headId(r)):{};
+ return dirtyPaths(r).filter(p=>(p in head?head[p]:undefined)!==(p in tree?tree[p]:undefined));
+}
+/** The paths a commit changed compared with its first parent. */
+function changedPaths(r,commitId){
+ const c=commitOf(r,commitId);
+ const parentTree=c.parents[0]?treeOf(r,c.parents[0]):{};
+ return pathsOf(parentTree,c.tree).filter(p=>parentTree[p]!==c.tree[p]);
+}
+/**
+ * Moves the working tree to `tree`, keeping uncommitted work for every path
+ * that does not differ — exactly as Git carries local edits across a switch,
+ * a fast-forward or a merge instead of discarding them.
+ */
+function adoptTree(r,tree){
+ const files={...tree},index={...tree};
+ for(const p of dirtyPaths(r)){
+  if(p in r.files)files[p]=r.files[p];else delete files[p];
+  if(p in r.index)index[p]=r.index[p];else delete index[p];
+ }
+ r.files=files;
+ r.index=index;
+}
+/** Refuses rather than replacing work the learner has not committed yet. */
+function refuseOverwrite(r,command,action,paths){
+ return refuse(r,command,
+  `error: Your local changes to the following files would be overwritten by ${action}:\n\t${paths.join('\n\t')}`,
+  ['You have edits that are not saved in a commit, and this would replace them.','你有未提交的修改，这个操作会覆盖它们。','你有未提交的修改，這個操作會覆蓋它們。'],
+  ['Commit the work (git add . then git commit -m "…") or set it aside with git stash, then try again.','先提交（git add . 与 git commit -m "…"），或用 git stash 暂存，再重试。','先提交（git add . 與 git commit -m "…"），或用 git stash 暫存，再重試。']);
+}
 
 /** What a commit would record right now, compared with HEAD. */
 function stagedChanges(r){
@@ -258,6 +292,11 @@ function cmdAdd(r,args,cmd){
    ['Run git status to see the exact file names.','先运行 git status 查看确切文件名。','先執行 git status 查看確切檔案名稱。']);
   targets.add(p);
  }
+ const unfinished=[...targets].filter(p=>r.conflict&&r.conflict.paths.includes(p)&&CONFLICT_MARKERS.test(String(r.files[p]??'')));
+ if(unfinished.length)return refuse(r,cmd,
+  `error: '${unfinished[0]}' still contains conflict markers\nhint: remove the <<<<<<<, ======= and >>>>>>> lines, then run git add again.\n(Real Git stages the file as it is; this practice keeps the merge open until the markers are gone.)`,
+  ['The file still has the <<<<<<<, ======= and >>>>>>> lines from the merge, so the code is not finished.','文件里还有合并留下的 <<<<<<<、======= 和 >>>>>>> 行，代码还没完成。','檔案裡還有合併留下的 <<<<<<<、======= 和 >>>>>>> 行，程式碼還沒完成。'],
+  ['Edit the file, keep the lines you want, then run git add '+unfinished[0]+'.','编辑文件保留需要的行，然后运行 git add '+unfinished[0]+'。','編輯檔案保留需要的行，然後執行 git add '+unfinished[0]+'。']);
  const lines=[];
  for(const p of targets){
   if(p in r.files){
@@ -564,44 +603,40 @@ function cmdSwitch(r,args,cmd){
   id=found;
  }
  const nextTree=id?treeOf(r,id):{};
- const headTree=headId(r)?treeOf(r,headId(r)):{};
- const blocked=dirtyPaths(r).filter(p=>headTree[p]!==nextTree[p]);
- if(blocked.length)return refuse(r,cmd,`error: Your local changes to the following files would be overwritten by ${/^git checkout/.test(cmd)?'checkout':'switch'}:\n\t${blocked.join('\n\t')}`,
-  ['You have edits that are not saved in a commit, and the other branch has a different version of those files.','你有未提交的修改，而目标分支上这些文件是不同的版本。','你有未提交的修改，而目標分支上這些檔案是不同的版本。'],
-  ['Commit the work (git add . then git commit -m "...") or set it aside with git stash, then switch.','先提交（git add . 与 git commit -m "..."），或用 git stash 暂存后再切换。','先提交（git add . 與 git commit -m "..."），或用 git stash 暫存後再切換。']);
+ const blocked=overwriteRisk(r,nextTree);
+ if(blocked.length)return refuseOverwrite(r,cmd,/^git checkout/.test(cmd)?'checkout':'switch',blocked);
  if(r.head.name&&!r.head.detached)r.previousBranch=r.head.name;
+ adoptTree(r,nextTree);
  r.head=branch?{detached:false,name:branch}:{detached:true,name:id};
- r.files={...nextTree};
- r.index={...nextTree};
  r.stats.switches++;
  if(!branch)return [`Note: switching to '${target}'.`,"You are in 'detached HEAD' state. You can look around and commit, but those commits belong to no branch."];
  return [create?`Switched to a new branch '${branch}'`:`Switched to branch '${branch}'`];
 }
 
 /** Three-way merge. Returns the lines to print and may leave a conflict behind. */
-function mergeInto(r,theirId,label,message){
+function mergeInto(r,theirId,label,command,message){
  const ours=headId(r);
+ const incoming=treeOf(r,theirId);
+ const base=ours?mergeBase(r,ours,theirId):null;
+ const baseTree=base?treeOf(r,base):{};
+ const touched=pathsOf(baseTree,incoming).filter(p=>baseTree[p]!==incoming[p]);
+ const blocked=dirtyPaths(r).filter(p=>touched.includes(p));
+ if(blocked.length)return refuseOverwrite(r,command,'merge',blocked);
  if(!ours){
+  adoptTree(r,treeOf(r,theirId));
   if(r.head.detached)r.head.name=theirId;
   else r.branches[r.head.name]=theirId;
-  const tree=treeOf(r,theirId);
-  r.files={...tree};
-  r.index={...tree};
   r.stats.merges++;
   return [`Updating ${short(theirId)}`,'Fast-forward'];
  }
  if(isAncestor(r,theirId,ours))return ['Already up to date.'];
  if(isAncestor(r,ours,theirId)){
+  adoptTree(r,treeOf(r,theirId));
   if(r.head.detached)r.head.name=theirId;
   else r.branches[r.head.name]=theirId;
-  const tree=treeOf(r,theirId);
-  r.files={...tree};
-  r.index={...tree};
   r.stats.merges++;
   return [`Updating ${short(ours)}..${short(theirId)}`,'Fast-forward'];
  }
- const base=mergeBase(r,ours,theirId);
- const baseTree=base?treeOf(r,base):{};
  const ourTree=treeOf(r,ours),theirTree=treeOf(r,theirId);
  /** @type {Record<string,string|undefined>} */
  const merged={};
@@ -619,8 +654,7 @@ function mergeInto(r,theirId,label,message){
  for(const p of Object.keys(merged))if(merged[p]!==undefined)clean[p]=merged[p];
  const snapshot={files:{...r.files},index:{...r.index},branches:{...r.branches},head:{...r.head}};
  if(conflicts.length){
-  r.index={...clean};
-  r.files={...clean};
+  adoptTree(r,clean);
   for(const p of conflicts)writeConflictMarkers(r,p,label,ourTree[p],theirTree[p]);
   r.conflict={from:label,fromId:theirId,into:r.head.detached?'detached':r.head.name,paths:conflicts,snapshot};
   r.stats.conflicts++;
@@ -631,10 +665,9 @@ function mergeInto(r,theirId,label,message){
   ];
  }
  const id=writeCommit(r,{message:message||`Merge branch '${label}'`,parents:[ours,theirId],tree:clean}).id;
+ adoptTree(r,clean);
  if(r.head.detached)r.head.name=id;
  else r.branches[r.head.name]=id;
- r.files={...clean};
- r.index={...clean};
  r.stats.merges++;
  return ["Merge made by the 'ort' strategy.",` ${pathsOf(baseTree,ourTree,theirTree).length} files merged`];
 }
@@ -677,7 +710,7 @@ function cmdMerge(r,args,cmd){
    ['Run git branch to list branches, or git fetch to update origin/main.','先运行 git branch 列出分支，或用 git fetch 更新 origin/main。','先執行 git branch 列出分支，或用 git fetch 更新 origin/main。']);
   theirId=found;
  }
- return mergeInto(r,theirId,name);
+ return mergeInto(r,theirId,name,cmd);
 }
 
 /** Replays one commit's changes on top of `baseTree`, reporting any conflict first. */
@@ -709,11 +742,19 @@ function cmdRebase(r,args,cmd){
  if(!head)return refuse(r,cmd,`fatal: invalid upstream '${onto}'`,
   ['There is no commit to replay yet.','还没有可以重放的提交。','還沒有可以重放的提交。'],
   ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const blocked=overwriteRisk(r,treeOf(r,ontoId));
+ if(blocked.length)return refuseOverwrite(r,cmd,'rebase',blocked);
  const base=mergeBase(r,head,ontoId);
  const chain=[];
  let cur=head;
  while(cur&&cur!==base){chain.unshift(cur);cur=commitOf(r,cur)?.parents[0]??null;}
  if(!chain.length)return ['Current branch is up to date.'];
+ const replayed=new Set(chain.flatMap(id=>{
+  const c=commitOf(r,id),parentTree=c.parents[0]?treeOf(r,c.parents[0]):{};
+  return pathsOf(parentTree,c.tree).filter(p=>parentTree[p]!==c.tree[p]);
+ }));
+ const blockedRebase=dirtyPaths(r).filter(p=>replayed.has(p));
+ if(blockedRebase.length)return refuseOverwrite(r,cmd,'rebase',blockedRebase);
  let probe={...treeOf(r,ontoId)};
  for(const id of chain){
   const step=replay(r,id,probe);
@@ -729,11 +770,9 @@ function cmdRebase(r,args,cmd){
   const step=replay(r,id,treeOf(r,current));
   current=writeCommit(r,{message:commitOf(r,id).message,parents:[current],tree:step.next,branch:r.head.detached?'detached':r.head.name}).id;
  }
+ adoptTree(r,treeOf(r,current));
  if(r.head.detached)r.head.name=current;
  else r.branches[r.head.name]=current;
- const tree=treeOf(r,current);
- r.files={...tree};
- r.index={...tree};
  r.reflog.push(`rebase: onto ${onto}`);
  return [`Successfully rebased and updated refs/heads/${r.head.detached?'HEAD':r.head.name}.`];
 }
@@ -751,6 +790,8 @@ function cmdCherryPick(r,args,cmd){
  if(!head)return refuse(r,cmd,'fatal: cannot cherry-pick onto an empty branch',
   ['There is no commit to build on yet.','还没有可以继续的提交。','還沒有可以繼續的提交。'],
   ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const blockedPick=dirtyPaths(r).filter(p=>changedPaths(r,id).includes(p));
+ if(blockedPick.length)return refuseOverwrite(r,cmd,'cherry-pick',blockedPick);
  const step=replay(r,id,treeOf(r,head));
  if(step.conflicts.length)return unsupported([
   `CONFLICT (content): ${step.conflicts.join(', ')} would conflict when applying ${short(id)}.`,
@@ -759,10 +800,9 @@ function cmdCherryPick(r,args,cmd){
  ]);
  const c=commitOf(r,id);
  const commit=writeCommit(r,{message:`${c.message} (cherry picked from ${short(id)})`,parents:[head],tree:step.next,branch:r.head.detached?'detached':r.head.name});
+ adoptTree(r,step.next);
  if(r.head.detached)r.head.name=commit.id;
  else r.branches[r.head.name]=commit.id;
- r.files={...step.next};
- r.index={...step.next};
  r.stats.commits++;
  return [`[${r.head.detached?'detached HEAD':r.head.name} ${short(commit.id)}] ${c.message}`];
 }
@@ -776,6 +816,8 @@ function cmdRevert(r,args,cmd){
  if(!head)return refuse(r,cmd,'fatal: nothing to revert',
   ['There is no commit to undo yet.','还没有可以撤销的提交。','還沒有可以撤銷的提交。'],
   ['Commit something first.','先完成一次提交。','先完成一次提交。']);
+ const blockedRevert=dirtyPaths(r).filter(p=>changedPaths(r,id).includes(p));
+ if(blockedRevert.length)return refuseOverwrite(r,cmd,'revert',blockedRevert);
  const c=commitOf(r,id),parentTree=c.parents[0]?treeOf(r,c.parents[0]):{},headTree=treeOf(r,head);
  const next={...headTree},conflicts=[];
  for(const p of pathsOf(parentTree,c.tree)){
@@ -789,10 +831,9 @@ function cmdRevert(r,args,cmd){
   'Fix the file by hand, or revert an earlier commit instead.'
  ]);
  const commit=writeCommit(r,{message:`Revert "${c.message}"`,parents:[head],tree:next,branch:r.head.detached?'detached':r.head.name});
+ adoptTree(r,next);
  if(r.head.detached)r.head.name=commit.id;
  else r.branches[r.head.name]=commit.id;
- r.files={...next};
- r.index={...next};
  r.stats.commits++;
  return [`[${r.head.detached?'detached HEAD':r.head.name} ${short(commit.id)}] Revert "${c.message}"`];
 }
@@ -954,7 +995,7 @@ function cmdPull(r,args,cmd){
  if(!theirId)return refuse(r,cmd,`fatal: couldn't find remote ref ${branch}`,
   ['The remote has no branch with that name.','远程没有这个名称的分支。','遠端沒有這個名稱的分支。'],
   ['Run git branch -a to list local and remote branches.','运行 git branch -a 列出本地和远程分支。','執行 git branch -a 列出本地和遠端分支。']);
- lines.push(...mergeInto(r,theirId,ref));
+ lines.push(...mergeInto(r,theirId,ref,cmd));
  r.stats.pulls++;
  return lines;
 }
@@ -1175,7 +1216,7 @@ export const GIT_SCENARIOS=[
    {id:'merge',label:['Start the merge and look at the conflict','开始合并并查看冲突','開始合併並查看衝突'],hint:['git merge feature/validation','git merge feature/validation','git merge feature/validation'],done:r=>r.conflict!==null||r.commits.some(c=>c.parents.length>1)},
    {id:'edit',label:['Edit src/app.js and delete the <<<<<<<, ======= and >>>>>>> lines','编辑 src/app.js，删掉 <<<<<<<、======= 和 >>>>>>> 这些行','編輯 src/app.js，刪掉 <<<<<<<、======= 和 >>>>>>> 這些行'],hint:['open src/app.js in the file editor below and press Save file','在下面的文件编辑器里打开 src/app.js，然后按“保存文件”','在下面的檔案編輯器裡開啟 src/app.js，然後按「儲存檔案」'],done:r=>!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
    {id:'stage',label:['Stage the resolved file','暂存已解决的文件','暫存已解決的檔案'],hint:['git add src/app.js','git add src/app.js','git add src/app.js'],done:r=>!(r.conflict?.paths?.length)},
-   {id:'commit',label:['Commit the merge','提交这次合并','提交這次合併'],hint:['git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"'],done:r=>r.commits.some(c=>c.parents.length>1)}
+   {id:'commit',label:['Commit the merge','提交这次合并','提交這次合併'],hint:['git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"'],done:r=>r.commits.some(c=>c.parents.length>1)&&!!r.branches.main&&!!r.branches['feature/validation']&&isAncestor(r,r.branches['feature/validation'],r.branches.main)}
   ]
  },
  {
@@ -1238,7 +1279,7 @@ export const GIT_SCENARIOS=[
   solution:['git log --oneline','git revert HEAD','git status'],
   tasks:[
    {id:'revert',label:['Undo the change without deleting the commit','在不删除提交的前提下撤销改动','在不刪除提交的前提下撤銷改動'],hint:['git revert HEAD','git revert HEAD','git revert HEAD'],done:r=>r.files['src/app.js']===APP_ORIGINAL},
-   {id:'history',label:['Check the bad commit is still in history','确认错误提交仍在历史中','確認錯誤提交仍在歷史中'],hint:['git log --oneline','git log --oneline','git log --oneline'],done:r=>r.commits.length>2&&onBranch(r,'main',r.commits.find(c=>c.message==='Skip the name check')?.id??'')}
+   {id:'history',label:['Check the bad commit is still in history','确认错误提交仍在历史中','確認錯誤提交仍在歷史中'],hint:['git log --oneline','git log --oneline','git log --oneline'],done:r=>r.files['src/app.js']===APP_ORIGINAL&&r.commits.length>2&&onBranch(r,'main',r.commits.find(c=>c.message==='Skip the name check')?.id??'')}
   ]
  },
  {
@@ -1267,8 +1308,9 @@ export const GIT_SCENARIOS=[
   solution:['git rebase main','git log --oneline --graph'],
   tasks:[
    {id:'rebase',label:['Replay your work on top of main','把你的工作重放到 main 之上','把你的工作重放到 main 之上'],hint:['git rebase main','git rebase main','git rebase main'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])},
-   {id:'linear',label:['Keep the history linear, with no merge commit','保持线性历史，没有合并提交','保持線性歷史，沒有合併提交'],hint:['git log --oneline --graph','git log --oneline --graph','git log --oneline --graph'],done:r=>![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)},
-   {id:'kept',label:['Keep your documentation commit','保留你的文档提交','保留你的文件提交'],hint:['git show HEAD','git show HEAD','git show HEAD'],done:r=>String(commitOf(r,r.branches['feature/form'])?.tree['docs/form.md']||'').includes('Form notes')}
+   {id:'linear',label:['Keep the history linear, with no merge commit','保持线性历史，没有合并提交','保持線性歷史，沒有合併提交'],hint:['git reset --hard HEAD~1','git reset --hard HEAD~1','git reset --hard HEAD~1'],done:r=>![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)},
+   {id:'kept',label:['Keep your documentation commit','保留你的文档提交','保留你的文件提交'],hint:['git show HEAD','git show HEAD','git show HEAD'],done:r=>String(commitOf(r,r.branches['feature/form'])?.tree['docs/form.md']||'').includes('Form notes')},
+   {id:'finish',label:['Finish with your work on top of main','最后让工作位于 main 之上','最後讓工作位於 main 之上'],hint:['git rebase main','git rebase main','git rebase main'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])&&![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)}
   ]
  },
 ];
