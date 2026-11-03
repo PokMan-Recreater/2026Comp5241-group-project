@@ -8,12 +8,14 @@ import {planProgress,planStepDone,planStepRoute} from './academy-core.js';
 export function createLearningViews(ctx, h) {
  const {e,L,T,s,a,link,button,heading,ico,cards,codeLanguage,stateStats,activePlan,badges,empty} = h;
  const languages = ['c','cpp','python','javascript','html'];
+ const gitLabs = labs.filter(([id])=>/^git-/.test(id)||id==='git');
  const courses = () => ctx.courses().filter(c => c.status === 'published');
  const topics = language => referenceTopics.filter(t => !language || t.language === language);
  const tabs = (items, active, label) => `<nav class="learning-tabs" aria-label="${label}">${items.map(([id,title,url]) => `<a href="#${url}" ${id===active?'aria-current="page"':''}>${title}</a>`).join('')}</nav>`;
  const courseTabs = () => '';
  const practiceTabs = active => tabs([
   ['checks',L('Knowledge practice','知识练习','知識練習'),'practice/checks'],
+  ['git',L('Git practice','Git 练习','Git 練習'),'practice/git'],
   ['coding',L('Coding practice','编程练习','程式練習'),'practice/coding'],
   ['interviews',L('AI interview','AI 面试','AI 面試'),'practice/interviews'],
  ],active==='written'||active==='labs'?'checks':active==='playground'?'coding':active,L('Practice category','练习分类','練習分類'));
@@ -77,10 +79,11 @@ export function createLearningViews(ctx, h) {
  function practice(category='checks',questionId) {
   if(['checks','written','labs'].includes(category))return knowledge(questionId);
   if(category==='playground')return null;
-  const titles={labs:L('Hands-on labs','实践实验','實作實驗'),coding:L('Challenges','编程题','程式題'),written:L('Short answers','简答题','簡答題'),interviews:L('AI interview','AI 面试','AI 面試')};
+  const titles={git:L('Git practice','Git 练习','Git 練習'),coding:L('Challenges','编程题','程式題'),interviews:L('AI interview','AI 面试','AI 面試')};
   if(!titles[category])return knowledge(questionId);
   let list=[];
   // Each lab carries its own icon so the six cards are easy to tell apart.
+  if(category==='git')list=gitLabs.map(([id,title,description,icon])=>({url:'lab/'+id,title:T(title),description:T(description),done:!!a().labResults[id],icon}));
   if(category==='coding'){
    const languages=['c','cpp','python','javascript'],all=[...challenges,...nativeChallenges],title=language=>language==='javascript'?'JavaScript':codeLanguage(language),top=heading(L('Practice','练习中心','練習中心'))+practiceTabs(category)+practiceSections(category);
    if(languages.includes(questionId))return top+`<div class="row mb">${link('practice/coding',L('All languages','全部语言','全部語言'))}</div><h2>${title(questionId)}</h2>`+cards(all.filter(c=>(c.language||'javascript')===questionId).map(c=>`<article class="panel practice-card"><h3>${e(T(c.title))}</h3><p>${e(T(c.brief))}</p>${link('challenge/'+c.id,L('Start practice','开始练习','開始練習'),false)}</article>`));
@@ -90,12 +93,10 @@ export function createLearningViews(ctx, h) {
   return heading(L('Practice','练习中心','練習中心'))+practiceTabs(category)+practiceSections(category)+cards(list.map(x=>`<article class="panel practice-card"><span class="practice-card-icon">${ico(x.icon||'layers',25)}</span><h3>${e(x.title)}</h3><p>${e(x.description)}</p>${link(x.url,x.done?L('Completed · revisit','已完成 · 复习','已完成 · 複習'):L('Start practice','开始练习','開始練習'),false)}</article>`));
  }
  function knowledge(id){
-  const gitLabs=labs.filter(([id])=>/^git-/.test(id)||id==='git');
-  const all=knowledgeQuestions(courses()),q=all.find(x=>x.key===id)||all[0];if(!q)return empty();const list=all.filter(x=>x.group===q.group),at=list.indexOf(q),result=a().quizzes[q.key],checked=Number.isInteger(result?.selected),groups=[['software',L('Software engineering','软件工程','軟體工程')],['tools',L('AI & developer tools','AI 与开发工具','AI 與開發工具')],...languages.map(x=>[x,codeLanguage(x)])];
-  const topic=id?.startsWith('topic-')?[...groups,['git',L('Git','Git','Git')]].find(([key])=>id==='topic-'+key):null;
-  if(topic&&topic[0]==='git')return heading(L('Practice','练习中心','練習中心'))+practiceTabs('checks')+`<div class="row mb">${link('practice/checks',L('All topics','全部主题','全部主題'))}</div><section class="panel"><h2>${L('Git','Git','Git')}</h2><p>${L('Practise the everyday Git workflow in a safe repository. Every practice runs the commands you type and explains what Git refuses.','在安全的仓库里练习日常 Git 流程。每个练习都会运行你输入的命令，并说明 Git 拒绝的原因。','在安全的倉庫裡練習日常 Git 流程。每個練習都會執行你輸入的指令，並說明 Git 拒絕的原因。')}</p><div class="knowledge-topic-links">${gitLabs.map(([lid,title],i)=>`<a href="#lab/${lid}"><span>${i+1}. ${e(T(title))}</span><span>${a().labResults[lid]?.completed?'✓':'→'}</span></a>`).join('')}</div></section>`;
+  const all=knowledgeQuestions(courses()),q=all.find(x=>x.key===id)||all[0];if(!q)return empty();const list=all.filter(x=>x.group===q.group),at=list.indexOf(q),result=a().quizzes[q.key],checked=Number.isInteger(result?.selected),groups=[['software',L('Software engineering','软件工程','軟體工程')],['tools',L('AI & developer tools','AI 与开发工具','AI 與開發工具')],['git',L('Git','Git','Git')],...languages.map(x=>[x,codeLanguage(x)])];
+  const topic=id?.startsWith('topic-')?groups.find(([key])=>id==='topic-'+key):null;
   if(topic){const questions=all.filter(x=>x.group===topic[0]);return heading(L('Practice','练习中心','練習中心'))+practiceTabs('checks')+`<div class="row mb">${link('practice/checks',L('All topics','全部主题','全部主題'))}</div><section class="panel"><h2>${e(topic[1])}</h2><div class="knowledge-topic-links">${questions.map((x,i)=>`<a href="#practice/checks/${e(x.key)}"><span>${i+1}. ${e(T(x.title))}</span><span>${a().quizzes[x.key]?.correct?'✓':'→'}</span></a>`).join('')}</div></section>`;}
-  if(!id)return heading(L('Practice','练习中心','練習中心'))+practiceTabs('checks')+`<div class="knowledge-topics">${groups.map(([key,label])=>{const questions=all.filter(x=>x.group===key);return questions.length?`<a class="panel knowledge-topic-entry" href="#practice/checks/topic-${key}"><h2>${e(label)}</h2><div><span>${questions.length} ${L('questions','道选择题','道選擇題')}</span><span aria-hidden="true">→</span></div></a>`:'';}).join('')}${gitLabs.length?`<a class="panel knowledge-topic-entry" href="#practice/checks/topic-git"><h2>${L('Git','Git','Git')}</h2><div><span>${gitLabs.length} ${L('practices','个练习','個練習')}</span><span aria-hidden="true">→</span></div></a>`:''}</div>`;
+  if(!id)return heading(L('Practice','练习中心','練習中心'))+practiceTabs('checks')+`<div class="knowledge-topics">${groups.map(([key,label])=>{const questions=all.filter(x=>x.group===key);return questions.length?`<a class="panel knowledge-topic-entry" href="#practice/checks/topic-${key}"><h2>${e(label)}</h2><div><span>${questions.length} ${L('questions','道选择题','道選擇題')}</span><span aria-hidden="true">→</span></div></a>`:'';}).join('')}</div>`;
   return heading(L('Practice','练习中心','練習中心'))+practiceTabs('checks')+practiceSections('checks')+`<div class="collection-heading"><h2>${L('Revisit an idea. Check your reasoning.','复习一个概念，再检查理解。','複習一個概念，再檢查理解。')}</h2><span>${all.length} ${L('questions','题','題')}</span></div><div class="row mb">${link('practice/checks/topic-'+q.group,L('Back to topic','返回主题题目','返回主題題目'))}</div><section class="panel knowledge-card"><span class="pill">${at+1}/${list.length}</span><h2>${e(T(q.question))}</h2>${q.code?`<pre class="academy-code">${e(q.code)}</pre>`:''}<fieldset><legend class="sr-only">${e(T(q.question))}</legend>${q.options.map((option,i)=>`<label class="study-option"><input type="radio" name="knowledge-answer" value="${i}" ${result?.selected===i?'checked':''}><span>${e(T(option))}</span></label>`).join('')}</fieldset>${button('check-knowledge',L('Check answer','检查答案','檢查答案'),`data-id="${e(q.key)}"`,false)}${checked?`<div class="mini-feedback ${result.lastCorrect?'correct':'revise'}" role="status"><strong>${result.lastCorrect?L('That follows the rule.','符合题目规则。','符合題目規則。'):L('Review the reasoning.','再看一下推理。','再看一下推理。')}</strong><p>${e(T(q.feedback[result.selected]))}</p></div>`:''}<div class="row mt">${link(q.route,L('Return to the lesson','返回对应课节','返回對應課節'))}${at+1<list.length?link('practice/checks/'+list[at+1].key,L('Next question','下一题','下一題')):''}</div></section>`;
  }
  function records(category='saved') {
