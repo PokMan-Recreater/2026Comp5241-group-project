@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRepo,runGit,writeFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_SCENARIOS,startScenario,scenarioGoals,scenarioComplete,scenarioById} from '../public/git-sim.js';
+import {createRepo,runGit,writeFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_SCENARIOS,startScenario,scenarioTasks,scenarioComplete,scenarioById} from '../public/git-sim.js';
 const APP_RESOLVED='export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}';
 
 /** Runs a list of commands and returns the final repository plus every output. */
@@ -299,22 +299,51 @@ const SCENARIO_FIXES={
  'rebase-review':['git rebase main']
 };
 
-test('every production scenario starts unsolved and its documented fix solves it',()=>{
+test('every production situation is split into small ordered tasks that its documented fix completes',()=>{
  assert.equal(GIT_SCENARIOS.length,7);
  assert.deepEqual(Object.keys(SCENARIO_FIXES).sort(),GIT_SCENARIOS.map(s=>s.id).sort());
+ assert.ok(GIT_SCENARIOS.every(s=>s.tasks.length>=2),'every situation must be broken into small tasks');
+ assert.ok(GIT_SCENARIOS.reduce((n,s)=>n+s.tasks.length,0)>=20,'the work must be broken into many small steps');
  for(const scenario of GIT_SCENARIOS){
   let repo=startScenario(scenario.id);
-  assert.deepEqual(scenarioGoals(repo).filter(g=>g.done),[],scenario.id+' must start unsolved');
+  assert.deepEqual(scenarioTasks(repo).filter(t=>t.done),[],scenario.id+' must start unsolved');
   assert.equal(scenarioComplete(repo),false,scenario.id);
   assert.equal(repo.stats.commits,0,scenario.id+' resets the counters so only the learner\'s work counts');
   assert.ok(repo.transcript.some(line=>line.startsWith('$ git ')),scenario.id+' writes its setup into the terminal');
-  assert.ok(scenario.goals.every(g=>g.label.length===3&&g.hint.length===3),scenario.id+' localizes every goal and hint');
+  assert.ok(scenario.tasks.every(t=>t.label.length===3&&t.hint.length===3),scenario.id+' localizes every task and hint');
+  assert.deepEqual(scenarioTasks(repo).map(t=>t.id),scenario.tasks.map(t=>t.id),scenario.id+' keeps the task order');
   for(const step of SCENARIO_FIXES[scenario.id])repo=typeof step==='function'?step(repo):runGit(repo,step).repo;
   assert.equal(scenarioComplete(repo),true,scenario.id+' is solved by its documented fix');
   assert.deepEqual(repo.mistakes,[],scenario.id+' should not need a mistake to be solved');
+  // Replay the fix once more, checking that a task never un-ticks along the way.
+  let replay=startScenario(scenario.id),progress=0;
+  for(const step of SCENARIO_FIXES[scenario.id]){
+   replay=typeof step==='function'?step(replay):runGit(replay,step).repo;
+   const now=scenarioTasks(replay).filter(t=>t.done).length;
+   assert.ok(now>=progress,scenario.id+' must not lose progress at '+step);
+   progress=now;
+  }
+  assert.equal(progress,scenario.tasks.length,scenario.id+' ticks every task while replaying');
  }
  assert.equal(scenarioComplete(createRepo()),false);
- assert.deepEqual(scenarioGoals(createRepo()),[]);
+ assert.deepEqual(scenarioTasks(createRepo()),[]);
  assert.equal(scenarioById('nope'),null);
  assert.equal(startScenario('nope').scenario.id,GIT_SCENARIOS[0].id);
+});
+
+test('tasks are worked through one at a time, in order',()=>{
+ let repo=startScenario('divergent');
+ const tasks=scenarioTasks(repo);
+ assert.deepEqual(tasks.map(t=>t.id),['merge','edit','stage','commit']);
+ assert.deepEqual(tasks.map(t=>t.done),[false,false,false,false]);
+ repo=runGit(repo,'git merge feature/validation').repo;
+ assert.deepEqual(scenarioTasks(repo).map(t=>t.done),[true,false,false,false],'only the first task is done after the merge');
+ repo=writeFile(repo,'src/app.js',APP_RESOLVED);
+ assert.deepEqual(scenarioTasks(repo).map(t=>t.done),[true,true,false,false],'editing finishes the second task');
+ repo=runGit(repo,'git add src/app.js').repo;
+ assert.deepEqual(scenarioTasks(repo).map(t=>t.done),[true,true,true,false],'staging finishes the third task');
+ repo=runGit(repo,'git commit -m "Merge the validation rules"').repo;
+ assert.deepEqual(scenarioTasks(repo).map(t=>t.done),[true,true,true,true]);
+ assert.equal(scenarioComplete(repo),true);
+ assert.deepEqual(scenarioTasks(startScenario('revert-bad')).map(t=>t.done),[false,false]);
 });
