@@ -192,6 +192,23 @@ export function removeFile(repo,path){
  return syncTasks(next);
 }
 /**
+ * Resolves the conflict markers in one file by keeping the current lines, the
+ * incoming lines, or both, so a learner can compare that with editing by hand.
+ * @param {any} repo @param {string} path @param {'ours'|'theirs'|'both'} [choice]
+ */
+export function resolveConflictFile(repo,path,choice='ours'){
+ const next=structuredClone(repo);
+ const text=String(next.files[path]??'');
+ next.files[path]=text.replace(/^<<<<<<<[^\n]*\n([\s\S]*?)^=======\n([\s\S]*?)^>>>>>>>[^\n]*\n?/gm,(all,ours,theirs)=>choice==='theirs'?theirs:choice==='both'?ours+theirs:ours);
+ return syncTasks(next);
+}
+/** The task the learner is on: the first one not yet reached. */
+function currentTaskId(r){
+ const scenario=scenarioById(r.scenario?.id);
+ if(!scenario)return null;
+ return scenario.tasks.find(t=>!r.tasks?.[t.id])?.id??null;
+}
+/**
  * Remembers the tasks that have been satisfied so far. The walk stops at the
  * first unsatisfied task, so a task is only recorded once the tasks before it
  * are done, and a later command can never un-tick it — a stash is empty again
@@ -206,6 +223,12 @@ function syncTasks(r){
   if(r.tasks[task.id])continue;
   if(!task.done(r))break;
   r.tasks[task.id]=true;
+ }
+ // Point the file editor at the file the current task talks about.
+ const pending=scenario.tasks.find(t=>!r.tasks[t.id]);
+ if(pending){
+  const named=Object.keys(r.files).find(p=>pending.hint[0].includes(p));
+  if(named)r.selectedFile=named;
  }
  return r;
 }
@@ -1121,6 +1144,7 @@ export function runGit(repo,input){
  const argv=tokenize(raw);
  const name=(argv[0]||'').toLowerCase();
  const before=next.mistakes.length;
+ const taskBefore=currentTaskId(next);
  let lines;
  if(!raw)lines=refuse(next,command,'usage: git <command> [<args>]',
   ['A Git command needs a subcommand.','Git 命令需要子命令。','Git 指令需要子指令。'],
@@ -1144,6 +1168,7 @@ export function runGit(repo,input){
  // review keeps the most recent mistakes.
  if(next.transcript.length>600)next.transcript=next.transcript.slice(-600);
  if(next.mistakes.length>60)next.mistakes=next.mistakes.slice(-60);
+ if(next.mistakes.length>before)next.mistakes.at(-1).task=taskBefore;
  syncTasks(next);
  return {repo:next,output:lines,mistake:next.mistakes.length>before?next.mistakes.at(-1):null};
 }
@@ -1203,7 +1228,86 @@ const hotfixShipped=r=>onBranch(r,'main',r.commits.find(c=>String(c.tree['README
  * middle of the problem, states the outcome that counts as fixed, and keeps a
  * reference solution for after the learner has solved it.
  */
-export const GIT_SCENARIOS=[
+/**
+ * Small single-command practices. Each one sets up a tiny repository state and
+ * asks for one command, so a beginner can practise one thing at a time instead
+ * of facing a whole workflow at once.
+ */
+const drill=(id,title,brief,setup,label,hint,done,solution)=>({
+ id,kind:'drill',title,brief,setup,solution,tasks:[{id:'do',label,hint,done}]
+});
+/** A repository with one commit, used as the starting point for most drills. */
+/** @type {any[]} */
+const SEEDED=['git init','git add .','git commit -m "Initial version"'];
+const SEED_NOTES='Review checklist:\n- keep commits small\n- run the checks';
+
+export const GIT_DRILLS=[
+ drill('read-status',['Read the state of the project','查看项目状态','查看專案狀態'],['One file has been edited since the last commit. Find out what Git thinks before you change anything.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES)]),
+  ['Run git status and read it','运行 git status 并阅读输出','執行 git status 並閱讀輸出'],['git status','git status','git status'],r=>r.transcript.some(line=>line==='$ git status'),
+  ['git status']),
+ drill('stage-one-file',['Stage one file','暂存一个文件','暫存一個檔案'],['Two files changed, but only the checklist belongs in the next commit. Stage that one file.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),r=>writeFile(r,'README.md','# Team project\nChanged by mistake')]),
+  ['Stage only notes.txt','只暂存 notes.txt','只暫存 notes.txt'],['git add notes.txt','git add notes.txt','git add notes.txt'],r=>{const head=treeOf(r,r.branches.main);return r.index['notes.txt']!==head['notes.txt']&&r.index['README.md']===head['README.md'];},
+  ['git add notes.txt','git status --short']),
+ drill('commit-staged',['Commit what is staged','提交已暂存的内容','提交已暫存的內容'],['The checklist change is already staged. Record it with a message that says what changed.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add notes.txt']),
+  ['Commit it with a message','用说明提交','用說明提交'],['git commit -m "Ask for a failing test first"','git commit -m "Ask for a failing test first"','git commit -m "Ask for a failing test first"'],r=>(r.stats.commits??0)>0&&/checks/.test(String(commitOf(r,r.branches.main)?.tree['notes.txt']||'')),
+  ['git commit -m "Ask for a failing test first"']),
+ drill('create-branch',['Create a branch and move to it','创建分支并切换过去','建立分支並切換過去'],['Start work that can be reviewed on its own. Create feature/form and switch to it.'],SEEDED,
+  ['Create and switch in one command','用一条命令创建并切换','用一條指令建立並切換'],['git switch -c feature/form','git switch -c feature/form','git switch -c feature/form'],r=>r.head.name==='feature/form',
+  ['git switch -c feature/form']),
+ drill('switch-back',['Switch back to main','切换回 main','切換回 main'],['You are on feature/form. Move back to main before you change anything else.'],SEEDED.concat(['git switch -c feature/form']),
+  ['Switch to main','切换到 main','切換到 main'],['git switch main','git switch main','git switch main'],r=>r.head.name==='main',
+  ['git switch main']),
+ drill('read-diff',['See what changed','查看改了什么','查看改了什麼'],['A file changed but you have not staged it. Read the diff to decide whether it belongs in a commit.'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}')]),
+  ['Show the unstaged change','显示未暂存的改动','顯示未暫存的改動'],['git diff','git diff','git diff'],r=>r.transcript.some(line=>line==='$ git diff'),
+  ['git diff']),
+ drill('read-log',['Read the history','阅读提交历史','閱讀提交歷史'],['Before you undo anything, look at the history and copy the commit ids you need.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "Add a checks reminder"']),
+  ['Show the history, one line each','每行显示一条历史','每行顯示一條歷史'],['git log --oneline','git log --oneline','git log --oneline'],r=>r.transcript.some(line=>line==='$ git log --oneline'),
+  ['git log --oneline']),
+ drill('unstage-file',['Unstage a file','取消暂存一个文件','取消暫存一個檔案'],['notes.txt was staged by mistake. Take it out of the index but keep the edit in your working tree.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add notes.txt']),
+  ['Unstage it and keep the edit','取消暂存并保留改动','取消暫存並保留改動'],['git restore --staged notes.txt','git restore --staged notes.txt','git restore --staged notes.txt'],r=>{const head=treeOf(r,r.branches.main);return r.index['notes.txt']===head['notes.txt']&&String(r.files['notes.txt']||'').includes('run the checks');},
+  ['git restore --staged notes.txt','git status --short']),
+ drill('discard-edit',['Throw away an edit','丢弃一次改动','丟棄一次改動'],['The edit to src/app.js was a mistake. Put the file back exactly as the last commit has it.'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup(form) {\n  return true;\n}')]),
+  ['Discard the working-tree change','丢弃工作区改动','丟棄工作區改動'],['git restore src/app.js','git restore src/app.js','git restore src/app.js'],r=>r.files['src/app.js']===GIT_SEED_FILES['src/app.js'],
+  ['git restore src/app.js']),
+ drill('stash-work',['Set work aside','把工作暂存起来','把工作暫存起來'],['You must leave this branch with an unfinished edit. Put the work aside so the branch is clean.'],SEEDED.concat([r=>writeFile(r,'notes.txt','Review checklist:\n- half-finished thought')]),
+  ['Set the work aside','把工作暂存','把工作暫存'],['git stash','git stash','git stash'],r=>(r.stats.stashes??0)>0&&!workChanges(r).modified.length,
+  ['git stash']),
+ drill('restore-stash',['Bring stashed work back','取回暂存的工作','取回暫存的工作'],['Your unfinished edit is in the stash. Bring it back into the working tree.'],SEEDED.concat([r=>writeFile(r,'notes.txt','Review checklist:\n- half-finished thought'),'git stash']),
+  ['Bring it back','取回它','取回它'],['git stash pop','git stash pop','git stash pop'],r=>String(r.files['notes.txt']||'').includes('half-finished thought'),
+  ['git stash pop']),
+ drill('tag-release',['Tag a release','为发布打标签','為發布打標籤'],['The commit you are on is the one you shipped. Mark it with the tag v1.0.'],SEEDED,
+  ['Tag the current commit','给当前提交打标签','給目前提交打標籤'],['git tag v1.0','git tag v1.0','git tag v1.0'],r=>r.tags['v1.0']===r.branches.main,
+  ['git tag v1.0','git tag']),
+ drill('delete-branch',['Delete a finished branch','删除已完成的分支','刪除已完成的分支'],['feature/old is merged into main and no longer needed. Delete it without losing history.'],SEEDED.concat(['git branch feature/old']),
+  ['Delete the merged branch','删除已合并的分支','刪除已合併的分支'],['git branch -d feature/old','git branch -d feature/old','git branch -d feature/old'],r=>!Object.hasOwn(r.branches,'feature/old')&&r.head.name==='main',
+  ['git branch -d feature/old']),
+ drill('amend-message',['Fix the last commit message','修改最后一次提交说明','修改最後一次提交說明'],['The last message says nothing useful. Replace it before anyone reviews it.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "stuff"']),
+  ['Rewrite the message of the last commit','重写最后一次提交说明','重寫最後一次提交說明'],['git commit --amend -m "Ask for a failing test first"','git commit --amend -m "Ask for a failing test first"','git commit --amend -m "Ask for a failing test first"'],r=>/checks/.test(String(commitOf(r,r.branches.main)?.tree['notes.txt']||''))&&/failing test/.test(String(commitOf(r,r.branches.main)?.message||'')),
+  ['git commit --amend -m "Ask for a failing test first"']),
+ drill('undo-commit-keep-work',['Undo a commit but keep the work','撤销提交但保留改动','撤銷提交但保留改動'],['The last commit was made too early. Move the branch back but keep the changes so you can commit them again later.'],SEEDED.concat([r=>writeFile(r,'notes.txt',SEED_NOTES),'git add .','git commit -m "Too early"']),
+  ['Undo the commit, keep the changes','撤销提交，保留改动','撤銷提交，保留改動'],['git reset --soft HEAD~1','git reset --soft HEAD~1','git reset --soft HEAD~1'],r=>r.branches.main===r.commits[0].id&&stagedCount(r)>0,
+  ['git reset --soft HEAD~1','git status']),
+ drill('connect-remote',['Connect a remote','连接远程仓库','連接遠端倉庫'],['There is nowhere to push yet. Point the name origin at the team repository.'],SEEDED,
+  ['Add the origin remote','添加 origin 远程','加入 origin 遠端'],['git remote add origin https://example.edu/team/project.git','git remote add origin https://example.edu/team/project.git','git remote add origin https://example.edu/team/project.git'],r=>Object.hasOwn(r.remotes,'origin'),
+  ['git remote add origin https://example.edu/team/project.git','git remote -v']),
+ drill('publish-work',['Publish your work','发布你的工作','發布你的工作'],['You cloned the team project and committed a local note. Send it to the remote.'],['git clone https://example.edu/team/project.git',r=>writeFile(r,'README.md',r.files['README.md']+'\nReviewed on the team branch.'),'git add .','git commit -m "Add a local note"'],
+  ['Push the branch','推送分支','推送分支'],['git push origin main','git push origin main','git push origin main'],r=>(r.stats.pushes??0)>0&&r.remotes.origin.branches.main===r.branches.main,
+  ['git push origin main']),
+ drill('get-teammate-work',['Get a teammate change','获取同事的改动','取得同事的改動'],['A teammate pushed a commit you do not have. Bring it into your branch.'],['git clone https://example.edu/team/project.git',r=>teammateCommit(r,'origin','Add the sign-up form',{'src/signup.js':'export const fields = ["name", "email"];'})],
+  ['Pull their change','拉取他们的改动','拉取他們的改動'],['git pull origin main','git pull origin main','git pull origin main'],r=>r.commits.some(c=>c.message==='Add the sign-up form'),
+  ['git pull origin main','git log --oneline']),
+ drill('undo-shared-commit',['Undo a shared commit safely','安全撤销已共享的提交','安全撤銷已共享的提交'],['The last commit removed a check and others already have it. Undo the change without deleting the commit.'],SEEDED.concat([r=>writeFile(r,'src/app.js','export function validateSignup() {\n  return true;\n}'),'git add .','git commit -m "Skip the name check"']),
+  ['Revert the last commit','还原最后一次提交','還原最後一次提交'],['git revert HEAD','git revert HEAD','git revert HEAD'],r=>r.files['src/app.js']===GIT_SEED_FILES['src/app.js']&&r.commits.length===3,
+  ['git revert HEAD','git log --oneline']),
+ drill('copy-commit',['Copy a commit to another branch','把提交复制到另一个分支','把提交複製到另一個分支'],['The fix on feature/form is needed on main too, but main must keep its own history. Copy just that one commit.'],SEEDED.concat(['git switch -c feature/form',r=>writeFile(r,'src/app.js','export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}'),'git add .','git commit -m "Require three characters"','git switch main']),
+  ['Copy the feature commit onto main','把功能提交复制到 main','把功能提交複製到 main'],['git cherry-pick <commit id>','git cherry-pick <commit id>','git cherry-pick <commit id>'],r=>r.head.name==='main'&&String(r.files['src/app.js']||'').includes('length > 2'),
+  ['git log --oneline','git cherry-pick <id of "Require three characters">']),
+ drill('preview-clean',['Preview untracked files','预览未跟踪文件','預覽未追蹤檔案'],['Before deleting anything, ask Git which files it is not tracking.'],SEEDED.concat([r=>writeFile(r,'scratch.txt','notes I may not need')]),
+  ['Preview what clean would remove','预览 clean 会删除什么','預覽 clean 會刪除什麼'],['git clean -n','git clean -n','git clean -n'],r=>r.transcript.some(line=>line==='$ git clean -n')&&'scratch.txt' in r.files,
+  ['git clean -n'])
+];
+
+export const GIT_SITUATIONS=[
  {
   id:'divergent',
   title:['Two branches changed the same line','两个分支改了同一行','兩個分支改了同一行'],
@@ -1314,6 +1418,8 @@ export const GIT_SCENARIOS=[
   ]
  },
 ];
+/** Everything a learner can practise: the small drills and the situations. */
+export const GIT_SCENARIOS=[...GIT_DRILLS,...GIT_SITUATIONS];
 
 /**
  * Starts a scenario: the repository is put into the situation it describes by

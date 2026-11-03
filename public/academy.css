@@ -247,6 +247,8 @@
 .git-goal-list li{font-size:.94rem;color:#605a8a}
 .git-goal-list li.done{color:#31593e;font-weight:650}
 .git-scenario{border:1px solid #e4def1;border-radius:12px;padding:20px;margin-bottom:22px;background:#fbfaff}
+.git-goals-fold{margin:22px 0}.git-goals-fold>summary{cursor:pointer;font-weight:650;color:#625985;padding:8px 0}
+.git-goals-fold[open]>summary{margin-bottom:8px}
 .git-scenario h2{font-size:1rem;margin:0 0 12px}
 .git-brief p{font-size:.95rem;margin:6px 0}
 .git-solution{margin:10px 0 0;padding-left:22px}

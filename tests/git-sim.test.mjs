@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRepo,runGit,writeFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_SCENARIOS,startScenario,scenarioTasks,scenarioComplete,scenarioById} from '../public/git-sim.js';
+import {createRepo,runGit,writeFile,resolveConflictFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_DRILLS,GIT_SITUATIONS,startScenario,scenarioTasks,scenarioComplete,scenarioById} from '../public/git-sim.js';
 const APP_RESOLVED='export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}';
 
 /** Runs a list of commands and returns the final repository plus every output. */
@@ -306,15 +306,17 @@ const SCENARIO_FIXES={
 };
 
 test('every production situation is split into small ordered tasks that its documented fix completes',()=>{
- assert.equal(GIT_SCENARIOS.length,7);
- assert.deepEqual(Object.keys(SCENARIO_FIXES).sort(),GIT_SCENARIOS.map(s=>s.id).sort());
- assert.ok(GIT_SCENARIOS.every(s=>s.tasks.length>=2),'every situation must be broken into small tasks');
- assert.ok(GIT_SCENARIOS.reduce((n,s)=>n+s.tasks.length,0)>=28,'the work must be broken into many small steps');
- for(const scenario of GIT_SCENARIOS)for(const task of scenario.tasks){
-  assert.ok((task.hint[0].match(/\bgit\b/g)||[]).length<=1,scenario.id+'/'+task.id+' must ask for one command');
-  assert.ok(!/\bthen\b/.test(task.hint[0]),scenario.id+'/'+task.id+' must not chain commands');
+ assert.equal(GIT_SITUATIONS.length,7);
+ assert.deepEqual(Object.keys(SCENARIO_FIXES).sort(),GIT_SITUATIONS.map(s=>s.id).sort());
+ assert.ok(GIT_SITUATIONS.every(s=>s.tasks.length>=2),'every situation must be broken into small tasks');
+ assert.ok(GIT_SITUATIONS.reduce((n,s)=>n+s.tasks.length,0)>=28,'the work must be broken into many small steps');
+ for(const scenario of GIT_SITUATIONS)for(const task of scenario.tasks){
+  const commands=(task.hint[0].match(/(^|\s)git\s/g)||[]).length;
+  assert.ok(commands<=1,scenario.id+'/'+task.id+' must not chain commands');
+  if(commands===0)assert.match(task.hint[0],/file editor/,scenario.id+'/'+task.id+' must be a single editor step');
+  assert.ok(!/\bthen\b/.test(task.hint[0]),scenario.id+'/'+task.id+' must not chain steps');
  }
- for(const scenario of GIT_SCENARIOS){
+ for(const scenario of GIT_SITUATIONS){
   let repo=startScenario(scenario.id);
   assert.deepEqual(scenarioTasks(repo).filter(t=>t.done),[],scenario.id+' must start unsolved');
   assert.deepEqual(scenarioTasks(runGit(repo,'git status').repo).filter(t=>t.done),[],scenario.id+' must not latch a task before the one before it is done');
@@ -339,7 +341,50 @@ test('every production situation is split into small ordered tasks that its docu
  assert.equal(scenarioComplete(createRepo()),false);
  assert.deepEqual(scenarioTasks(createRepo()),[]);
  assert.equal(scenarioById('nope'),null);
- assert.equal(startScenario('nope').scenario.id,GIT_SCENARIOS[0].id);
+ assert.equal(startScenario('nope').scenario.id,GIT_DRILLS[0].id);
+});
+
+test('every small practice asks for exactly one command and is solved by it',()=>{
+ assert.ok(GIT_DRILLS.length>=16,'the practice should cover the everyday commands');
+ const fixFor={
+  'copy-commit':repo=>['git cherry-pick '+repo.commits.find(c=>c.message==='Require three characters').id]
+ };
+ for(const drill of GIT_DRILLS){
+  assert.equal(drill.tasks.length,1,drill.id+' must ask for one thing');
+  assert.equal(drill.kind,'drill');
+  const task=drill.tasks[0];
+  assert.equal((task.hint[0].match(/(^|\s)git\s/g)||[]).length,1,drill.id+' must hint exactly one command');
+  assert.equal(task.label.length,3,drill.id+' localizes its label');
+  let repo=startScenario(drill.id);
+  assert.deepEqual(scenarioTasks(repo).filter(t=>t.done),[],drill.id+' must start unsolved');
+  assert.equal(scenarioComplete(repo),false,drill.id);
+  const steps=(fixFor[drill.id]??(()=>[drill.solution[0]]))(repo);
+  for(const step of steps)repo=typeof step==='function'?step(repo):runGit(repo,step).repo;
+  assert.equal(scenarioComplete(repo),true,drill.id+' is solved by '+steps[0]);
+  assert.deepEqual(repo.mistakes,[],drill.id+' should not need a mistake to be solved');
+  assert.ok(repo.transcript.some(line=>line.startsWith('$ git ')),drill.id+' shows its setup');
+ }
+ assert.ok(GIT_DRILLS.every(d=>d.tasks.length===1));
+ assert.equal(scenarioById('read-status').kind,'drill');
+});
+
+test('a conflict can be resolved in one click by keeping either side',()=>{
+ const merge=conflicted();
+ const keepOurs=resolveConflictFile(merge.repo,'src/app.js','ours');
+ assert.match(keepOurs.files['src/app.js'],/form\.name\.trim\(\) !== ""/);
+ assert.equal(/<<<<<<</.test(keepOurs.files['src/app.js']),false);
+ const keepTheirs=resolveConflictFile(merge.repo,'src/app.js','theirs');
+ assert.match(keepTheirs.files['src/app.js'],/length > 2/);
+ const keepBoth=resolveConflictFile(merge.repo,'src/app.js','both');
+ assert.match(keepBoth.files['src/app.js'],/!== ""/);
+ assert.match(keepBoth.files['src/app.js'],/length > 2/);
+ assert.equal(/=======|>>>>>>>/.test(keepBoth.files['src/app.js']),false);
+ assert.deepEqual(keepOurs.conflict.paths,['src/app.js'],'resolving the file does not stage it');
+ const staged=runGit(keepOurs,'git add src/app.js');
+ assert.deepEqual(staged.repo.conflict.paths,[]);
+ const merged=runGit(staged.repo,'git commit -m "Merge the validation rules"').repo;
+ assert.equal(merged.commits.some(c=>c.parents.length>1),true);
+ assert.match(merged.commits.at(-1).tree['src/app.js'],/form\.name\.trim\(\) !== ""/);
 });
 
 test('uncommitted work is carried across a switch and never silently discarded',()=>{

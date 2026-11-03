@@ -144,4 +144,4 @@ export function gitStep(state,action,value=''){
  s.log.push(`${action} ${value}`.trim());return s;
 }
 export {promptReview,promptAnalysis,retrieve,rankDocuments,initialDocker,dockerStep,gradientStep,pipelineResult,diagnosePipeline} from './academy-models.js';
-export {createRepo,runGit,writeFile,removeFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_SCENARIOS,startScenario,scenarioById,scenarioTasks,scenarioComplete} from './git-sim.js';
+export {createRepo,runGit,writeFile,removeFile,resolveConflictFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_DRILLS,GIT_SITUATIONS,GIT_SCENARIOS,startScenario,scenarioById,scenarioTasks,scenarioComplete} from './git-sim.js';
