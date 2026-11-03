@@ -179,16 +179,16 @@ export function createQuestViews(ctx,h){
      <div class="quest-leftcol">${storyCard(chapter,false)}
      <div class="quest-card quest-brief">
       <h2>${e(L('Your task','任务','任務'))}</h2><p>${e(T(ex.brief))}</p>
-      <h2>${e(L('Goal output','目标输出','目標輸出'))}</h2><pre class="quest-goal">${ex.goal.map(line=>`<span>${e(line)}</span>`).join('')}</pre>
+      <h2>${e(L('Goal output','目标输出','目標輸出'))}</h2><pre class="quest-goal" translate="no">${ex.goal.map(line=>`<span>${e(line)}</span>`).join('')}</pre>
       <details class="quest-hint" ${failed?'open':''}><summary>${e(L('Need a hint?','需要提示？','需要提示？'))}</summary><p>${e(T(ex.hint))}</p></details>
-      <details class="quest-hint"><summary>${e(L('Syntax reminder','语法提示','語法提示'))} · ${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.label||'')}</summary><div class="quest-tips">${tips}</div></details>
+      <details class="quest-hint"><summary>${e(L('Syntax reminder','语法提示','語法提示'))} · ${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.label||'')}</summary><div class="quest-tips" translate="no">${tips}</div></details>
       ${cleared&&!run?`<div class="quest-result good"><strong>${e(L('Already cleared','已通关','已通關'))}</strong><p>${e(T(ex.teach))}</p></div>`:''}
      </div></div>
      <div class="quest-work">
       <div class="quest-codewrap"><div class="quest-filebar"><span>${e(file)}</span><button type="button" class="quest-link" data-ac="quest-reset-code">${e(L('Reset code','重置代码','重置程式碼'))}</button></div>
-       <textarea id="quest-code-input" class="code-editor academy-editor quest-editor" spellcheck="false" autocomplete="off" aria-label="${e(file)}" rows="${Math.max(9,code.split('\n').length+2)}">${e(code)}</textarea></div>
+       <textarea id="quest-code-input" translate="no" class="code-editor academy-editor quest-editor" spellcheck="false" autocomplete="off" aria-label="${e(file)}" rows="${Math.max(9,code.split('\n').length+2)}">${e(code)}</textarea></div>
       <div class="quest-controls">${button('quest-run-code',L('Run','运行','執行'),'',false)}<span class="quest-shortcut">${e(L('Ctrl / Cmd + Enter','Ctrl / Cmd + 回车','Ctrl / Cmd + Enter'))}</span></div>
-      <div class="quest-card"><h2>${e(L('Terminal','输出屏','輸出螢幕'))}</h2><pre class="quest-terminal" aria-live="polite">${terminal}</pre></div>
+      <div class="quest-card"><h2>${e(L('Terminal','输出屏','輸出螢幕'))}</h2><pre class="quest-terminal" aria-live="polite" translate="no">${terminal}</pre></div>
       ${feedback}${trace}
      </div>
     </section>`+bottom
@@ -234,7 +234,7 @@ export function createQuestViews(ctx,h){
   const varsPanel=vars.length?vars.map(([k,v])=>`<span class="quest-var"><b>${e(k)}</b>${e(String(v))}</span>`).join(''):`<span class="quest-empty">${e(L('No variables yet.','还没有变量。','還沒有變數。'))}</span>`;
   const output=step?step.output:[];
   const terminal=output.length?output.map(line=>`<span>${e(line)}</span>`).join(''):`<span class="quest-empty">${e(L('No output yet.','还没有输出。','還沒有輸出。'))}</span>`;
-  const options=level.slot.options.map((opt,i)=>`<button type="button" class="quest-option${choice===i?' chosen':''}" data-ac="quest-choose" data-id="${i}" aria-pressed="${choice===i}"><code>${e(opt.code)}</code><small>${e(T(opt.note))}</small></button>`).join('');
+  const options=level.slot.options.map((opt,i)=>`<button type="button" class="quest-option${choice===i?' chosen':''}" data-ac="quest-choose" data-id="${i}" aria-pressed="${choice===i}"><code translate="no">${e(opt.code)}</code><small>${e(T(opt.note))}</small></button>`).join('');
   const feedback=!run?'':run.error?`<div class="quest-result bad">${e(L('The program stopped before finishing.','程序没有执行完。','程式沒有執行完。'))} <code>${e(run.error)}</code></div>`
    :finished?(run.passed
     ?`<div class="quest-result good"><strong>${e(L('Cleared','通关','通關'))}</strong><p>${e(T(level.teach))}</p></div>`
@@ -242,11 +242,11 @@ export function createQuestViews(ctx,h){
 
   return heading(T(level.title),T(chapter.title))+top+storyCard(chapter,true)+languageBar(lang)
    +`<section class="quest-stage">
-      <div class="quest-codewrap"><div class="quest-filebar"><span>${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.file||'main')}</span></div><div class="quest-code">${codePanel}</div></div>
+      <div class="quest-codewrap"><div class="quest-filebar"><span>${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.file||'main')}</span></div><div class="quest-code" translate="no">${codePanel}</div></div>
       <aside class="quest-side">
        <div class="quest-panel"><h2>${e(L('Task','任务','任務'))}</h2><p class="quest-brief-text">${e(T(level.brief))}</p></div>
-       <div class="quest-panel"><h2>${e(L('Goal output','目标输出','目標輸出'))}</h2><pre class="quest-goal">${level.goal.map(line=>`<span>${e(line)}</span>`).join('')}</pre></div>
-       <div class="quest-panel"><h2>${e(L('Terminal','输出屏','輸出螢幕'))}</h2><pre class="quest-terminal" aria-live="polite">${terminal}</pre></div>
+       <div class="quest-panel"><h2>${e(L('Goal output','目标输出','目標輸出'))}</h2><pre class="quest-goal" translate="no">${level.goal.map(line=>`<span>${e(line)}</span>`).join('')}</pre></div>
+       <div class="quest-panel"><h2>${e(L('Terminal','输出屏','輸出螢幕'))}</h2><pre class="quest-terminal" aria-live="polite" translate="no">${terminal}</pre></div>
        <div class="quest-panel"><h2>${e(L('Variables','变量','變數'))}</h2><div class="quest-vars">${varsPanel}</div></div>
       </aside>
      </section>
