@@ -261,3 +261,45 @@
 .git-task-hint{display:block;margin-top:6px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#625985;font-weight:400;overflow-wrap:anywhere}
 @media(max-width:700px){.git-state{grid-template-columns:1fr}}
 
+/* Personal settings: one set of defaults, separated from individual plans. */
+.profile-settings-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:32px;align-items:start}
+.profile-settings-form{min-width:0}
+.profile-section{border:0;margin:0;padding:0 0 28px;min-width:0}
+.profile-section+.profile-section{border-top:1px solid var(--line,#ded9ff);padding-top:24px}
+.profile-section>legend{float:left;width:100%;padding:0;margin:0 0 18px;font-size:19px;font-weight:750;color:var(--ink,#050038)}
+.profile-section>.form-grid{clear:both}
+.profile-settings-form .field-hint{font-size:13px;line-height:1.6;color:var(--muted,#605a8a);margin:8px 0 0}
+.profile-settings-aside{padding:8px 0;position:sticky;top:96px}
+.profile-settings-aside h2{font-size:19px;margin-bottom:16px}
+.profile-settings-aside p{margin:0 0 16px;line-height:1.7}
+@media(max-width:1000px){.profile-settings-layout{grid-template-columns:minmax(0,1fr)}.profile-settings-aside{position:static}}
+
+.hero.home-resume{display:flex;flex-direction:column;align-items:stretch;gap:24px;min-height:0;padding:28px;margin:22px 0;background:#fffdf6;border:1px solid var(--line);border-radius:16px}
+.resume-main{display:flex;align-items:flex-start;gap:20px}
+.resume-mark{width:58px;height:58px;display:grid;place-items:center;flex-shrink:0;border-radius:14px;background:#eae3f7;color:var(--ink)}
+.resume-bottom{display:flex;justify-content:space-between;align-items:center;gap:25px}
+.resume-progress{max-width:240px;flex:1;min-width:100px}
+.resume-progress>span{display:block;font-size:12px;color:var(--muted);margin-bottom:9px}
+.resume-progress .progress-track{margin:0;height:5px}
+.home-resume .hero-copy .resume-meta{font-size:12px;line-height:1.5;color:var(--muted);margin:12px 0 0}
+.home-resume .hero-copy{max-width:680px;min-width:0;flex:1}
+.learning-home-hero.home-resume .hero-copy h2{font-size:25px;line-height:1.4;letter-spacing:-.4px;font-weight:650}
+.home-resume .hero-copy .resume-course{margin:0 0 8px;font-size:13px;line-height:1.5;max-width:none;color:var(--muted)}
+.home-resume .resume-actions{flex-shrink:0;gap:18px;flex-wrap:wrap}
+@media(max-width:1100px){.learning-home-hero.home-resume .hero-copy h2{font-size:23px}}
+@media(max-width:850px){.home-workspace .panel{min-height:0}}
+@media(max-width:600px){.hero.home-resume{padding:22px;gap:22px}.resume-main{gap:14px}.resume-mark{width:42px;height:42px;border-radius:10px}.resume-mark svg{width:22px;height:22px}.resume-bottom{flex-wrap:wrap;gap:18px}.resume-progress{max-width:none;flex-basis:100%}.home-resume .resume-actions{width:100%;justify-content:space-between}.learning-home-hero.home-resume .hero-copy h2{font-size:21px}}
+.content>.page-heading:has(+.home-status){margin-bottom:14px}
+.custom-study-time{margin-top:12px}
+.custom-study-time[hidden]{display:none}
+.custom-study-time label{display:block;font-size:13px;margin-bottom:8px}
+.custom-study-time .field-hint{font-size:12px;line-height:1.6;color:var(--muted,#605a8a);margin:6px 0 0}
+.practice-subnav .learning-tabs{border-bottom:0;gap:8px;margin:20px 0 28px;padding:0;flex-wrap:wrap}
+.practice-subnav .learning-tabs a{font-size:15px;padding:9px 18px;border-radius:999px;border-bottom:0;background:transparent}
+.practice-subnav .learning-tabs a[aria-current="page"]{background:var(--ink,#050038);color:var(--canvas,#fff7c2);border-bottom:0}
+
+.knowledge-topics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.knowledge-topic-links{display:grid;gap:0}.knowledge-topic-links a{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--border,#ded7fa);text-decoration:none}.knowledge-topic-links a:last-child{border-bottom:0}@media(max-width:760px){.knowledge-topics{grid-template-columns:1fr}}
+
+.knowledge-topic-entry{display:block;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}.knowledge-topic-entry:hover{transform:translateY(-3px);border-color:#8270c8}.knowledge-topic-entry:focus-visible{outline:3px solid #8270c8;outline-offset:4px}.knowledge-topic-entry>div{display:flex;justify-content:space-between;align-items:center;color:#68608f;margin-top:28px}.knowledge-topic-entry h2{margin:0}
+
+.cloud-login{max-width:640px}.cloud-login form{margin-top:24px}.cloud-login input{width:100%}

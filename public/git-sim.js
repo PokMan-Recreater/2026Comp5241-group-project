@@ -609,7 +609,7 @@ function cmdSwitch(r,args,cmd){
  if(!target)return refuse(r,cmd,'fatal: missing branch name.',
   ['The command needs the branch to switch to.','命令需要指定要切换的分支。','指令需要指定要切換的分支。'],
   ['Try git switch feature/form, or git switch -c feature/form to create it.','试试 git switch feature/form，或用 git switch -c feature/form 创建。','試試 git switch feature/form，或用 git switch -c feature/form 建立。']);
- let branch=null,id=null;
+ let branch=null,id;
  if(previous){
   if(!r.previousBranch||!Object.hasOwn(r.branches,r.previousBranch))return refuse(r,cmd,'fatal: no previous branch to switch to.',
    ['Nothing has been switched yet in this session.','本次会话还没有切换过分支。','本次工作階段還沒有切換過分支。'],
@@ -739,7 +739,7 @@ function cmdMerge(r,args,cmd){
  if(name===r.head.name&&!r.head.detached)return refuse(r,cmd,`Already on '${name}'`,
   ['A branch cannot be merged into itself.','分支不能合并到自己。','分支不能合併到自己。'],
   ['Switch to the branch that should receive the work, then merge: git switch main.','先切换到要接收工作的分支，再合并：git switch main。','先切換到要接收工作的分支，再合併：git switch main。']);
- let theirId=null;
+ let theirId;
  if(Object.hasOwn(r.branches,name))theirId=r.branches[name];
  else if(Object.hasOwn(r.remoteRefs,name))theirId=r.remoteRefs[name];
  else{
