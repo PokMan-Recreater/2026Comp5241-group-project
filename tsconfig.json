@@ -17,6 +17,8 @@
     "skipLibCheck": true
   },
   "include": [
+    "public/profile-settings.js",
+    "public/study-time.js",
     "public/academy-core.js",
     "public/academy-models.js",
     "public/academy-runner.js",
