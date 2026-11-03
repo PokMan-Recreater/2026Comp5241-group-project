@@ -149,13 +149,31 @@ export const GIT_SEED_FILES={
 export function writeFile(repo,path,content){
  const next=structuredClone(repo);
  next.files[path]=String(content);
- return next;
+ return syncTasks(next);
 }
 /** Deletes a file from the working tree. */
 export function removeFile(repo,path){
  const next=structuredClone(repo);
  delete next.files[path];
- return next;
+ return syncTasks(next);
+}
+/**
+ * Remembers the tasks that have been satisfied so far. The walk stops at the
+ * first unsatisfied task, so a task is only recorded once the tasks before it
+ * are done, and a later command can never un-tick it — a stash is empty again
+ * after it is popped, and staging is undone by the next commit.
+ * @param {any} r
+ */
+function syncTasks(r){
+ const scenario=scenarioById(r.scenario?.id);
+ if(!scenario)return r;
+ r.tasks??={};
+ for(const task of scenario.tasks){
+  if(r.tasks[task.id])continue;
+  if(!task.done(r))break;
+  r.tasks[task.id]=true;
+ }
+ return r;
 }
 function cmdInit(r){
  r.initialised=true;
@@ -1085,6 +1103,7 @@ export function runGit(repo,input){
  // review keeps the most recent mistakes.
  if(next.transcript.length>600)next.transcript=next.transcript.slice(-600);
  if(next.mistakes.length>60)next.mistakes=next.mistakes.slice(-60);
+ syncTasks(next);
  return {repo:next,output:lines,mistake:next.mistakes.length>before?next.mistakes.at(-1):null};
 }
 /**
@@ -1154,7 +1173,7 @@ export const GIT_SCENARIOS=[
   solution:['git merge feature/validation','# edit src/app.js and keep the rule you chose','git add src/app.js','git commit -m "Merge the validation rules"'],
   tasks:[
    {id:'merge',label:['Start the merge and look at the conflict','开始合并并查看冲突','開始合併並查看衝突'],hint:['git merge feature/validation','git merge feature/validation','git merge feature/validation'],done:r=>r.conflict!==null||r.commits.some(c=>c.parents.length>1)},
-   {id:'edit',label:['Edit src/app.js and delete the <<<<<<<, ======= and >>>>>>> lines','编辑 src/app.js，删掉 <<<<<<<、======= 和 >>>>>>> 这些行','編輯 src/app.js，刪掉 <<<<<<<、======= 和 >>>>>>> 這些行'],hint:['open src/app.js in the file editor below, then press Save file','在下面的文件编辑器里打开 src/app.js，然后按“保存文件”','在下面的檔案編輯器裡開啟 src/app.js，然後按「儲存檔案」'],done:r=>!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
+   {id:'edit',label:['Edit src/app.js and delete the <<<<<<<, ======= and >>>>>>> lines','编辑 src/app.js，删掉 <<<<<<<、======= 和 >>>>>>> 这些行','編輯 src/app.js，刪掉 <<<<<<<、======= 和 >>>>>>> 這些行'],hint:['open src/app.js in the file editor below and press Save file','在下面的文件编辑器里打开 src/app.js，然后按“保存文件”','在下面的檔案編輯器裡開啟 src/app.js，然後按「儲存檔案」'],done:r=>!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
    {id:'stage',label:['Stage the resolved file','暂存已解决的文件','暫存已解決的檔案'],hint:['git add src/app.js','git add src/app.js','git add src/app.js'],done:r=>!(r.conflict?.paths?.length)},
    {id:'commit',label:['Commit the merge','提交这次合并','提交這次合併'],hint:['git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"','git commit -m "Merge the validation rules"'],done:r=>r.commits.some(c=>c.parents.length>1)}
   ]
@@ -1168,7 +1187,8 @@ export const GIT_SCENARIOS=[
    r=>writeFile(r,'README.md',r.files['README.md']+'\nReviewed on the team branch.')],
   solution:['git add .','git commit -m "Add a local note"','git pull origin main','git push origin main'],
   tasks:[
-   {id:'commit',label:['Commit your own note','提交你自己的笔记','提交你自己的筆記'],hint:['git add . then git commit -m "Add a local note"','先 git add . 再 git commit -m "Add a local note"','先 git add . 再 git commit -m "Add a local note"'],done:r=>!workChanges(r).modified.length&&r.commits.length>2},
+   {id:'stage',label:['Stage your note','暂存你的笔记','暫存你的筆記'],hint:['git add .','git add .','git add .'],done:r=>stagedCount(r)>0},
+   {id:'commit',label:['Commit your note','提交你的笔记','提交你的筆記'],hint:['git commit -m "Add a local note"','git commit -m "Add a local note"','git commit -m "Add a local note"'],done:r=>r.commits.some(c=>c.message==='Add a local note')},
    {id:'pull',label:['Pull the teammate change','拉取同事的改动','拉取同事的改動'],hint:['git pull origin main','git pull origin main','git pull origin main'],done:r=>r.commits.some(c=>c.message==='Add the sign-up form')},
    {id:'push',label:['Push your work','推送你的工作','推送你的工作'],hint:['git push origin main','git push origin main','git push origin main'],done:r=>(r.stats.pushes??0)>0}
   ]
@@ -1182,10 +1202,12 @@ export const GIT_SCENARIOS=[
    r=>writeFile(r,'src/app.js',APP_LOOSE)],
   solution:['git add .','git commit -m "Reject blank names only"','git pull origin main','# edit src/app.js and keep the rule you chose','git add src/app.js','git commit -m "Merge the teammate change"','git push origin main'],
   tasks:[
-   {id:'own',label:['Commit your own version','提交你自己的版本','提交你自己的版本'],hint:['git add . then git commit -m "Reject blank names only"','先 git add . 再 git commit -m "Reject blank names only"','先 git add . 再 git commit -m "Reject blank names only"'],done:r=>r.commits.some(c=>c.message==='Reject blank names only')},
+   {id:'stage',label:['Stage your version','暂存你的版本','暫存你的版本'],hint:['git add .','git add .','git add .'],done:r=>stagedCount(r)>0},
+   {id:'commit',label:['Commit your version','提交你自己的版本','提交你自己的版本'],hint:['git commit -m "Reject blank names only"','git commit -m "Reject blank names only"','git commit -m "Reject blank names only"'],done:r=>r.commits.some(c=>c.message==='Reject blank names only')},
    {id:'pull',label:['Pull the teammate version','拉取同事的版本','拉取同事的版本'],hint:['git pull origin main','git pull origin main','git pull origin main'],done:r=>r.commits.some(c=>c.message==='Require three characters')},
-   {id:'edit',label:['Edit src/app.js and delete the conflict markers','编辑 src/app.js，删掉冲突标记','編輯 src/app.js，刪掉衝突標記'],hint:['open src/app.js in the file editor below, then press Save file','在下面的文件编辑器里打开 src/app.js，然后按“保存文件”','在下面的檔案編輯器裡開啟 src/app.js，然後按「儲存檔案」'],done:r=>!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
-   {id:'merge',label:['Commit the merge','提交这次合并','提交這次合併'],hint:['git add src/app.js then git commit -m "Merge the teammate change"','先 git add src/app.js，再 git commit -m "Merge the teammate change"','先 git add src/app.js，再 git commit -m "Merge the teammate change"'],done:r=>r.commits.some(c=>c.parents.length>1)},
+   {id:'edit',label:['Edit src/app.js and delete the conflict markers','编辑 src/app.js，删掉冲突标记','編輯 src/app.js，刪掉衝突標記'],hint:['open src/app.js in the file editor below and press Save file','在下面的文件编辑器里打开 src/app.js，然后按“保存文件”','在下面的檔案編輯器裡開啟 src/app.js，然後按「儲存檔案」'],done:r=>!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
+   {id:'stage-merge',label:['Stage the resolved file','暂存已解决的文件','暫存已解決的檔案'],hint:['git add src/app.js','git add src/app.js','git add src/app.js'],done:r=>(r.conflict?.paths?.length??0)===0},
+   {id:'merge',label:['Commit the merge','提交这次合并','提交這次合併'],hint:['git commit -m "Merge the teammate change"','git commit -m "Merge the teammate change"','git commit -m "Merge the teammate change"'],done:r=>r.commits.some(c=>c.parents.length>1)},
    {id:'push',label:['Push the finished version','推送完成的版本','推送完成的版本'],hint:['git push origin main','git push origin main','git push origin main'],done:r=>(r.stats.pushes??0)>0}
   ]
  },
@@ -1197,10 +1219,13 @@ export const GIT_SCENARIOS=[
    r=>writeFile(r,'notes.txt','Review checklist:\n- half-finished thought')],
   solution:['git stash','git switch main','# edit README.md and add the line "Urgent: sign-up is broken"','git add README.md','git commit -m "Urgent: note the sign-up outage"','git switch feature/form','git stash pop'],
   tasks:[
-   {id:'stash',label:['Put your unfinished work aside','先把未完成的工作放到一边','先把未完成的工作放到一邊'],hint:['git stash','git stash','git stash'],done:r=>(r.stats.stashes??0)>0},
-   {id:'hotfix',label:['Switch to main and commit the urgent line in README.md','切换到 main，提交 README.md 里的紧急说明','切換到 main，提交 README.md 裡的緊急說明'],hint:['git switch main, edit README.md, git add README.md, git commit -m "Urgent: note the sign-up outage"','git switch main，编辑 README.md，git add README.md，git commit -m "Urgent: note the sign-up outage"','git switch main，編輯 README.md，git add README.md，git commit -m "Urgent: note the sign-up outage"'],done:hotfixShipped},
-   {id:'branch',label:['Come back to your feature branch','回到你的功能分支','回到你的功能分支'],hint:['git switch feature/form','git switch feature/form','git switch feature/form'],done:r=>r.head.name==='feature/form'},
-   {id:'restore',label:['Bring your unfinished work back','把未完成的工作取回','把未完成的工作取回'],hint:['git stash pop','git stash pop','git stash pop'],done:r=>r.stash.length===0&&String(r.files['notes.txt']||'').includes('half-finished thought')}
+   {id:'stash',label:['Set your unfinished work aside','先把未完成的工作放到一边','先把未完成的工作放到一邊'],hint:['git stash','git stash','git stash'],done:r=>(r.stats.stashes??0)>0},
+   {id:'main',label:['Switch to main','切换到 main','切換到 main'],hint:['git switch main','git switch main','git switch main'],done:r=>r.head.name==='main'},
+   {id:'edit',label:['Edit README.md and add the urgent line','编辑 README.md，加上紧急说明','編輯 README.md，加上緊急說明'],hint:['open README.md in the file editor below, add a line with Urgent and press Save file','在下面的文件编辑器里打开 README.md，加上含 Urgent 的一行，然后按“保存文件”','在下面的檔案編輯器裡開啟 README.md，加上含 Urgent 的一行，然後按「儲存檔案」'],done:r=>String(r.files['README.md']||'').includes('Urgent')},
+   {id:'stage',label:['Stage README.md','暂存 README.md','暫存 README.md'],hint:['git add README.md','git add README.md','git add README.md'],done:r=>stagedCount(r)>0},
+   {id:'hotfix',label:['Commit the hotfix','提交热修复','提交熱修復'],hint:['git commit -m "Urgent: note the sign-up outage"','git commit -m "Urgent: note the sign-up outage"','git commit -m "Urgent: note the sign-up outage"'],done:hotfixShipped},
+   {id:'branch',label:['Switch back to your feature branch','回到你的功能分支','回到你的功能分支'],hint:['git switch feature/form','git switch feature/form','git switch feature/form'],done:r=>r.head.name==='feature/form'},
+   {id:'restore',label:['Bring your unfinished work back','把未完成的工作取回','把未完成的工作取回'],hint:['git stash pop','git stash pop','git stash pop'],done:r=>String(r.files['notes.txt']||'').includes('half-finished thought')}
   ]
  },
  {
@@ -1242,8 +1267,8 @@ export const GIT_SCENARIOS=[
   solution:['git rebase main','git log --oneline --graph'],
   tasks:[
    {id:'rebase',label:['Replay your work on top of main','把你的工作重放到 main 之上','把你的工作重放到 main 之上'],hint:['git rebase main','git rebase main','git rebase main'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])},
-   {id:'linear',label:['Keep the history linear, with no merge commit','保持线性历史，没有合并提交','保持線性歷史，沒有合併提交'],hint:['rebase replays commits instead of merging','rebase 会重放提交而不是合并','rebase 會重放提交而不是合併'],done:r=>![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)},
-   {id:'kept',label:['Keep your documentation commit','保留你的文档提交','保留你的文件提交'],hint:['git log --oneline --graph','git log --oneline --graph','git log --oneline --graph'],done:r=>String(commitOf(r,r.branches['feature/form'])?.tree['docs/form.md']||'').includes('Form notes')}
+   {id:'linear',label:['Keep the history linear, with no merge commit','保持线性历史，没有合并提交','保持線性歷史，沒有合併提交'],hint:['git log --oneline --graph','git log --oneline --graph','git log --oneline --graph'],done:r=>![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)},
+   {id:'kept',label:['Keep your documentation commit','保留你的文档提交','保留你的文件提交'],hint:['git show HEAD','git show HEAD','git show HEAD'],done:r=>String(commitOf(r,r.branches['feature/form'])?.tree['docs/form.md']||'').includes('Form notes')}
   ]
  },
 ];
@@ -1278,7 +1303,7 @@ export function scenarioTasks(repo){
  const tasks=[];
  for(const task of scenario.tasks){
   const previous=tasks.at(-1);
-  tasks.push({id:task.id,label:task.label,hint:task.hint,done:(!previous||previous.done)&&!!task.done(repo)});
+  tasks.push({id:task.id,label:task.label,hint:task.hint,done:(!previous||previous.done)&&!!(repo?.tasks?.[task.id]||task.done(repo))});
  }
  return tasks;
 }
