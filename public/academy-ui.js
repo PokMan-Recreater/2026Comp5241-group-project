@@ -6,7 +6,7 @@ import {interviewContext,reviewInterview,interviewFeedbackHTML} from './intervie
 import {syntaxCards} from './syntax-reference.js';
 import {knowledgeQuestions,saveKnowledgeAttempt} from './knowledge-checks.js';
 import {tri,local} from './i18n.js';
-import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete,resolveConflictFile} from './academy-core.js';
+import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete,scenarioById,resolveConflictFile} from './academy-core.js';
 import {challenges,interviews,labs,retrievalDocs,referenceTopics} from './academy-content.js';
 import {runSandbox,runTypedProgram} from './academy-runner.js';
 import {createLearningViews} from './academy-views.js';
@@ -88,7 +88,9 @@ export function createAcademy(ctx){
  if(view.feedback)return heading(e(T(scenario.title)))+selection+`<section class="panel"><h2>${L('Review your answers','复盘你的回答','回顧你的回答')}</h2>${view.feedback.map((r,j)=>`<section class="academy-answer"><h3>${j+1}. ${e(T(scenario.questions[j]))}</h3><p class="academy-answer-text">${e(r.answer)}</p>${interviewFeedbackHTML(r,{...h,disclosure:false})}</section>`).join('')}<p class="lab-disclosure">${L('Local writing cues support revision; they do not measure hiring suitability or mastery.','本地写作线索供修改参考，不衡量录用或掌握程度。','本機寫作線索供修改參考，不衡量錄用或掌握程度。')}</p><div class="row mt">${button('interview-retry',L('Revise my answers','修改回答','修改回答'))}${button('interview-coach',L('Get coaching','获取辅导','取得輔導'))}</div><div id="academy-coach" role="status"></div></section>`;
  return heading(e(T(scenario.title)))+selection+`<form id="academy-interview-form" class="form-card"><span class="pill">${i+1} / ${scenario.questions.length}</span><h2>${e(T(scenario.questions[i]))}</h2><label for="academy-interview-answer">${L('Your answer','你的回答','你的回答')}</label><textarea id="academy-interview-answer" data-scenario="${scenario.id}" data-question="${i}" rows="7" required maxlength="6000">${e(draft[i]||'')}</textarea><div id="academy-interview-feedback" class="academy-live-review" role="status"></div><div class="form-actions">${i?button('interview-back',L('Previous question','上一题','上一題')):''}<button class="btn" type="submit">${L('Review this answer','检查这一题','檢查這一題')}</button></div></form>${view.questionReview?interviewFeedbackHTML(view.questionReview,h)+`<div class="row mt">${button('interview-next',i+1===scenario.questions.length?L('Finish and save review','完成并保存复盘','完成並儲存回顧'):L('Next question','下一题','下一題'),'',false)}</div>`:''}`;
  }
- function labState(id){const defaults={git:createGit(),'git-cli':createRepo(),prompt:{text:'',result:null},rag:{query:'classroom roster',k:2,hybrid:false,result:null},ci:{fixes:[],result:null},docker:initialDocker(),gradient:{m:0,b:0,rate:.05,history:[],loss:33}};a().labStates??={};a().labStates[id]??=defaults[id];return a().labStates[id];}
+ function labState(id){const defaults={git:createGit(),'git-cli':createRepo(),prompt:{text:'',result:null},rag:{query:'classroom roster',k:2,hybrid:false,result:null},ci:{fixes:[],result:null},docker:initialDocker(),gradient:{m:0,b:0,rate:.05,history:[],loss:33}};a().labStates??={};if(a().labStates[id]===undefined){const drill=drillForLab(id);a().labStates[id]=drill?startScenario(drill.id):defaults[id];save();}return a().labStates[id];}
+ /** The small practice a lab page stands for, when the page is one of them. */
+ function drillForLab(id){if(!/^git-/.test(id))return null;const drill=scenarioById(id.slice(4));return drill&&drill.kind==='drill'?drill:null;}
  function labPage(id){const meta=labs.find(x=>x[0]===id);if(!meta)return empty();const z=labState(id);
   const body=renderLabBody(id,z,{e,L,T,button,option});
   return heading(e(T(meta[1])),e(T(meta[2])))+`<div class="row mb">${link('practice',L('All practice','全部练习','全部練習'))}${button('reset-lab',L('Reset lab','重置实验','重設實驗'),`data-id="${id}"`)}</div><section class="panel academy-lab-panel">${body}<div id="academy-lab-feedback" role="status"></div></section>`;
@@ -135,9 +137,9 @@ export function createAcademy(ctx){
  function localExplanation(c,l){const body=T(l.body),first=body.split(/\n+/).find(x=>x.trim()&&!x.trim().startsWith('#'))||body;return `<p>${e(first)}</p><h3>${L('Make it concrete','用具体例子理解','用具體例子理解')}</h3><p>${e(T(l.workshop?.brief||l.hint||c.description))}</p><ol><li>${L('Name the input, decision and expected result.','写清输入、决定和预期结果。','寫清輸入、決定和預期結果。')}</li><li>${L('Try the smallest example, then one boundary case.','先试一个最小例子，再试一个边界情况。','先試一個最小例子，再試一個邊界情況。')}</li><li>${L('Explain what the evidence does and does not show.','说明证据能证明什么、不能证明什么。','說明證據能證明甚麼、不能證明甚麼。')}</li></ol><p class="small muted">${L('Study guide assembled from this lesson; not a new AI answer.','根据当前课文整理的学习提示，不是新的 AI 回答。','依目前課文整理的學習提示，不是新的 AI 回答。')}</p>`;}
  function completeLab(id,result){a().labResults[id]={...a().labResults[id],...result,at:new Date().toISOString()};touch('lab',id);}
  /** Runs one typed Git command in the sandbox and keeps the whole repository state. */
- function runGitLabCommand(input){const z=labState('git-cli'),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates['git-cli']=repo;if(gitComplete(repo)||scenarioComplete(repo))completeLab('git-cli',{completed:true});save();render();}
+ function runGitLabCommand(input,labId){const id=labId??'git-cli',z=labState(id),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates[id]=repo;if(gitComplete(repo)||scenarioComplete(repo))completeLab(id,{completed:true});save();render();}
  /** Starts a production scenario, or restarts the active one. */
- function startGitScenario(id){const chosen=id??document.querySelector('#git-scenario')?.value;if(!chosen)return;const next=startScenario(chosen);next.selectedFile=Object.keys(next.files)[0];a().labStates['git-cli']=next;save();render();}
+ function startGitScenario(id,labId){const chosen=id??document.querySelector('#git-scenario')?.value;if(!chosen)return;const next=startScenario(chosen);next.selectedFile=Object.keys(next.files)[0];a().labStates[labId??'git-cli']=next;save();render();}
  function previewPlan(data){const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,weeklyMinutes:profile.weeklyMinutes,skillLevel:profile.skillLevel};save();}
  async function click(action,el){
   if(await quest.click(action,el))return;
@@ -192,31 +194,31 @@ export function createAcademy(ctx){
   if(action.startsWith('git-')){const which=action.slice(4);const value=which==='commit'?document.querySelector('#git-message').value:which==='branch'?document.querySelector('#git-branch').value:which==='merge'?document.querySelector('#git-merge').value:el.dataset.choice;a().labStates.git=gitStep(z,which,value);if(which==='merge'&&!a().labStates.git.conflict||which==='resolve')completeLab('git',{completed:true});save();render();return;}
   if(action.startsWith('gitcli-')){
    const which=action.slice(7);
-   if(which==='run'){runGitLabCommand(el.dataset.command);return;}
+   if(which==='run'){runGitLabCommand(el.dataset.command,lab);return;}
    if(which==='clear'){z.transcript=[];save();render();return;}
    if(which==='hint'){z.hintFor=el.dataset.task;save();render();return;}
    if(which==='mistakes'){z.showAllMistakes=!z.showAllMistakes;save();render();return;}
    if(which==='resolve-file'){
     const path=document.querySelector('#git-file')?.value;
-    if(path){a().labStates['git-cli']=resolveConflictFile(z,path,el.dataset.choice);save();render();}
+    if(path){a().labStates[lab]=resolveConflictFile(z,path,el.dataset.choice);save();render();}
     return;
    }
-   if(which==='start-scenario'){startGitScenario();return;}
-   if(which==='restart-scenario'){startGitScenario(z.scenario?.id);return;}
+   if(which==='start-scenario'){startGitScenario(undefined,lab);return;}
+   if(which==='restart-scenario'){startGitScenario(z.scenario?.id,lab);return;}
    if(which==='save-file'){
     const path=document.querySelector('#git-file')?.value,content=document.querySelector('#git-file-content').value;
-    if(path){const next=writeFile(z,path,content);next.selectedFile=path;a().labStates['git-cli']=next;save();render();}
+    if(path){const next=writeFile(z,path,content);next.selectedFile=path;a().labStates[lab]=next;save();render();}
     return;
    }
    if(which==='create-file'){
     const path=(document.querySelector('#git-new-file')?.value||'').trim();
     if(!/^[\w][\w./-]{0,79}$/.test(path)){ctx.toast(L('Use a path like src/format.js.','请使用类似 src/format.js 的路径。','請使用類似 src/format.js 的路徑。'));return;}
-    const next=writeFile(z,path,'');next.selectedFile=path;a().labStates['git-cli']=next;save();render();
+    const next=writeFile(z,path,'');next.selectedFile=path;a().labStates[lab]=next;save();render();
     return;
    }
    if(which==='delete-file'){
     const path=document.querySelector('#git-file')?.value;
-    if(path){const next=removeFile(z,path);next.selectedFile=Object.keys(next.files)[0];a().labStates['git-cli']=next;save();render();}
+    if(path){const next=removeFile(z,path);next.selectedFile=Object.keys(next.files)[0];a().labStates[lab]=next;save();render();}
     return;
    }
    return;
@@ -257,8 +259,8 @@ export function createAcademy(ctx){
   if(el.id==='academy-template'&&el.value){const t=referenceTopics.find(x=>x.id===el.value);if(t){a().playground.sources??={};a().playground.sources[t.language]=t.code;save();render();}}
   if(el.id==='academy-rate'||el.id==='academy-voice'){a().narration.rate=Number(document.querySelector('#academy-rate').value);a().narration.voice=document.querySelector('#academy-voice').value;stopSpeech();updateSpeechButtons();save();}
   if(el.id==='git-checkout'){a().labStates.git=gitStep(labState('git'),'checkout',el.value);save();render();}
-  if(el.id==='git-file'){a().labStates['git-cli'].selectedFile=el.value;save();render();}
-  if(el.id==='git-scenario'){a().labStates['git-cli'].scenarioPick=el.value;save();render();}
+  if(el.id==='git-file'){a().labStates[ctx.route()[1]].selectedFile=el.value;save();render();}
+  if(el.id==='git-scenario'){a().labStates[ctx.route()[1]].scenarioPick=el.value;save();render();}
   if(el.id==='academy-edit-level'&&ctx.editor()){ctx.editor().level=el.value;}
   if(el.name==='knowledge-answer')document.querySelector('.knowledge-card .mini-feedback')?.remove();
   if(el.name==='tutorial-answer'){a().tutorialChecks??={};a().tutorialChecks[el.dataset.topic]={selected:Number(el.value)};el.closest('.mini-check')?.querySelector('.mini-feedback')?.remove();save();}
@@ -273,7 +275,7 @@ export function createAcademy(ctx){
    if(f.id==='academy-setup-form'){const d=Object.fromEntries(new FormData(f));view.setupDraft={...view.setupDraft,...d};if(view.setupStep===1)view.setupDraft.interests=new FormData(f).getAll('interests');if(view.setupStep<2){view.setupStep++;render();}else{s().profile={...s().profile,...view.setupDraft,depth:view.setupDraft.skillLevel==='advanced'?'advanced':'beginner'};previewPlan(view.setupDraft);view.setupStep=0;go('path');}}
    if(f.id==='academy-interview-form'){const scenario=interviews.find(x=>x.id===view.interviewId);a().interviewDrafts??={};a().interviewDrafts[scenario.id]??=[];a().interviewDrafts[scenario.id][view.question]=document.querySelector('#academy-interview-answer').value;view.questionReview=reviewInterview(scenario,a().interviewDrafts[scenario.id],contentLang())[view.question];save();render();}
    if(f.id==='academy-docker-form'){a().labStates.docker=dockerStep(labState('docker'),document.querySelector('#docker-command').value);if(a().labStates.docker.status==='stopped')completeLab('docker',{completed:true});save();render();}
-   if(f.id==='academy-git-form'){runGitLabCommand(document.querySelector('#git-command').value);}
+   if(f.id==='academy-git-form'){runGitLabCommand(document.querySelector('#git-command').value,ctx.route()[1]);}
   }catch(error){ctx.toast(error.message);}
  });
  if('speechSynthesis' in window)window.speechSynthesis.addEventListener('voiceschanged',voiceOptions);
