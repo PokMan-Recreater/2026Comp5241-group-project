@@ -16,10 +16,8 @@ test('every published lesson has complete localized teaching and a usable assign
     for(const field of ['title','description','outcomes','deliverable','prerequisite'])assert(course[field][lang]?.trim(),`${course.id}.${field}.${lang}`);
     assert(lesson.body[lang]?.includes('## '),`${lesson.id} has reading sections`);
     assert(lesson.advanced[lang]?.trim(),`${lesson.id} has advanced analysis`);
-    assert(lesson.workshop.sample[lang]?.trim());
-    assert.equal(lesson.workshop.questions.length,3);
-    assert(lesson.workshop.questions.every(q=>q[lang]?.trim()));
-    assert(lesson.workshop.rubric.every(q=>q[lang]?.trim()));
+    if(lesson.checks){assert.equal(lesson.checks.length,2);assert.equal((lesson.body[lang].match(/## /g)||[]).length,5);}
+    else{assert(lesson.workshop.sample[lang]?.trim());assert.equal(lesson.workshop.questions.length,3);assert(lesson.workshop.questions.every(q=>q[lang]?.trim()));assert(lesson.workshop.rubric.every(q=>q[lang]?.trim()));}
     if(lesson.check){assert(lesson.check.options[lesson.check.correct]);assert(lesson.check.options.every(o=>o.text[lang]&&o.feedback[lang]));}
    }
    if(lesson.type==='slides'){assert.equal(lesson.slides.length,lesson.stepLabels.length);assert(lesson.slides.length>1);}
@@ -59,7 +57,7 @@ test('course work survives locale changes and exports only the learner draft',()
  const c=courses[0],l=c.lessons[0],key=c.id+':'+l.id;
  const state={work:{[key]:{answers:['My own observation','',''],review:[true,false]}},checks:{},progress:{},notes:{[key]:'My note'}};
  for(const lang of ['en','zh-CN','zh-TW']){
-  const html=workshopHTML(c,l,state,lang);assert(html.includes('My own observation'));assert(html.includes('checked'));
+  const html=workshopHTML(c,l,state,lang);assert(!html.includes('<textarea'));assert(html.includes('check-answer'));
   const file=portfolioText(c,state,lang);assert(file.includes('My own observation'));assert(file.includes('My note'));assert(!file.includes(l.workshop.sample[lang]));
   const guide=courseGuideHTML(c,state,lang,courseReferences);assert(guide.includes('#learn/development/0'));
  }
@@ -69,7 +67,7 @@ test('reading and learner drafts cannot inject executable markup',()=>{
  const payload='</textarea><script>alert(1)</script><img src=x onerror=alert(1)>';
  assert(!readingHTML('## Heading\n\n'+payload).includes('<script>'));
  const c=courses[0],l=c.lessons[0];const html=workshopHTML(c,l,{work:{['development:'+l.id]:{answers:[payload],review:[]}},checks:{}},'en');
- assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));assert(!html.includes('<img src=x'));
+ assert(!html.includes('<textarea'));assert(!html.includes('<script>'));assert(!html.includes('<img src=x'));
 });
 
 test('authored code references satisfy the contract; the review exercise starts with a distinguishable defect',()=>{

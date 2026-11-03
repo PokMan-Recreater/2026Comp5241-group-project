@@ -14,4 +14,4 @@ Weekly plans, guided setup and interests, multiple-plan management, template gen
 4. Collect feedback from real learners and instructors; assess the usefulness and accuracy of the courses and activities.
 5. Extend instructor editing of lab parameters and coding test contracts, and prepare team deliverables and contribution evidence.
 
-C/C++ and Python output traces intentionally support only a small stated subset; full language runtimes would be a separate extension. All existing local learner records, personally edited courses, classroom rosters and language preferences must continue to be preserved.
+C/C++ and Python run through the same small interpreter as Code quest, so the free-coding output pane always shows what executed statements really printed and refuses anything outside the subset with a line number. That subset is intentionally narrow; full language runtimes would be a separate extension. All existing local learner records, personally edited courses, classroom rosters and language preferences must continue to be preserved.

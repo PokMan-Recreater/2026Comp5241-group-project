@@ -31,9 +31,10 @@ These contributions describe the design and features brought together; the integ
 | **Courses** | Explore 16 courses with 66 lessons on software engineering and AI/developer tools. Search and filter content by topic, level and background. |
 | **Programming foundations** | Study 30 mini lessons covering C, C++, Python, JavaScript and HTML/CSS, with examples, explanations, notes and knowledge checks. |
 | **Personalized study plans** | Choose topics, background, level and weekly study time; preview and save plans that connect lessons with practice and interview rehearsal. Mixed-topic plans support programming and developer tools together. |
-| **Interactive labs** | Explore six models: Git branching and merging, prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. Existing software engineering scenario exercises remain available. |
+| **Git practice** | A practice category of its own: 23 Git pages (branch and merge, the Git command line with seven whole production situations, and 21 one-command practices that each get their own page) plus **Free Git practice**, a sandbox in the style of free coding where any command can be typed and the terminal, repository state, graph and mistake review update as you go. Everything runs the commands you type, keeps the task list and explains every mistake afterwards, and Knowledge practice asks ten questions about the same ideas. |
+| **Other interactive labs** | The prompt, retrieval, CI, container and gradient models are kept in the code but hidden in this build: no lesson, plan, card or listing links them, and a lesson that used one falls back to its own knowledge check. Existing software engineering scenario exercises remain available. |
 | **Code quest** | A Codédex-style course in pixel style: five chapters, 21 exercises, XP, levels and badges. Choose Python, C++ or Java, type real code and run it, or fix one broken line and watch the variables change. |
-| **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. Use a free JavaScript playground or HTML/CSS/JavaScript page preview. |
+| **Coding practice** | Complete 14 JavaScript challenges with behavior checks, hints and reference solutions. The free-coding playground really runs your code: JavaScript in an isolated worker, HTML/CSS/JavaScript in an isolated page preview, and C, C++ or Python through the same small interpreter as Code quest. |
 | **Checks and references** | Review a 73-question revision bank and 15 syntax cards alongside lesson-level checks and worked answers. |
 | **Interview practice** | Practise 11 scenarios with 33 prompts, save drafts and attempts, and review structured writing cues. Optional live AI coaching is available when configured. |
 | **Learning records** | Continue recent learning, save lessons, review history, and track completion, quiz results, XP, levels, streaks and seven activity-based badges. Export local records. |
@@ -48,7 +49,7 @@ The catalogue used to show three generic covers shared across all sixteen course
 | Area | What changed |
 | --- | --- |
 | **Courses** | One cover per course: a three-stage pipeline for software development, interview bubbles for requirements, a three-tier stack for web architecture, an editor with a sparkle for AI coding, a checklist with an incident marker for testing and release, a scope list plus team cluster for product decisions, a candidate badge for interview prep, a tool box and magnifier for AI tools, a commit graph for Git, a cylinder and filter funnel for SQL, stacked layers for Docker, a looping pipeline for CI/CD, a prompt card with a target for prompt engineering, retrieval sheets feeding a model for LLM apps, and a loss curve for machine learning. |
-| **Branch and merge** | It no longer shares one icon with the other labs. All six labs now have distinct icons: a branch for Git, a chat bubble for the prompt workshop, a database for retrieval, a wrench for CI repair, a container for the Docker lifecycle and a descending trend for gradient descent. |
+| **Branch and merge** | It no longer shares one icon with the other labs. All seven original labs have distinct icons: a branch for Git, a merge symbol for the Git command line, a chat bubble for the prompt workshop, a database for retrieval, a wrench for CI repair, a container for the Docker lifecycle and a descending trend for gradient descent. The 21 one-command Git practices share a short set of reading, changing, branching and publishing icons. |
 | **Interface** | The Explore navigation icon is a compass again; it previously repeated the book icon used by the instructor courses tab. |
 
 Covers live in `public/course-art.js`, keyed by course id. Courses created inside the browser (self-study) still fall back to the original theme-based covers.
@@ -71,6 +72,26 @@ Code quest is a chapter-based course in the learner sidebar. The course page lis
 Typed code is read by two small parsers, one for Python (`public/codequest-python.js`) and one shared by C++ and Java (`public/codequest-clike.js`), into the same instruction tree the fix levels use. Every exercise and language therefore shares one interpreter, one step trace and the same step and loop-pass limits. Starter code is generated per language from the same setup variables, and an exercise counts as cleared whichever language solved it. A deliberately bad loop cannot freeze the page. XP, level and badges are worked out from the existing `cleared` map, so no extra progress is stored besides the learner's code drafts, and reset, undo and export already cover it. The game runs a teaching model, not the real compilers: int and text variables, arithmetic, comparisons, `if` / `else`, `while` and `for`, and printing. Decimals, functions, arrays and classes beyond `main` are not supported.
 
 The game lives in `public/codequest.js` (interpreter, fix levels and code rendering), `public/codequest-python.js` and `public/codequest-clike.js` (Python and C++/Java parsers), `public/codequest-course.js` (chapters, exercises, XP and badges) and `public/codequest-views.js` (course page and exercise pages).
+
+## Git practice: 23 pages of commands you can really type
+
+Git has a practice category of its own. All 23 Git pages sit under **Practice → Git practice**, and every one of them runs the commands the learner actually types against a simulated repository. No real repository, file or network is touched, so a wrong command is safe, and anything Git refuses is explained afterwards together with the command to use instead. The commit graph, the working tree and the index are drawn from the same state the commands change. Knowledge practice asks ten questions about the same ideas, and each one links back to the practice that shows it in a repository.
+
+| Practice | What the learner does |
+| --- | --- |
+| **Branch and merge** (`lab/git`) | Create a branch, let the two histories diverge, merge them and resolve the conflict; the graph then shows the merge commit with both parents. |
+| **Git command line** (`lab/git-cli`) | Type any supported command, use the preset buttons, read the repository state and the file editor, and work through seven whole production situations with a live goal checklist. |
+| **21 one-command practices** (`lab/git-<command>`) | Each page holds one situation with one ordered task, a hint, a task list and the graph beside it: read the status, stage one file, commit what is staged, create a branch, switch back, read the diff, read the log, unstage a file, discard an edit, stash work, restore a stash, tag a release, delete a branch, amend a message, undo a commit while keeping the work, connect a remote, publish work, get a teammate's commit, undo a shared commit, copy a commit and preview a clean tree. |
+
+The seven production situations in the command-line lab are diverged branches, a teammate's commit you do not have yet, a conflict you must resolve and push, a hotfix that needs a stash, a bad release that needs a revert, work started on the wrong branch, and a rebase that must be reviewed before it is published.
+
+The sandbox understands 29 commands: `init`, `clone`, `config`, `status`, `add`, `rm`, `mv`, `restore`, `reset`, `commit`, `log`, `diff`, `show`, `branch`, `switch`, `checkout`, `merge`, `rebase`, `cherry-pick`, `revert`, `tag`, `stash`, `remote`, `fetch`, `pull`, `push`, `clean`, `reflog` and `help`. `git help <command>` prints the forms the sandbox accepts, and `rebase`, `cherry-pick` and `revert` stop instead of guessing when they would conflict.
+
+The Git course (`git-essentials`) sends each lesson into these practices, and a study plan for a Git topic links the course with `lab/git`, so the reading and the command line stay connected.
+
+The Git work lives in `public/git-sim.js` (repository state, the 21 practices, the seven production situations and the command usage) and `public/git-lab.js` (terminal, graph, task list, state and mistake review).
+
+**Free Git practice** is the free-coding playground's Git twin: one command prompt, a terminal, the working-tree editor, the index and working-tree state and the commit graph, with eleven example commands to load and a reset that starts a fresh repository. There is no task list and nothing to complete, and the same engine keeps every refusal explained. It lives in `public/git-sandbox.js` and reuses the lab's state, graph, editor and review renderers.
 
 ## What makes Forma distinctive
 
@@ -107,7 +128,7 @@ Run the automated checks and create the static build:
 npm run verify
 ```
 
-The most recent integration check passed **63 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
+The most recent integration check passed **121 automated tests** and the production build. GitHub Actions runs type checking, linting, tests and the build for pushes to `main` and `dev`, and for pull requests targeting those branches. Browser review also covered mixed-topic planning, interactive page previews, saved interview attempts, language switching and lab interactions. See the [verification notes](docs/peer-completion-preview.md).
 
 Type checking uses TypeScript `checkJs` on learning/planning logic, simulations, challenge execution, interview review, linked content, the AI endpoint and build/preview scripts (including their imported modules). UI event handlers and view templates are not yet included in type checking. ESLint recommended rules cover all application JavaScript and test scripts. These are separate checks: type checking detects incompatible values in checked modules; linting detects issues such as undefined names and duplicate declarations.
 
@@ -140,7 +161,7 @@ Keep credentials out of the repository. The application does not ask learners to
 
 - **Storage and accounts:** records are saved in the current browser's `localStorage`. Shared storage, cross-device synchronization, production authentication and server-side authorization are pending. Role switching previews workflows; it is not account authentication.
 - **Classrooms:** roster import and engagement views operate on local records. Importing names does not send invitations or create genuine student activity.
-- **Code execution:** JavaScript challenges use isolated execution with a timeout. HTML page previews use an opaque-origin sandbox with restricted resources; they do not have the same execution-time guarantees. C/C++ and Python examples provide limited output traces, not full language runtimes.
+- **Code execution:** JavaScript challenges use isolated execution with a timeout, and HTML page previews use an opaque-origin sandbox with restricted resources. C/C++ and Python in the playground run in the browser by default (Clang/WASI for C/C++, Pyodide for Python); the first load downloads the runtime and later runs reuse it, with loading/elapsed status, Stop and timeouts. Remote Wandbox is an explicit backup that uploads source and input, never an automatic fallback. Code quest keeps its own bounded teaching interpreter for a stated subset, so statements outside that subset are refused with a line number instead of printing invented output. See [execution details](docs/code-execution.md).
 - **AI and content:** live AI requires server-side configuration and end-to-end validation. New-topic study templates guide source-led learning; they do not establish verified facts about arbitrary subjects. Local interview cues are practice aids, not hiring or mastery assessments.
 - **Teaching tools:** media uploads, fully configurable activity parameters, shared analytics and generative audio/animations need further development. Current narration uses device text-to-speech.
 

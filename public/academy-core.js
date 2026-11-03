@@ -1,3 +1,4 @@
+import {experienceFraming} from './profile-settings.js';
 import {tri,local} from './i18n.js';
 import {referenceTopics,challenges,labs,interviews} from './academy-content.js';
 import {practiceForLesson} from './course-practices.js';
@@ -12,6 +13,7 @@ export function ensureAcademy(s){
  for(const [key,value] of Object.entries(defaults))if(s.academy[key]===undefined)s.academy[key]=value;
  s.profile??={};
  for(const [key,value] of Object.entries({weeklyMinutes:120,skillLevel:s.profile.depth==='advanced'?'advanced':'beginner',audience:'all',interests:[]}))if(s.profile[key]===undefined)s.profile[key]=value;
+ s.profile.audience=experienceFraming(s.profile);
  return s.academy;
 }
 export function scheduleLessons(lessons,weeklyMinutes=120){
@@ -31,6 +33,7 @@ export function matchCourses(courses,topic='',interests=[]){
 }
 /** @param {string} topic @param {string} id @param {LearningProfile} [profile] */
 export function buildTemplateCourse(topic,id,profile={}){
+ profile={...profile,audience:experienceFraming(profile)};
  const name=String(topic).trim().slice(0,180);
  if(!name)throw new Error('Topic required');
  const title=tri(`${name}: a study project`,`${name}：自主学习项目`,`${name}：自主學習專案`);
@@ -65,6 +68,7 @@ export function buildTemplateCourse(topic,id,profile={}){
 
 /** @param {{courses: any[], topic: string, profile?: LearningProfile, id: string, courseId: string}} options */
 export function buildPlan({courses,topic,profile={},id,courseId}){
+ profile={...profile,audience:experienceFraming(profile)};
  /** @type {[string, RegExp][]} */
  const languageRules=[['cpp',/c\+\+|\bcpp\b/i],['javascript',/javascript|\bjs\b/i],['python',/python|派森/i],['html',/html|css/i],['c',/\bc\b(?!\s*\+)|c语言|c語言/i]];
  const languageMatches=languageRules.filter(([,pattern])=>pattern.test(topic)).filter(([language])=>!(language==='python'&&/script|file|csv|automation|文件|檔案/i.test(topic)));
@@ -78,16 +82,13 @@ export function buildPlan({courses,topic,profile={},id,courseId}){
  if(!selected.length&&!languageMatches.length){course=buildTemplateCourse(topic,courseId,profile);selected=[course];}
  const practiceRoutes=[];
  for(const c of selected){const included=c.collection==='tools'||c.origin==='template'||!beginner||/\btdd\b/i.test(topic)?c.lessons:c.lessons.slice(0,2);addStage('course-'+c.id,c.title,included.map(l=>({courseId:c.id,lessonId:l.id,index:c.lessons.indexOf(l),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Work through this case before the connected practice.','先学这一案例，再完成关联练习。','先學這一案例，再完成關聯練習。')})));
-  for(const l of included){const routes=l.practice?[l.practice]:practiceForLesson(c.id,c.lessons.indexOf(l));for(const route of routes)practiceRoutes.push({route,from:c.id});}
+  for(const l of included){for(const route of practiceForLesson(c.id,c.lessons.indexOf(l)))practiceRoutes.push({route,from:c.id});}
  }
- const toPractice=({route,from=undefined})=>{const [kind,pid,index]=route.split('/');if(kind==='learn'){const c=courses.find(x=>x.id===pid),l=c?.lessons[Number(index)];return l&&{courseId:c.id,lessonId:l.id,index:Number(index),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Use this connected case to apply the idea.','用关联案例应用所学。','用關聯案例應用所學。')};}if(kind==='tutorial'){const t=referenceTopics.find(x=>x.id===pid);return t&&{kind:'tutorial',tutorialId:t.id,lessonId:t.id,title:t.title,minutes:8,courseTitle:t.title,rationale:tri('Apply the idea in a programming exercise.','通过编程练习应用概念。','透過程式練習應用概念。')};}const title=kind==='lab'?labs.find(x=>x[0]===pid)?.[1]:kind==='challenge'?challenges.find(x=>x.id===pid)?.title:kind==='interview'?interviews.find(x=>x.id===pid)?.title:kind==='game'?tri('Launch challenge','上线挑战','上線挑戰'):kind==='playground'?tri('Trace a small program','跟踪一个小程序','追蹤一個小程式'):null;return title&&{kind:'practice',route,from,title,courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Use observable results to check your understanding.','用可观察的结果检验理解。','用可觀察的結果檢驗理解。')};};
+ const toPractice=({route,from=undefined})=>{const [kind,pid,index]=route.split('/');if(kind==='learn'){const c=courses.find(x=>x.id===pid),l=c?.lessons[Number(index)];return l&&{courseId:c.id,lessonId:l.id,index:Number(index),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Use this connected case to apply the idea.','用关联案例应用所学。','用關聯案例應用所學。')};}if(kind==='tutorial'){const t=referenceTopics.find(x=>x.id===pid);return t&&{kind:'tutorial',tutorialId:t.id,lessonId:t.id,title:t.title,minutes:8,courseTitle:t.title,rationale:tri('Apply the idea in a programming exercise.','通过编程练习应用概念。','透過程式練習應用概念。')};}const title=kind==='practice'&&pid==='checks'?tri('Knowledge check','知识检查','知識檢查'):kind==='lab'?labs.find(x=>x[0]===pid)?.[1]:kind==='challenge'?challenges.find(x=>x.id===pid)?.title:kind==='interview'?interviews.find(x=>x.id===pid)?.title:kind==='game'?tri('Launch challenge','上线挑战','上線挑戰'):kind==='playground'?tri('Trace a small program','跟踪一个小程序','追蹤一個小程式'):null;return title&&{kind:'practice',route,from,title,courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Use observable results to check your understanding.','用可观察的结果检验理解。','用可觀察的結果檢驗理解。')};};
  const languageTasks={javascript:'fizzbuzz'};
  for(const [language] of languageMatches)practiceRoutes.push({route:language==='javascript'?'challenge/'+languageTasks[language]:'playground/'+language,from:'programming-'+language});
  const exercises=practiceRoutes.filter(x=>!x.route.startsWith('interview/')).map(x=>x.route==='playground/html'?{kind:'practice',route:x.route,from:x.from,title:tri('Build an interactive page','制作交互网页','製作互動網頁'),courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Connect a button to a DOM update in the isolated preview.','在隔离预览中让按钮更新页面。','在隔離預覽中讓按鈕更新頁面。')}:toPractice(x)).filter(Boolean);
  addStage('practice',tri('Try it yourself','动手验证','動手驗證'),exercises);
- const scenario=course?'study':selected.some(c=>c.id==='ml-foundations')?'ml-delivery':selected.some(c=>c.id==='llm-apps')?'ml':selected.some(c=>c.id==='data-sql')?'sql-case':selected.some(c=>c.id==='ai-toolkit'||c.id==='prompt-engineering')?'stakeholder':languageMatches.some(([x])=>['html','javascript'].includes(x))?'frontend':languageMatches.length?'study':'team';
- const rehearsals=practiceRoutes.filter(x=>x.route.startsWith('interview/')).map(toPractice).filter(Boolean);if(!rehearsals.length)rehearsals.push(toPractice({route:'interview/'+scenario}));
- addStage('review',tri('Explain and review','讲解与复盘','講解與回顧'),rehearsals);
  const schedule=scheduleLessons(stages.flatMap(x=>x.steps),profile.weeklyMinutes);
  const modules=stages.map(({id,title})=>({id,title,steps:schedule.steps.filter(x=>x.stageId===id)}));
  const titles=lang=>[...languageMatches.map(([x])=>({cpp:'C++',javascript:'JavaScript',python:'Python',html:'HTML/CSS',c:'C'}[x])),...selected.map(c=>local(c.title,lang))];
@@ -95,7 +96,7 @@ export function buildPlan({courses,topic,profile={},id,courseId}){
  return {course,plan:{id,topic,title:tri(`${topic} · learning plan`,`${topic} · 学习计划`,`${topic} · 學習計畫`),...schedule,modules,rationale,matchedCourses:selected.map(c=>c.id),level:profile.skillLevel||'beginner',source:course?'template':languageMatches.length&&!selected.length?'programming':'catalog',createdAt:new Date().toISOString()}};
 }
 
-export function planStepDone(step,state){if(step.kind==='tutorial')return !!state.academy?.tutorials?.includes(step.tutorialId);if(step.kind==='practice'){const [kind,id]=step.route.split('/');return kind==='lab'?!!state.academy?.labResults?.[id]:kind==='challenge'?!!state.academy?.challenges?.[id]?.passed:kind==='interview'?state.academy?.interviews?.some(x=>x.scenarioId===id):kind==='game'?!!state.game?.result:kind==='playground'?!!state.academy?.pageExercises?.[id]?.completed:false;}return !!state.progress?.[step.courseId]?.includes(step.lessonId);}
+export function planStepDone(step,state){if(step.kind==='tutorial')return !!state.academy?.tutorials?.includes(step.tutorialId);if(step.kind==='practice'){const [kind,id,key]=step.route.split('/');return kind==='practice'&&id==='checks'?!!state.academy?.quizzes?.[key]?.correct:kind==='lab'?!!state.academy?.labResults?.[id]:kind==='challenge'?!!state.academy?.challenges?.[id]?.passed:kind==='interview'?state.academy?.interviews?.some(x=>x.scenarioId===id):kind==='game'?!!state.game?.result:kind==='playground'?!!state.academy?.pageExercises?.[id]?.completed:false;}return !!state.progress?.[step.courseId]?.includes(step.lessonId);}
 export const planStepRoute=step=>step.kind==='practice'?step.route:step.kind==='tutorial'?'tutorial/'+step.tutorialId:`learn/${step.courseId}/${step.index}`;
 export function planProgress(plan,s){
  const done=x=>planStepDone(x,s);
@@ -144,3 +145,4 @@ export function gitStep(state,action,value=''){
  s.log.push(`${action} ${value}`.trim());return s;
 }
 export {promptReview,promptAnalysis,retrieve,rankDocuments,initialDocker,dockerStep,gradientStep,pipelineResult,diagnosePipeline} from './academy-models.js';
+export {createRepo,runGit,writeFile,removeFile,resolveConflictFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_DRILLS,GIT_SITUATIONS,GIT_SCENARIOS,startScenario,scenarioById,scenarioTasks,scenarioComplete} from './git-sim.js';
