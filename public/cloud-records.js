@@ -1,8 +1,8 @@
 import {interviewReportHTML} from './interview-report.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export async function cloudAPI(path,body,method){
- const r=await fetch(path,{method:method||(body?'POST':'GET'),credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
- const data=await r.json();if(!r.ok)throw Error(data.error||'database_unavailable');return data;
+ let r;try{r=await fetch(path,{method:method||(body?'POST':'GET'),credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});}catch{throw Error('server_connection_failed');}
+ let data;try{data=await r.json();}catch{throw Error('invalid_service_response');}if(!r.ok)throw Error(data.error||'database_unavailable');return data;
 }
 let cleanup=()=>{};
 export const stopCloudRecords=()=>{cleanup();cleanup=()=>{};};

@@ -37,3 +37,8 @@ test('one-to-one Supabase job relations normalize to the same list shape as othe
  assert.deepEqual(normalizeCloudRecord({interview_review_jobs:null}).interview_review_jobs,[]);
  assert.deepEqual(normalizeCloudRecord({interview_review_jobs:[{status:'completed'}]}).interview_review_jobs,[{status:'completed'}]);
 });
+
+test('browser connection failure is explicit and never reported as a database configuration error',async()=>{
+ const {cloudAPI}=await import('../public/cloud-records.js');const old=globalThis.fetch;globalThis.fetch=async()=>{throw new TypeError('Failed to fetch');};
+ try{await assert.rejects(()=>cloudAPI('/api/course-ai',{action:'lesson'}),/server_connection_failed/);}finally{globalThis.fetch=old;}
+});

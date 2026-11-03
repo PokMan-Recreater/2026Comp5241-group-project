@@ -24,6 +24,12 @@
     },
     "api/interview-review-worker.js": {
       "maxDuration": 60
+    },
+    "api/teaching.js": {
+      "maxDuration": 60
+    },
+    "api/course-ai.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
