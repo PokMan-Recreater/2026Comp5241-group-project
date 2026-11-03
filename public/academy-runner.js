@@ -1,3 +1,7 @@
+import {runProgram} from './codequest.js';
+import {parsePython,PySyntaxError} from './codequest-python.js';
+import {parseCLike} from './codequest-clike.js';
+
 export function semanticEqual(a,b){if(Object.is(a,b))return true;if(a===null||b===null||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;const ak=Object.keys(a).sort(),bk=Object.keys(b).sort();return ak.length===bk.length&&ak.every((k,i)=>k===bk[i]&&semanticEqual(a[k],b[k]));}
 // Each run uses a fresh opaque-origin frame and worker, with no network or DOM.
 export function runSandbox(code,{challenge=null,timeout=2500}={}){
@@ -16,24 +20,20 @@ export function runSandbox(code,{challenge=null,timeout=2500}={}){
  });
 }
 
-// Deliberately small tracing language: unsupported constructs produce errors.
-// This is not a C/C++ compiler or a Python interpreter.
-export function traceProgram(language,code){
- const vars=Object.create(null),out=[];
- const value=raw=>{const s=raw.trim();if(/^"[^"\n]*"$|^'[^'\n]*'$/.test(s))return s.slice(1,-1).replace(/\\n/g,'\n');if(/^[-+]?\d+(\.\d+)?$/.test(s))return Number(s);if(Object.hasOwn(vars,s))return vars[s];throw new Error('Unsupported expression: '+s);};
- for(let line of code.split(/\n|;(?=(?:[^"']|"[^"]*"|'[^']*')*$)/)){
-  line=line.trim();if(!line||line.startsWith('//')||line.startsWith('#')||/^(?:int main\(.*\)\s*\{?|[{}]|return 0)$/.test(line))continue;
-  if(/^(if|for|while|def|class|try|except)\b/.test(line))throw new Error('This trace supports literal assignments and output only');
-  const assignment=line.match(/^(?:(?:int|float|double|unsigned int|let|const)\s+)?([A-Za-z_]\w*)\s*=\s*(.+)$/);
-  if(assignment){vars[assignment[1]]=value(assignment[2]);continue;}
-  const py=line.match(/^print\((.*)\)$/);
-  if(language==='python'&&py){out.push(py[1].split(',').map(value).join(' '));continue;}
-  const printf=line.match(/^printf\("([^"\n]*)"(?:,\s*(.*))?\)$/);
-  if(printf){let i=0;const args=printf[2]?printf[2].split(',').map(value):[];const text=printf[1].replace(/%[dfsuc]/g,()=>String(args[i++]??''));if(i!==args.length)throw new Error('Format and argument count differ');out.push(text.replace(/\\n/g,'\n'));continue;}
-  if(line.includes('cout')){out.push(line.replace(/^(std::)?cout\s*<</,'').split('<<').map(x=>x.trim()==='std::endl'||x.trim()==='endl'?'\n':String(value(x))).join(''));continue;}
-  throw new Error('Unsupported statement: '+line);
+// Free coding runs the learner's C, C++ or Python in the same real interpreter
+// the Code quest game uses, so the output pane shows what the program really
+// printed. It never throws and never invents output: code outside the supported
+// subset comes back as an `error` that names the line that failed.
+export function runTypedProgram(language,code){
+ try{
+  const program=language==='python'?parsePython(String(code)):parseCLike(String(code),language);
+  if(!program.length)return {logs:[],error:{kind:'empty'}};
+  const result=runProgram(program,{limit:800,passes:300});
+  return {logs:result.output,error:result.error?{kind:'runtime',message:result.error}:null};
+ }catch(error){
+  if(error instanceof PySyntaxError)return {logs:[],error:{kind:'syntax',code:error.code,line:error.line,detail:error.detail}};
+  return {logs:[],error:{kind:'runtime',message:String(error.message||error)}};
  }
- return out;
 }
 
 // Interactive pages run in an opaque origin without access to the Forma document/storage.

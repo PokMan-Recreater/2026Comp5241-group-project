@@ -19,6 +19,7 @@ export class PySyntaxError extends Error {
  }
 }
 
+/** @type {Record<string,[string,number]>} Operator token to [instruction op, precedence]. */
 const BINARY={'or':['||',1],'and':['&&',2],'==':['==',3],'!=':['!=',3],'<':['<',4],'>':['>',4],'<=':['<=',4],'>=':['>=',4],'+':['+',5],'-':['-',5],'*':['*',6],'/':['truediv',6],'//':['/',6],'%':['%',6]};
 const ESCAPES={n:'\n',t:'\t','\\':'\\','"':'"',"'":"'"};
 
@@ -60,6 +61,7 @@ function tokenize(source,line){
 /**
  * Shared by the Python and C-family readers. Tokens may carry their own
  * `line`; `binary` maps operator tokens to [instruction op, precedence].
+ * @param {Record<string,[string,number]>} [binary]
  */
 export function expressionParser(tokens,line,binary=BINARY){
  let pos=0;
