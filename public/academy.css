@@ -231,3 +231,5 @@
 .quest-tips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.quest-tips b{font-size:11px;color:#605a8a}.quest-tips pre{margin:3px 0 0;padding:8px 10px;border-radius:8px;background:#eeeaff;font:400 12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto}
 .quest-hero+.quest-langbar,.quest-langbar+.quest-hero{margin-top:14px}
 @media(max-width:700px){.quest-tips{grid-template-columns:1fr}}
+.academy-output.failed{background:#fff5f4;border-color:#e3b3ad;color:#8a332c}
+

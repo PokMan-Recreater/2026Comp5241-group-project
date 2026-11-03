@@ -10,7 +10,9 @@
 import {num,text,ref,bin,set,out,when,repeat} from './codequest.js';
 import {PySyntaxError,expressionParser} from './codequest-python.js';
 
+/** @type {Record<string,[string,number]>} Operator token to [instruction op, precedence]. */
 const BASE={'||':['||',1],'&&':['&&',2],'==':['==',3],'!=':['!=',3],'<':['<',4],'>':['>',4],'<=':['<=',4],'>=':['>=',4],'+':['+',5],'-':['-',5],'*':['*',6],'/':['/',6],'%':['%',6]};
+/** @type {Record<string,[string,number]>} Java joins text with + as well as adding numbers. */
 const JAVA={...BASE,'+':['jplus',5]};
 const TYPES={cpp:{int:0,string:''},java:{int:0,String:''}};
 const OTHER_TYPES=['double','float','bool','boolean','char','long','short','byte','unsigned','auto','var','string','String'];
@@ -152,6 +154,46 @@ export function parseCLike(source,lang){
   return result;
  }
 
+ // printf("Count: %d\n", count) — the format string is split into literal text
+ // and one argument per conversion, so every printed value is really evaluated
+ // and a format that does not match its arguments is refused instead of guessed.
+ function printfStatement(first){
+  const id='L'+first.line;
+  p.skip();
+  expect('(','printParen');
+  const format=p.peek();
+  if(format?.t!=='str')throw new PySyntaxError('unsupported',first.line,'printf');
+  p.skip();
+  const args=[];
+  while(p.isOp(',')){p.skip();args.push(p.expression());}
+  expect(')','missingParen');
+  expect(';','missingSemicolon');
+  const parts=[];
+  let literal='';
+  const flushLiteral=()=>{if(literal){parts.push(text(literal));literal='';}};
+  const conversion=/^%(?:%|[-+ #0]*\d*(?:\.\d+)?[diufgsxc])/;
+  let rest=format.v,used=0;
+  while(rest){
+   const at=rest.indexOf('%');
+   if(at<0){literal+=rest;break;}
+   literal+=rest.slice(0,at);
+   const found=conversion.exec(rest.slice(at));
+   if(!found)throw new PySyntaxError('unsupported',first.line,'%');
+   if(found[0]==='%%'){literal+='%';rest=rest.slice(at+2);continue;}
+   if(used>=args.length)throw new PySyntaxError('unsupported',first.line,'printf');
+   flushLiteral();
+   parts.push(args[used++]);
+   rest=rest.slice(at+found[0].length);
+  }
+  if(used!==args.length)throw new PySyntaxError('unsupported',first.line,'printf');
+  flushLiteral();
+  const st=out(id,parts[0]??text(''));
+  st.values=parts.length?parts:[text('')];
+  st.sep='';
+  st.newline=false;
+  return [st];
+ }
+
  function body(){
   if(!p.isOp('{'))return statement();
   p.skip();
@@ -210,6 +252,7 @@ export function parseCLike(source,lang){
   }
   if(first.v==='cout'&&lang==='cpp')return printStatement(first);
   if(first.v==='System'&&lang==='java')return printStatement(first);
+  if(first.v==='printf')return printfStatement(first);
   return simple(true);
  }
 
