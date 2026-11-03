@@ -24,7 +24,7 @@ test('language topics coexist with Git and other languages without discarding in
 });
 test('every matched course has readings before its own practice in multi-topic plans',()=>{
  const p=plan('Git Docker SQL').plan;assert(p.matchedCourses.includes('docker-containers'));
- for(const route of ['lab/git','lab/docker','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
+ for(const route of ['lab/git','practice/checks/docker-containers:docker-image','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
  assert.equal(p.modules.flatMap(x=>x.steps).length,p.steps.length);const totals={};for(const s of p.steps)totals[s.week]=(totals[s.week]||0)+s.minutes;assert(Object.values(totals).every(x=>x<=30));
 });
 test('original SE practice relationships are present in generated intermediate plans',()=>{
@@ -33,7 +33,7 @@ test('original SE practice relationships are present in generated intermediate p
 test('unknown-topic course differentiates levels/backgrounds and has worked activities and checks',()=>{
  const a=buildTemplateCourse('Astronomy','a',{skillLevel:'beginner',audience:'non-cs'}),b=buildTemplateCourse('Astronomy','b',{skillLevel:'advanced',audience:'cs'});assert.equal(a.lessons.length,4);assert.equal(b.lessons.length,6);assert.equal(b.level,'advanced');assert.deepEqual(a.audience,['non-cs']);assert.notEqual(a.lessons[0].body.en,b.lessons[0].body.en);
  for(const c of [a,b])for(const l of c.lessons){assert(l.check);assert.notDeepEqual(l.workshop.sample,l.body);for(const lang of ['en','zh-CN','zh-TW']){assert(l.check.question[lang]);assert(l.workshop.sample[lang]);}}
- assert(plan('Astronomy').plan.steps.some(x=>x.route==='interview/study'));
+ assert(!plan('Astronomy').plan.steps.some(x=>x.route?.startsWith('interview/')));
 });
 test('new interview topics retain original scenario IDs and fully translated question-specific guides',()=>{
  for(const id of ['frontend','team','stakeholder','data','ml','frontend-hiring','team-stories','ai-adoption','sql-case','ml-delivery','study']){const s=interviews.find(x=>x.id===id);assert(s,id);assert.equal(s.questions.length,3);assert.equal(interviewGuides[id].length,3);for(const lang of ['en','zh-CN','zh-TW'])for(const [i,q] of s.questions.entries()){assert(q[lang]);assert(interviewGuides[id][i].outline[lang]);assert(interviewGuides[id][i].followup[lang]);}}
@@ -66,6 +66,6 @@ test('new page exercise completion and legacy progress preserve the same complet
  const s={profile:{},progress:{development:['d1']},courses:[{id:'my-course'}]};ensureAcademy(s);assert.equal(planStepDone({kind:'practice',route:'playground/html'},s),false);s.academy.pageExercises={html:{completed:true}};assert(planStepDone({kind:'practice',route:'playground/html'},s));assert.equal(s.progress.development[0],'d1');assert.equal(s.courses[0].id,'my-course');
 });
 test('all generated plan route targets exist for catalog, language and fallback inputs',()=>{
- for(const topic of [...courses.map(c=>c.id),'Python Git','HTML Python','Astronomy']){const r=plan(topic,{skillLevel:'intermediate'});const all=[...courses,...(r.course?[r.course]:[])];for(const step of r.plan.steps){const [kind,id,index]=planStepRoute(step).split('/');const valid=kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&all.find(x=>x.id===id)?.lessons[Number(index)]||kind==='playground'&&['c','cpp','python','html','javascript'].includes(id);assert(valid,topic+' '+planStepRoute(step));}}
- assert.equal(knowledgeQuestions(courses).length,73);
+ for(const topic of [...courses.map(c=>c.id),'Python Git','HTML Python','Astronomy']){const r=plan(topic,{skillLevel:'intermediate'});const all=[...courses,...(r.course?[r.course]:[])];for(const step of r.plan.steps){const [kind,id,index]=planStepRoute(step).split('/');const valid=kind==='practice'&&id==='checks'&&knowledgeQuestions(all).some(q=>q.key===index)||kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&all.find(x=>x.id===id)?.lessons[Number(index)]||kind==='playground'&&['c','cpp','python','html','javascript'].includes(id);assert(valid,topic+' '+planStepRoute(step));}}
+ assert(knowledgeQuestions(courses).length>73);assert.equal(knowledgeQuestions(courses).filter(q=>q.key.startsWith('requirements:')).length,12);
 });

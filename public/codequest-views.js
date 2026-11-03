@@ -49,7 +49,7 @@ const SCENE=`<svg class="quest-scene" viewBox="0 0 320 96" preserveAspectRatio="
  <g transform="translate(232 12)">${spriteRects(['..4..','.444.','44444','.444.','..4..'],5,false)}</g>
 </svg>`;
 
-const SYNTAX_MESSAGES={
+export const SYNTAX_MESSAGES={
  unterminatedText:['A piece of text is missing its closing quote.','有一段文字缺少结尾的引号。','有一段文字缺少結尾的引號。'],
  missingParen:['A bracket was opened but never closed.','有括号打开后没有关闭。','有括號打開後沒有關閉。'],
  missingColon:['This line should end with a colon (:).','这一行末尾应该有冒号（:）。','這一行末尾應該有冒號（:）。'],
