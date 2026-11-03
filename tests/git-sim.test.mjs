@@ -467,6 +467,13 @@ test('a practice page opens straight into its own task',()=>{
  assert.match(body,/Stage only notes\.txt/);
  assert.match(body,/gitcli-restart-scenario/);
  assert.equal(/class="pill">0 \/ 1/.test(body),true);
+ assert.ok(body.indexOf('git-dag')<body.indexOf('git-task-list'),'the commit graph must be on top, like the branch lab');
+ assert.ok(body.indexOf('git-task-list')<body.indexOf('academy-git-form'),'the run button must be below the task');
+ assert.equal(/academy-command-buttons/.test(body),false,'a single practice must not list every command');
+ // The command-line lab keeps its own order and its preset buttons.
+ const cli=renderLabBody('git-cli',startScenario('divergent'),{e:s=>String(s??''),L:en=>en,T:v=>v.en??v,button:(a,l,attrs='')=>`<button data-ac="${a}" ${attrs}>${l}</button>`,option:(v,l,s)=>`<option value="${v}"${v===s?' selected':''}>${l}</option>`});
+ assert.match(cli,/academy-command-buttons/);
+ assert.ok(cli.indexOf('git-task-list')<cli.indexOf('git-dag'),'the situation lab keeps the terminal above the graph');
 });
 
 test('tasks are worked through one at a time, in order',()=>{
