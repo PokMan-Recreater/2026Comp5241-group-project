@@ -3,27 +3,22 @@ import {knowledgeQuestions} from './knowledge-checks.js';
 import {referenceTopics, challenges, labs, interviews} from './academy-content.js';
 import {programmingLessonById} from './programming-lessons.js';
 import {nextStudyTarget, practiceForLesson} from './learning-links.js';
+import {gitActivity} from './git-course/catalog.js';
 import {planProgress,planStepDone,planStepRoute} from './academy-core.js';
 
 export function createLearningViews(ctx, h) {
  const {e,L,T,s,a,link,button,heading,ico,cards,codeLanguage,stateStats,activePlan,badges,empty} = h;
  const languages = ['c','cpp','python','javascript','html'];
- const gitLabs = labs.filter(([id])=>/^git-/.test(id)||id==='git');
  const courses = () => ctx.courses().filter(c => c.status === 'published');
  const topics = language => referenceTopics.filter(t => !language || t.language === language);
  const tabs = (items, active, label) => `<nav class="learning-tabs" aria-label="${label}">${items.map(([id,title,url]) => `<a href="#${url}" ${id===active?'aria-current="page"':''}>${title}</a>`).join('')}</nav>`;
  const courseTabs = () => '';
  const practiceTabs = active => tabs([
   ['checks',L('Knowledge practice','知识练习','知識練習'),'practice/checks'],
-  ['git',L('Git practice','Git 练习','Git 練習'),'practice/git'],
   ['coding',L('Coding practice','编程练习','程式練習'),'practice/coding'],
   ['interviews',L('AI interview','AI 面试','AI 面試'),'practice/interviews'],
- ],active==='written'||active==='labs'?'checks':active==='playground'?'coding':active==='git-sandbox'?'git':active,L('Practice category','练习分类','練習分類'));
+ ],active==='written'||active==='labs'?'checks':active==='playground'?'coding':active,L('Practice category','练习分类','練習分類'));
  const practiceSections = active => {
-  if(['git','git-sandbox'].includes(active))return `<div class="practice-subnav">${tabs([
-   ['git',L('Git pages','Git 练习页','Git 練習頁'),'practice/git'],
-   ['git-sandbox',L('Free Git practice','自由 Git 练习','自由 Git 練習'),'practice/git-sandbox'],
-  ],active,L('Practice type','题型','題型'))}</div>`;
   if(!['coding','playground'].includes(active))return '';
   return `<div class="practice-subnav">${tabs([
    ['coding',L('Challenges','编程题','程式題'),'practice/coding'],
@@ -36,7 +31,8 @@ export function createLearningViews(ctx, h) {
   if(kind==='practice'&&id==='checks'){const q=knowledgeQuestions(courses()).find(q=>q.key===index);return q&&{title:T(q.question),description:L('Apply the rule and inspect feedback for your choice.','按本节规则判断，查看每个选项的解释。','按本節規則判斷，查看每個選項的解釋。'),done:!!a().quizzes[q.key]?.correct,icon:'book'};}
   if(kind==='playground')return {title:codeLanguage(id)+' · '+L('Free coding','自由编程','自由程式練習'),description:L('Run a small example and inspect the result.','运行小例子并检查结果。','執行小範例並檢查結果。'),done:!!a().pageExercises?.[id]?.completed,icon:'code'};
   if(kind==='game')return {title:L('Launch challenge','上线挑战','上線挑戰'),description:'',done:!!s().game?.result,icon:'flag'};
-  if(kind==='lab'){const x=labs.find(x=>x[0]===id);return x&&{title:T(x[1]),description:T(x[2]),done:!!a().labResults[id],icon:x[3]};}
+  if(kind==='git')return gitActivity(id,{L,T});
+  if(kind==='lab'){if(id==='git'||/^git-/.test(id))return gitActivity('',{L,T});const x=labs.find(x=>x[0]===id);return x&&{title:T(x[1]),description:T(x[2]),done:!!a().labResults[id],icon:x[3]};}
   if(kind==='challenge'){const x=challenges.find(x=>x.id===id);return x&&{title:T(x.title),description:T(x.brief),done:!!a().challenges[id]?.passed,icon:'code'};}
   if(kind==='interview'){const x=interviews.find(x=>x.id===id);return x&&{title:T(x.title),description:L('Prepare three answers, then review the evidence behind them.','完成三个回答，再检查其中的证据。','完成三個回答，再檢查其中的證據。'),done:a().interviews.some(z=>z.scenarioId===id),icon:'chat'};}
   if(kind==='tutorial'){const x=referenceTopics.find(x=>x.id===id);return x&&{title:T(x.title),description:T(x.description),done:a().tutorials.includes(id),icon:'book'};}
@@ -60,7 +56,7 @@ export function createLearningViews(ctx, h) {
   const href=target?.kind==='activity'?target.route:tutorial?'tutorial/'+tutorial.id:l?`learn/${c.id}/${target.index}`:'explore';
   const started=stateStats().completed+a().tutorials.length>0||!!a().lastStudy;
   const p=activePlan(),r=p?planProgress(p,s()):null,st=stateStats();
-  const route=c?practiceForLesson(c.id,target.index)[0]:tutorial&&tutorial.language!=='javascript'?'lab/git':'challenge/unique',practice=activity(route||'challenge/unique');
+  const route=c?practiceForLesson(c.id,target.index)[0]:tutorial&&tutorial.language!=='javascript'?'git':'challenge/unique',practice=activity(route||'challenge/unique');
   const firstWeek=r?.next?.week;
   const week=p?.steps.filter(x=>x.week===firstWeek&&!planStepDone(x,s())).slice(0,3)||[];
   return heading(L('My learning','我的学习','我的學習'))+`<div class="home-status"><a href="#records/achievements">${ico('flag',17)}${L('Level','等级','等級')} ${st.level}<b>·</b>${st.xp} XP${ico('chevron',15)}</a></div>
@@ -83,11 +79,9 @@ export function createLearningViews(ctx, h) {
  function practice(category='checks',questionId) {
   if(['checks','written','labs'].includes(category))return knowledge(questionId);
   if(category==='playground')return null;
-  const titles={git:L('Git practice','Git 练习','Git 練習'),coding:L('Challenges','编程题','程式題'),interviews:L('AI interview','AI 面试','AI 面試')};
+  const titles={coding:L('Challenges','编程题','程式題'),interviews:L('AI interview','AI 面试','AI 面試')};
   if(!titles[category])return knowledge(questionId);
   let list=[];
-  // Each lab carries its own icon so the six cards are easy to tell apart.
-  if(category==='git')list=gitLabs.map(([id,title,description,icon])=>({url:'lab/'+id,title:T(title),description:T(description),done:!!a().labResults[id],icon}));
   if(category==='coding'){
    const languages=['c','cpp','python','javascript'],all=[...challenges,...nativeChallenges],title=language=>language==='javascript'?'JavaScript':codeLanguage(language),top=heading(L('Practice','练习中心','練習中心'))+practiceTabs(category)+practiceSections(category);
    if(languages.includes(questionId))return top+`<div class="row mb">${link('practice/coding',L('All languages','全部语言','全部語言'))}</div><h2>${title(questionId)}</h2>`+cards(all.filter(c=>(c.language||'javascript')===questionId).map(c=>`<article class="panel practice-card"><h3>${e(T(c.title))}</h3><p>${e(T(c.brief))}</p>${link('challenge/'+c.id,L('Start practice','开始练习','開始練習'),false)}</article>`));
@@ -125,7 +119,7 @@ export function createLearningViews(ctx, h) {
   if(category==='history'){
    const labels={page:L('Code experiment completed','编程实验记录','程式實驗紀錄'),lesson:L('Lesson completed','完成课节','完成課節'),tutorial:L('Programming lesson updated','编程课节记录','程式課節紀錄'),challenge:L('Coding practice','编程练习','程式練習'),code:L('Code checks','代码检查','程式檢查'),checkpoint:L('Knowledge check','理解检查','理解檢查'),lab:L('Interactive lab','交互实验','互動實驗'),interview:L('Interview review','面试复盘','面試回顧'),game:L('Launch challenge','上线挑战','上線挑戰')};
    const events=[...a().activities,...(s().events||[]).filter(x=>labels[x.type]&&!a().activities.some(z=>z.type===x.type&&z.id===x.courseId+':'+(x.lessonId||'')&&Math.abs(new Date(z.at)-new Date(x.time))<1000)).map(x=>({...x,at:x.time,id:x.courseId+':'+(x.lessonId||'')}))].filter(x=>labels[x.type]).sort((x,y)=>new Date(y.at)-new Date(x.at)).slice(0,50);
-   const titleFor=x=>{if(x.type==='page')return x.id==='git-sandbox'?L('Free Git practice','自由 Git 练习','自由 Git 練習'):codeLanguage(x.id)+' · '+L('Free coding','自由编程','自由程式練習');if(x.type==='lab')return activity('lab/'+x.id)?.title;if(x.type==='interview')return activity('interview/'+x.id)?.title;if(x.type==='tutorial'||x.id?.startsWith('tutorial:'))return T(referenceTopics.find(t=>t.id===x.id?.replace('tutorial:',''))?.title||'');if(x.type==='challenge')return activity('challenge/'+x.id)?.title;const [cid,lid]=(x.id||'').replace('course/','').split(':'),c=ctx.course(cid);return T(c?.lessons.find(l=>l.id===lid)?.title||c?.title||labels[x.type]);};
+   const titleFor=x=>{if(x.type==='page')return x.id==='git-sandbox'?L('Git simulator','Git 模拟练习','Git 模擬練習'):codeLanguage(x.id)+' · '+L('Free coding','自由编程','自由程式練習');if(x.type==='lab')return activity('lab/'+x.id)?.title;if(x.type==='interview')return activity('interview/'+x.id)?.title;if(x.type==='tutorial'||x.id?.startsWith('tutorial:'))return T(referenceTopics.find(t=>t.id===x.id?.replace('tutorial:',''))?.title||'');if(x.type==='challenge')return activity('challenge/'+x.id)?.title;const [cid,lid]=(x.id||'').replace('course/','').split(':'),c=ctx.course(cid);return T(c?.lessons.find(l=>l.id===lid)?.title||c?.title||labels[x.type]);};
    body=progressSummary()+(events.length?`<div class="history-list">${events.map(x=>`<article><span>${ico(x.type==='lab'?(labs.find(l=>l[0]===x.id)?.[3]||'layers'):x.type==='interview'?'chat':'check',20)}</span><div><h3>${e(titleFor(x)||labels[x.type])}</h3><p>${labels[x.type]}${x.passed===false?' · '+L('Needs another try','继续练习','繼續練習'):''}</p></div><time>${new Date(x.at).toLocaleDateString(s().lang)}</time></article>`).join('')}</div>`:`<section class="record-empty">${ico('clock',36)}<h2>${L('Your learning leaves a trail.','学过的、试过的，都会记在这里。','學過的、試過的，都會記在這裡。')}</h2><p>${L('Complete a lesson or try a practice to start your record.','完成课节或做一次练习，就会留下记录。','完成課節或做一次練習，就會留下紀錄。')}</p>${link('practice',L('Find a practice','去做练习','去做練習'),false)}</section>`);
    body+=`<section class="panel mt"><h2>${L('Quiz best results','理解检查最佳记录','理解檢查最佳紀錄')}</h2><p>${st.quizzes} / ${Object.keys(a().quizzes).length} ${L('checks answered correctly','项检查已答对','項檢查已答對')}</p><div class="quiz-breakdown">${knowledgeQuestions(courses()).filter(q=>a().quizzes[q.key]).map(q=>{const r=a().quizzes[q.key];return `<article><a href="#practice/checks/${e(q.key)}">${e(T(q.title))}</a><span>${r.correct?L('Correct at least once','已答对','已答對'):L('To revisit','待复习','待複習')}${r.attempts?' · '+r.attempts+' '+L('attempts','次尝试','次嘗試'):''}${r.lastCorrect===false?' · '+L('last attempt needs review','最近一次需复习','最近一次需複習'):''}</span></article>`;}).join('')}</div>${a().interviews.length?`<h3 class="mt">${L('Interview reviews','面试复盘','面試回顧')}</h3>${a().interviews.slice(-5).reverse().map(x=>`<p><a href="#interview/${e(x.scenarioId)}/${e(x.id)}">${e(activity('interview/'+x.scenarioId)?.title||'')}</a> · ${x.coverage}% ${x.reviewVersion===3?L('writing-cue coverage','写作线索覆盖','寫作線索涵蓋'):L('earlier checklist','早期检查记录','早期檢查紀錄')}</p>`).join('')}`:''}</section>`;
   }
