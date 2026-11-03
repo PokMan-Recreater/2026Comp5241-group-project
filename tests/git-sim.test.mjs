@@ -390,6 +390,10 @@ test('a wrong first move still gets a hint that works',()=>{
  const cleaned=runGit(startScenario('preview-clean'),'git clean -f').repo;
  assert.equal(scenarioComplete(cleaned),false,'deleting is not previewing');
  assert.match(scenarioTasks(cleaned)[0].hint[0],/file editor/);
+ const undone=runGit(startScenario('undo-commit-keep-work'),'git reset --hard HEAD~1').repo;
+ assert.match(scenarioTasks(undone)[0].hint[0],/file editor/,'after a --hard reset the hint must ask for the work to be put back');
+ const dropped=runGit(startScenario('undo-shared-commit'),'git reset --hard HEAD~1').repo;
+ assert.match(scenarioTasks(dropped)[0].hint[0],/id from reflog/,'after a --hard reset the hint must point at the reflog');
 });
 
 test('a --hard reset says what it discarded instead of losing it silently',()=>{
