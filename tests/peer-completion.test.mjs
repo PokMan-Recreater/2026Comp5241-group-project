@@ -9,6 +9,7 @@ import {rewritePrompt} from '../public/prompt-rewrite.js';
 import {reviewInterview,expressionReview,interviewGuides} from '../public/interview-review.js';
 import {interactiveDocument,interactivePageExample} from '../public/academy-runner.js';
 import {knowledgeQuestions} from '../public/knowledge-checks.js';
+import {gitLessonIds} from '../public/git-course/catalog.js';
 const plan=(topic,profile={})=>buildPlan({courses,topic,profile:{skillLevel:'beginner',weeklyMinutes:30,...profile},id:'audit',courseId:'study-audit'});
 
 test('peer topic aliases route to actual catalog material rather than unknown-topic templates',()=>{
@@ -19,12 +20,12 @@ test('peer topic aliases route to actual catalog material rather than unknown-to
  for(const topic of ['specific marine history','ocean archaeology'])assert.equal(plan(topic).plan.source,'template');
 });
 test('language topics coexist with Git and other languages without discarding intent',()=>{
- const a=plan('Python Git').plan;assert(a.steps.some(x=>x.tutorialId==='py-basics'));assert(a.matchedCourses.includes('git-essentials'));assert(a.steps.some(x=>x.route==='lab/git'));
+ const a=plan('Python Git').plan;assert(a.steps.some(x=>x.tutorialId==='py-basics'));assert(a.matchedCourses.includes('git-essentials'));assert(a.steps.some(x=>x.route==='git/commit'));
  const b=plan('HTML Python Git').plan;assert(b.steps.some(x=>x.tutorialId==='html-structure'));assert(b.steps.some(x=>x.tutorialId==='py-basics'));assert(b.matchedCourses.includes('git-essentials'));
 });
 test('every matched course has readings before its own practice in multi-topic plans',()=>{
  const p=plan('Git Docker SQL').plan;assert(p.matchedCourses.includes('docker-containers'));
- for(const route of ['lab/git','practice/checks/docker-containers:docker-image','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
+ for(const route of ['git/commit','practice/checks/docker-containers:docker-image','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
  assert.equal(p.modules.flatMap(x=>x.steps).length,p.steps.length);const totals={};for(const s of p.steps)totals[s.week]=(totals[s.week]||0)+s.minutes;assert(Object.values(totals).every(x=>x<=30));
 });
 test('original SE practice relationships are present in generated intermediate plans',()=>{
@@ -66,6 +67,6 @@ test('new page exercise completion and legacy progress preserve the same complet
  const s={profile:{},progress:{development:['d1']},courses:[{id:'my-course'}]};ensureAcademy(s);assert.equal(planStepDone({kind:'practice',route:'playground/html'},s),false);s.academy.pageExercises={html:{completed:true}};assert(planStepDone({kind:'practice',route:'playground/html'},s));assert.equal(s.progress.development[0],'d1');assert.equal(s.courses[0].id,'my-course');
 });
 test('all generated plan route targets exist for catalog, language and fallback inputs',()=>{
- for(const topic of [...courses.map(c=>c.id),'Python Git','HTML Python','Astronomy']){const r=plan(topic,{skillLevel:'intermediate'});const all=[...courses,...(r.course?[r.course]:[])];for(const step of r.plan.steps){const [kind,id,index]=planStepRoute(step).split('/');const valid=kind==='practice'&&id==='checks'&&knowledgeQuestions(all).some(q=>q.key===index)||kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&all.find(x=>x.id===id)?.lessons[Number(index)]||kind==='playground'&&['c','cpp','python','html','javascript'].includes(id);assert(valid,topic+' '+planStepRoute(step));}}
+ for(const topic of [...courses.map(c=>c.id),'Python Git','HTML Python','Astronomy']){const r=plan(topic,{skillLevel:'intermediate'});const all=[...courses,...(r.course?[r.course]:[])];for(const step of r.plan.steps){const [kind,id,index]=planStepRoute(step).split('/');const valid=kind==='practice'&&id==='checks'&&knowledgeQuestions(all).some(q=>q.key===index)||kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&all.find(x=>x.id===id)?.lessons[Number(index)]||kind==='git'&&gitLessonIds.includes(id)||kind==='playground'&&['c','cpp','python','html','javascript'].includes(id);assert(valid,topic+' '+planStepRoute(step));}}
  assert(knowledgeQuestions(courses).length>73);assert.equal(knowledgeQuestions(courses).filter(q=>q.key.startsWith('requirements:')).length,12);
 });
