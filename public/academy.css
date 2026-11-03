@@ -246,5 +246,11 @@
 .git-goal-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
 .git-goal-list li{font-size:.94rem;color:#605a8a}
 .git-goal-list li.done{color:#31593e;font-weight:650}
+.git-scenario{border:1px solid #e4def1;border-radius:12px;padding:20px;margin-bottom:22px;background:#fbfaff}
+.git-scenario h2{font-size:1rem;margin:0 0 12px}
+.git-brief p{font-size:.95rem;margin:6px 0}
+.git-solution{margin:10px 0 0;padding-left:22px}
+.git-solution li{margin:6px 0}
+.git-solution code{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere}
 @media(max-width:700px){.git-state{grid-template-columns:1fr}}
 
