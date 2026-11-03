@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCENE_IDS as serverScenes,isScene} from '../scripts/teaching-scenes.mjs';
+import {SCENE_IDS as serverScenes,isScene,SCENE_CAPACITY,sceneCapacity,itemsFitScene} from '../scripts/teaching-scenes.mjs';
 import {SCENE_IDS as renderScenes,sceneArt} from '../public/scene-render.js';
 import {sceneIds,selectScene} from '../public/teaching-scene-catalog.js';
 
@@ -8,6 +8,20 @@ test('scene vocabulary stays in sync across validator, renderer and catalog',()=
  assert.deepEqual([...serverScenes].sort(),[...sceneIds].sort());
  assert.deepEqual([...renderScenes].sort(),[...serverScenes].sort());
  assert.ok(serverScenes.every(isScene));
+});
+test('every scene declares a slot capacity that matches its rendered slots',()=>{
+ for(const scene of serverScenes)assert.ok(SCENE_CAPACITY[scene],scene+' has no capacity');
+ assert.equal(sceneCapacity('compare').max,2);
+ assert.equal(sceneCapacity('balance').max,2);
+ assert.equal(sceneCapacity('document').max,3);
+ assert.equal(sceneCapacity('database').max,3);
+ assert.equal(sceneCapacity('layers').max,4);
+ assert.equal(sceneCapacity('chain').max,4);
+ assert.equal(sceneCapacity('decision').max,4);
+ assert.ok(itemsFitScene('document',3));
+ assert.ok(!itemsFitScene('document',4));
+ assert.ok(itemsFitScene('flow',5));
+ assert.ok(!itemsFitScene('flow',6));
 });
 
 test('every scene renders a bounded SVG and escapes model text',()=>{

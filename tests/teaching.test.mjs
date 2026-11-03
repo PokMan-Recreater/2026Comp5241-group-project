@@ -163,6 +163,8 @@ test('lessons may store structured slides with per-slide bounded art',()=>{
  assert.throws(()=>validateCourse(empty),/invalid_request/);
  const many=course();many.lessons[0]={...many.lessons[0],body:'',slides:Array.from({length:21},()=>({heading:'H',bullets:['B'],art:{scene:'flow',items:['A']}}))};
  assert.throws(()=>validateCourse(many),/invalid_request/);
+ const over=course();over.lessons[0]={...over.lessons[0],body:'',slides:[{heading:'Start',bullets:['One'],art:{scene:'document',items:['A','B','C','D']}}]};
+ assert.throws(()=>validateCourse(over),/invalid_request/);
 });
 test('the SQL boundary accepts structured slides and the shared scene vocabulary',async()=>{
  const sql=await readFile(new URL('../supabase/migrations/202611030004_teaching_slides.sql',import.meta.url),'utf8');
@@ -176,4 +178,10 @@ test('the SQL scene whitelist matches the shared vocabulary in both places',asyn
  const lists=[...sql.matchAll(/not in \(('auto'(?:,'[a-z]+')+)\)/g)].map(m=>m[1].split(',').map(s=>s.replace(/'/g,'')));
  assert.equal(lists.length,2);
  for(const list of lists)assert.deepEqual([...list].sort(),[...SCENE_IDS].sort());
+});
+test('the SQL boundary rejects art that exceeds a template slot count',async()=>{
+ const sql=await readFile(new URL('../supabase/migrations/202611030006_scene_capacity.sql',import.meta.url),'utf8');
+ assert.match(sql,/v in \('compare','balance'\) and jsonb_array_length\(art->'items'\)=2/);
+ assert.match(sql,/v in \('layers','chain','decision'\) and jsonb_array_length\(art->'items'\) between 2 and 4/);
+ assert.match(sql,/v in \('document','database'\) and jsonb_array_length\(art->'items'\) between 2 and 3/);
 });

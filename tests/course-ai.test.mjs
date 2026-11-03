@@ -4,6 +4,7 @@ import handler from '../api/course-ai.js';
 import {officialCourseCopy,sceneHTML} from '../public/teaching.js';
 import {sceneArt} from '../public/scene-render.js';
 import {validateCourse} from '../scripts/teaching-support.mjs';
+import {SCENE_IDS} from '../scripts/teaching-scenes.mjs';
 const response=()=>({headers:{},statusCode:0,data:null,setHeader(k,v){this.headers[k]=v;},status(n){this.statusCode=n;return this;},json(data){this.data=data;return this;}});
 const request=body=>({method:'POST',url:'/api/course-ai',headers:{host:'local',origin:'http://local',cookie:'forma_access=teacher-test'},body});
 const body={action:'lesson',language:'zh-CN',topic:'测试',requirements:'解释边界测试',instruction:'用具体例子说明'};
@@ -65,6 +66,22 @@ test('story templates in slide art survive validation and render their labels',(
  const arts=res.data.lesson.slides.map(s=>s.art);
  assert.deepEqual(arts.map(a=>a.scene),['database','phone','conversation']);
  for(const art of arts)for(const item of art.items)assert.ok(sceneArt(art.scene,art.items).includes(item),item+' should be visible');
+}));
+
+test('slide art that exceeds its template slot count is rejected instead of clipped',()=>scenario(async()=>{
+ const bad=JSON.parse(JSON.stringify(slideLesson));bad.slides[0].art={scene:'document',items:['甲','乙','丙','丁']};
+ globalThis.fetch=async url=>new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'capacity-teacher',app_metadata:{role:'teacher'}}:{choices:[{message:{content:JSON.stringify(bad)}}]}));
+ const res=response();await handler(request(body),res);assert.equal(res.statusCode,502);assert.equal(res.data.error,'invalid_ai_result');
+}));
+
+test('outline prompt offers the full scene vocabulary instead of a partial list',()=>scenario(async()=>{
+ const course={title:'DApp 入门',description:'面向新生',language:'zh-CN',lessons:[{id:'lesson-1',title:'什么是 DApp',body:'介绍去中心化应用。',scene:'flow',sceneItems:['用户','合约'],questions:[]}]};
+ let prompt='';
+ globalThis.fetch=async(url,options)=>{if(String(url).includes('/auth/v1/user'))return new Response(JSON.stringify({id:'prompt-teacher',app_metadata:{role:'teacher'}}));prompt=JSON.parse(options.body).messages[0].content;return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(course)}}]}));};
+ const res=response();await handler(request({...body,action:'outline'}),res);
+ assert.equal(res.statusCode,200);
+ for(const scene of SCENE_IDS.filter(id=>id!=='auto'))assert.ok(prompt.includes(scene),scene+' missing from outline prompt');
+ assert.match(prompt,/sceneItems to 2 to 5/);
 }));
 
 test('a primary model timeout retries the fast fallback instead of failing',()=>scenario(async()=>{
