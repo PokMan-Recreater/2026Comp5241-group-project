@@ -7,7 +7,7 @@ This checklist maps the prototype to the teacher's project overview and the desi
 | Software engineering, AI-assisted coding, soft skills and product skills | Seven multilingual courses and 28 lessons are available; see [course design](course-design.md). |
 | Learners from non-CS backgrounds and CS graduates preparing for employment | Profiles, interest tags, three setup levels, weekly plans and introductory/advanced readings are available. Feedback from real learners is pending. |
 | Text and images | Available. Custom image uploads require storage integration. |
-| Interactive simulations and games | The launch game, access/scope exercises and six additional interactive lab models are available. |
+| Interactive simulations and games | The launch game, access/scope exercises and 28 interactive lab pages are available. 23 of those pages are Git: 21 one-command practices with their own page, the Git command line with seven whole production situations, and branch and merge. The other five cover prompt structure, document retrieval, CI repair, container lifecycle and gradient descent. |
 | Role-play and mock interviews | Authored stakeholder cases, written exercises and five structured interview scenarios with saved review history are available. Live AI interactions require server-side configuration. |
 | AI-narrated animations and slides | Staged diagrams/slides and device narration are available. Generative narration and full animations are pending. |
 | Online coding | Two course lessons and seven standalone JavaScript challenges include real checks and isolated execution. A JavaScript playground and HTML/CSS preview are also available; C/C++/Python traces are not full runtimes. |
