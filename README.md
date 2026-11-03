@@ -70,7 +70,9 @@ Code quest is a chapter-based course in the learner sidebar. The course page lis
 
 Typed code is read by two small parsers, one for Python (`public/codequest-python.js`) and one shared by C++ and Java (`public/codequest-clike.js`), into the same instruction tree the fix levels use. Every exercise and language therefore shares one interpreter, one step trace and the same step and loop-pass limits. Starter code is generated per language from the same setup variables, and an exercise counts as cleared whichever language solved it. A deliberately bad loop cannot freeze the page. XP, level and badges are worked out from the existing `cleared` map, so no extra progress is stored besides the learner's code drafts, and reset, undo and export already cover it. The game runs a teaching model, not the real compilers: int and text variables, arithmetic, comparisons, `if` / `else`, `while` and `for`, and printing. Decimals, functions, arrays and classes beyond `main` are not supported.
 
-The game lives in `public/codequest.js` (interpreter, fix levels and code rendering), `public/codequest-python.js` and `public/codequest-clike.js` (Python and C++/Java parsers), `public/codequest-course.js` (chapters, exercises, XP and badges) and `public/codequest-views.js` (course page and exercise pages).
+The course has a small story so the pictures belong together. The Beacon of Byte Island has gone dark, and Bit (a robot) and Nib (a spark) relight it one chapter at a time. Each chapter has a place, a guardian who explains its idea (Boxy the crate keeper for variables, Forky the signpost for `if`, Loopy the ring-worm for loops) and a spark that Bit collects when the chapter is finished. Every chapter has its own animated pixel scene on the left of its exercises, the course banner shows the whole island, and the Beacon lights up when the last chapter is cleared. All art is drawn from plain rectangles in the forma palette, animated with CSS only, and switched off for learners who prefer reduced motion. The story is told in English, Simplified and Traditional Chinese.
+
+The game lives in `public/codequest.js` (interpreter, fix levels and code rendering), `public/codequest-python.js` and `public/codequest-clike.js` (Python and C++/Java parsers), `public/codequest-course.js` (chapters, exercises, XP and badges) and `public/codequest-story.js` (story, cast and every pixel scene) and `public/codequest-views.js` (course page and exercise pages).
 
 ## What makes Forma distinctive
 
@@ -155,6 +157,7 @@ Keep credentials out of the repository. The application does not ask learners to
 | `public/codequest-python.js` | Code quest parser for the Python subset learners type. |
 | `public/codequest-clike.js` | Code quest parser for the C++ and Java subsets learners type. |
 | `public/codequest-course.js` | Code quest chapters, exercises, XP, levels and badges. |
+| `public/codequest-story.js` | Code quest story world, characters and animated pixel scenes. |
 | `public/codequest-views.js` | Code quest course page and exercise pages. |
 | `api/` | Server-side AI endpoint for Vercel. |
 | `scripts/` | Local preview, build and optional browser checks. |
