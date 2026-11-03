@@ -7,18 +7,23 @@ const views=createLearningViews({courses:()=>[],course:()=>null},{
  e:String,L:(en,cn)=>cn,T:x=>typeof x==='object'?x['zh-CN']:x,s:()=>state,a:()=>ensureAcademy(state),
  link:(url,title)=>`<a href="#${url}">${title}</a>`,button:()=>'',heading:title=>`<h1>${title}</h1>`,ico:()=>'',cards:items=>items.join(''),codeLanguage:x=>x,empty:()=>'',
 });
-test('practice keeps the hands-on labs and the written interview practice beside the new categories',()=>{
- const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,5);
- assert.match(nav,/#practice\/labs/);assert.match(nav,/#practice\/written/);
+test('practice keeps three categories and drops the labs and written tabs',()=>{
+ const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,3);
+ assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
  assert.match(nav,/#practice\/coding" aria-current="page"/);assert.doesNotMatch(nav,/#practice\/playground/);
- assert.match(views.practice('labs'),/#lab\//);
  assert.match(views.practiceSections('playground'),/#practice\/playground" aria-current="page"/);
 });
-test('the written interview practice and the AI interview entry stay separate',()=>{
- const ai=views.practice('interviews'),written=views.practice('written');
- assert.match(ai,/#mock-interview/);assert.doesNotMatch(ai,/#interview\//);
- assert.match(written,/#interview\//);assert.doesNotMatch(written,/#mock-interview/);
- assert.match(views.practiceTabs('written'),/#practice\/written" aria-current="page"/);
+test('the Git topic inside Knowledge practice lists every Git practice and no other lab',()=>{
+ assert.match(views.practice('checks'),/#practice\/checks\/topic-git/);
+ const git=views.practice('checks','topic-git');
+ assert.match(git,/#lab\/git"/);assert.match(git,/#lab\/git-cli/);assert.match(git,/#lab\/git-read-status/);
+ assert.doesNotMatch(git,/#lab\/docker/);assert.doesNotMatch(git,/#lab\/prompt/);assert.doesNotMatch(git,/#lab\/rag/);
+ assert.equal((git.match(/#lab\/[a-z0-9-]+/g)||[]).length,23);
+});
+test('the retired lab and written entries open Knowledge practice instead',()=>{
+ const labs=views.practice('labs'),written=views.practice('written');
+ for(const page of [labs,written]){assert.match(page,/#practice\/checks\/topic-git/);assert.doesNotMatch(page,/#interview\//);assert.doesNotMatch(page,/#mock-interview/);}
+ assert.match(views.practiceTabs('written'),/#practice\/checks" aria-current="page"/);
  assert.equal(views.practiceSections('written'),'');
 });
 test('games have their own hub and do not appear in the practice lab list',()=>{
