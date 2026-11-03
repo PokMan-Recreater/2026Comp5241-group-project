@@ -73,7 +73,24 @@ export const QUEST_DIFFICULTIES=[
 ];
 
 const OPERATORS={
- '+':(a,b)=>a+b,'-':(a,b)=>a-b,'*':(a,b)=>a*b,
+ // Text follows Python's rules: "a" + "b" joins, "ab" * 3 repeats, and mixing
+ // text with a number is an error rather than a silent conversion.
+ '+':(a,b)=>{
+  if(typeof a!==typeof b)throw new Error('cannot add text and a number');
+  return a+b;
+ },
+ // Java joins as soon as either side is text: "a" + 1 is "a1".
+ jplus:(a,b)=>typeof a==='string'||typeof b==='string'?formatValue(a)+formatValue(b):a+b,
+ '-':(a,b)=>a-b,
+ '*':(a,b)=>{
+  if(typeof a==='string'&&typeof b==='number')return b>0?a.repeat(Math.min(b,200)):'';
+  if(typeof a==='number'&&typeof b==='string')return a>0?b.repeat(Math.min(a,200)):'';
+  return a*b;
+ },
+ truediv:(a,b)=>{
+  if(b===0)throw new Error('division by zero');
+  return a/b;
+ },
  '/':(a,b)=>b===0?0:Math.trunc(a/b),'%':(a,b)=>b===0?0:a%b,
  '==':(a,b)=>a===b?1:0,'!=':(a,b)=>a!==b?1:0,
  '<':(a,b)=>a<b?1:0,'>':(a,b)=>a>b?1:0,
@@ -81,7 +98,7 @@ const OPERATORS={
  '&&':(a,b)=>a&&b?1:0,'||':(a,b)=>a||b?1:0
 };
 
-const PRECEDENCE={'||':1,'&&':2,'==':3,'!=':3,'<':4,'>':4,'<=':4,'>=':4,'+':5,'-':5,'*':6,'/':6,'%':6};
+const PRECEDENCE={'||':1,'&&':2,'==':3,'!=':3,'<':4,'>':4,'<=':4,'>=':4,'+':5,'-':5,'*':6,'/':6,truediv:6,jplus:5,'%':6};
 
 export const num=value=>({type:'num',value});
 export const text=value=>({type:'str',value});
@@ -215,7 +232,9 @@ export const formatValue=v=>typeof v==='string'?v:Number.isInteger(v)?String(v):
 export function runProgram(stmts,options={}){
  const limit=options.limit??160,passes=options.passes??64;
  const vars={},output=[],steps=[];
- let budget=limit,error=null;
+ // Text printed without a newline waits here until the line is finished.
+ let pending='',budget=limit,error=null;
+ const shown=()=>pending?[...output,pending]:[...output];
  const walk=list=>{
   for(const st of list){
    if(error)return;
@@ -224,13 +243,18 @@ export function runProgram(stmts,options={}){
    try{
     if(st.op==='set'){
      vars[st.name]=evaluate(st.value,vars);
-     steps.push({id:st.id,vars:{...vars},output:[...output]});
+     steps.push({id:st.id,vars:{...vars},output:shown()});
     }else if(st.op==='out'){
-     output.push(formatValue(evaluate(st.value,vars)));
-     steps.push({id:st.id,vars:{...vars},output:[...output]});
+     // print(a, b) joins with a space; cout << a << b joins with nothing.
+     const printed=(st.values||[st.value]).map(v=>formatValue(evaluate(v,vars))).join(st.sep??' ');
+     const parts=(pending+printed).split('\n');
+     pending=parts.pop();
+     output.push(...parts);
+     if(st.newline??true){output.push(pending);pending='';}
+     steps.push({id:st.id,vars:{...vars},output:shown()});
     }else if(st.op==='if'){
      const taken=evaluate(st.cond,vars)!==0;
-     steps.push({id:st.id,vars:{...vars},output:[...output],note:taken?'then':'else'});
+     steps.push({id:st.id,vars:{...vars},output:shown(),note:taken?'then':'else'});
      walk(taken?st.then:(st.otherwise||[]));
     }else if(st.op==='while'){
      let guard=0;
@@ -238,15 +262,16 @@ export function runProgram(stmts,options={}){
       if(error)return;
       if(++guard>passes){error='too many passes';return;}
       if(--budget<0){error='step limit reached';return;}
-      steps.push({id:st.id,vars:{...vars},output:[...output]});
+      steps.push({id:st.id,vars:{...vars},output:shown()});
       walk(st.body);
      }
-     steps.push({id:st.id,vars:{...vars},output:[...output],note:'exit'});
+     steps.push({id:st.id,vars:{...vars},output:shown(),note:'exit'});
     }
    }catch(err){error=err.message;}
   }
  };
  walk(stmts);
+ if(pending)output.push(pending);
  return {vars,output,steps,error};
 }
 
@@ -1568,7 +1593,7 @@ export function questProgress(a){
  const p=a.codequest;
  // Older records, hand-edited exports or a pruned language list can all leave
  // the stored language unusable, so fall back to the first supported one.
- if(!isQuestLanguage(p.lang))p.lang=QUEST_LANGUAGES[0].id;
+ if(!isQuestLanguage(p.lang))p.lang='python';
  p.cleared??={};
  p.attempts??={};
  return p;

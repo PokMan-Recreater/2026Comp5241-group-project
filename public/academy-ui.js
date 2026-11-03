@@ -180,6 +180,7 @@ export function createAcademy(ctx){
   const el=event.target;
   if(el.id==='course-search'&&ctx.route()[0]==='explore')catalogResults();
   if(el.id==='academy-reference-search')document.querySelector('#academy-reference-results').innerHTML=ctx.route()[0]==='reference'?referenceResults():views.programmingResults();
+  quest.input(el);
   if(el.id==='academy-code'){a().challenges[el.dataset.acCode]={...a().challenges[el.dataset.acCode],code:el.value};save();}
   if(el.id==='academy-play-code'){if(ctx.route()[0]==='tutorial'){a().tutorialCode??={};a().tutorialCode[ctx.route()[1]]=el.value;}else{const p=a().playground;p.sources??={};p.sources[p.language]=el.value;}save();}
   if(el.id==='academy-interview-answer'){view.questionReview=null;document.querySelector('.interview-question-review')?.remove();document.querySelector('[data-ac="interview-next"]')?.remove();a().interviewDrafts??={};a().interviewDrafts[el.dataset.scenario]??=[];a().interviewDrafts[el.dataset.scenario][Number(el.dataset.question)]=el.value;const review=evaluateInterview([el.value],[''])[0];const out=document.querySelector('#academy-interview-feedback');if(out)out.textContent=[L('Answer draft','回答草稿','回答草稿'),L('Example or check','例子或检查','例子或檢查'),L('Decision and alternative','决定与备选方案','決定與備選方案'),L('Limitation or next step','局限或下一步','侷限或下一步')].map((label,i)=>(review.signals[i]?'✓ ':'○ ')+label).join(' · ');save();}
@@ -206,6 +207,7 @@ export function createAcademy(ctx){
   if(el.name==='tutorial-answer'){a().tutorialChecks??={};a().tutorialChecks[el.dataset.topic]={selected:Number(el.value)};el.closest('.mini-check')?.querySelector('.mini-feedback')?.remove();save();}
   if(el.id==='academy-edit-audience'&&ctx.editor()){ctx.editor().audience=el.value==='all'?['cs','non-cs']:[el.value];}
  });
+ document.addEventListener('keydown',event=>quest.key(event));
  document.addEventListener('keydown',event=>{const el=event.target;if(event.key==='Tab'&&el.matches('textarea.code-editor')){event.preventDefault();const start=el.selectionStart,end=el.selectionEnd;el.value=el.value.slice(0,start)+'  '+el.value.slice(end);el.selectionStart=el.selectionEnd=start+2;el.dispatchEvent(new Event('input',{bubbles:true}));}});
  document.addEventListener('submit',event=>{
   const f=event.target;if(!['academy-plan-form','academy-setup-form','academy-interview-form','academy-docker-form'].includes(f.id))return;event.preventDefault();
