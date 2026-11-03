@@ -10,3 +10,9 @@ test-results/
 dist/
 __pycache__/
 *.py[cod]
+
+# Local build output and logs from earlier prototype runs.
+.next/
+next-env.d.ts
+*.tsbuildinfo
+dev-server*.log
