@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRepo,runGit,writeFile,resolveConflictFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_DRILLS,GIT_SITUATIONS,startScenario,scenarioTasks,scenarioComplete,scenarioById} from '../public/git-sim.js';
+import {labs} from '../public/academy-content.js';
+import {renderLabBody} from '../public/lab-views.js';
 const APP_RESOLVED='export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}';
 
 /** Runs a list of commands and returns the final repository plus every output. */
@@ -437,6 +439,34 @@ test('a merge, pull, rebase, cherry-pick or revert refuses to replace uncommitte
  pick=runGit(pick,'git reset --hard HEAD~1').repo;
  expectRefusal(writeFile(pick,'notes.txt','Review checklist:\n- unsaved'),'git cherry-pick '+target,'cherry-pick');
  expectRefusal(writeFile(pick,'notes.txt','Review checklist:\n- unsaved'),'git revert '+target,'revert');
+});
+
+test('every small practice is its own entry in the practice list',()=>{
+ const entries=labs.filter(l=>/^git-/.test(l[0]));
+ assert.equal(entries.length,GIT_DRILLS.length+1,'one entry per drill, plus the command-line lab');
+ for(const drill of GIT_DRILLS){
+  const entry=labs.find(l=>l[0]==='git-'+drill.id);
+  assert.ok(entry,drill.id+' must be reachable as its own practice');
+  assert.equal(entry[1].en,'Git: '+drill.title[0]);
+  assert.equal(entry[1]['zh-CN'],'Git：'+drill.title[1]);
+  assert.equal(entry[1]['zh-TW'],'Git：'+drill.title[2]);
+  assert.equal(entry[2].en,drill.brief[0],drill.id+' must describe itself in the list');
+  assert.equal(entry[2]['zh-CN'],drill.brief[1]);
+  assert.equal(entry[2]['zh-TW'],drill.brief[2]);
+  assert.ok(entry[3],drill.id+' needs an icon for its card');
+ }
+ assert.equal(new Set(labs.map(l=>l[0])).size,labs.length,'every lab id must be unique');
+});
+
+test('a practice page opens straight into its own task',()=>{
+ const drill=GIT_DRILLS.find(d=>d.id==='stage-one-file');
+ const state=startScenario(drill.id);
+ const body=renderLabBody('git-'+drill.id,state,{e:s=>String(s??''),L:en=>en,T:v=>v.en??v,button:(a,l,attrs='')=>`<button data-ac="${a}" ${attrs}>${l}</button>`,option:(v,l,s)=>`<option value="${v}"${v===s?' selected':''}>${l}</option>`});
+ assert.match(body,/git-task-list/);
+ assert.equal(/id="git-scenario"/.test(body),false,'a single practice must not show the picker');
+ assert.match(body,/Stage only notes\.txt/);
+ assert.match(body,/gitcli-restart-scenario/);
+ assert.equal(/class="pill">0 \/ 1/.test(body),true);
 });
 
 test('tasks are worked through one at a time, in order',()=>{
