@@ -1,0 +1,12 @@
+import {deliveryLesson} from './delivery-lesson.js';
+import {delegatingLesson,problemDefinitionLesson} from './course-lessons.js';
+import {usersStakeholdersLesson,requirementsToBuildLesson,afterReleaseLesson,qualityTradeoffsLesson} from './lessons-foundations.js';
+import {testsAsEvidenceLesson,unitAndIntegrationLesson,testDataEdgesLesson,releaseChecklistLesson,monitorFeedbackLesson} from './lessons-testing-release.js';
+import {versionControlLesson,codeReviewLesson,taskBreakdownLesson,docsInterfaceLesson,knowledgeHandoffLesson} from './lessons-team-process.js';
+import {checkableGoalsLesson,taskBoundariesLesson,agentContextLesson,checksJudgementLesson} from './lessons-agents.js';
+import {planThenExecuteLesson,smallBatchLesson,agentRolesLesson,contextLayeringLesson,agentFailureModesLesson} from './lessons-agent-collaboration.js';
+import {verifyOutputLesson,readDiffLesson,securityBoundariesLesson,costLimitsLesson,auditTrailLesson} from './lessons-agent-assurance.js';
+import {usersAffectedLesson,testableConstraintsLesson,compareSolutionsLesson,scopeNonGoalsLesson} from './lessons-product.js';
+import {userInterviewsLesson,observeBehaviourLesson,surveyEvidenceLesson,dataEvidenceLesson,synthesiseFindingsLesson} from './lessons-user-research.js';
+import {prioritisationLesson,explainTradeoffsLesson,stakeholderAlignmentLesson,decisionRecordsLesson,feedbackLoopLesson} from './lessons-product-decisions.js';
+export const allLessons=[deliveryLesson,usersStakeholdersLesson,requirementsToBuildLesson,afterReleaseLesson,qualityTradeoffsLesson,testsAsEvidenceLesson,unitAndIntegrationLesson,testDataEdgesLesson,releaseChecklistLesson,monitorFeedbackLesson,versionControlLesson,codeReviewLesson,taskBreakdownLesson,docsInterfaceLesson,knowledgeHandoffLesson,delegatingLesson,checkableGoalsLesson,taskBoundariesLesson,agentContextLesson,checksJudgementLesson,planThenExecuteLesson,smallBatchLesson,agentRolesLesson,contextLayeringLesson,agentFailureModesLesson,verifyOutputLesson,readDiffLesson,securityBoundariesLesson,costLimitsLesson,auditTrailLesson,problemDefinitionLesson,usersAffectedLesson,testableConstraintsLesson,compareSolutionsLesson,scopeNonGoalsLesson,userInterviewsLesson,observeBehaviourLesson,surveyEvidenceLesson,dataEvidenceLesson,synthesiseFindingsLesson,prioritisationLesson,explainTradeoffsLesson,stakeholderAlignmentLesson,decisionRecordsLesson,feedbackLoopLesson];

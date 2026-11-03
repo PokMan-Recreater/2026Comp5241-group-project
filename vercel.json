@@ -3,12 +3,52 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": { "api/ai.js": { "maxDuration": 60 } },
+  "functions": {
+    "api/ai.js": {
+      "maxDuration": 60
+    },
+    "api/run.js": {
+      "maxDuration": 60
+    },
+    "api/interview.js": {
+      "maxDuration": 60
+    },
+    "api/transcribe.js": {
+      "maxDuration": 60
+    },
+    "api/account.js": {
+      "maxDuration": 60
+    },
+    "api/interview-records.js": {
+      "maxDuration": 60
+    },
+    "api/interview-review-worker.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-      { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
-    ] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(self), geolocation=()"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/interview-review-worker",
+      "schedule": "0 0 * * *"
+    }
   ]
 }
