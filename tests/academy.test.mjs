@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ensureAcademy,scheduleLessons,buildPlan,planProgress,learningStats,recordActivity,createGit,gitStep,retrieve,dockerStep,initialDocker,gradientStep,pipelineResult,evaluateInterview,promptReview} from '../public/academy-core.js';
 import {challenges,referenceTopics,interviews} from '../public/academy-content.js';
-import {traceProgram,semanticEqual} from '../public/academy-runner.js';
+import {runTypedProgram,semanticEqual} from '../public/academy-runner.js';
 const state=()=>({profile:{name:'Existing learner'},courses:[{id:'personal'}],classes:[{id:'class'}],progress:{},notes:{old:'Keep this'},events:[]});
 
 test('academy migration preserves existing learner, courses, classrooms and work',()=>{const s=state();ensureAcademy(s);ensureAcademy(s);assert.equal(s.profile.name,'Existing learner');assert.equal(s.courses[0].id,'personal');assert.equal(s.classes[0].id,'class');assert.equal(s.notes.old,'Keep this');assert.deepEqual(s.academy.plans,[]);});
@@ -20,5 +20,16 @@ test('pipeline blocks later stages and passes only after every actual fix',()=>{
 test('interview review recognizes Chinese and English evidence without making hiring decisions',()=>{const result=evaluateInterview(['I chose a test because the log showed 3 failures; next check the limit.','我选择了一个测试例子，未验证的边界需要下一步检查。'],['Q1','Q2']);assert(result.every(x=>x.signals.every(Boolean)));assert.equal(evaluateInterview([''],['Q'])[0].answered,false);assert.equal(promptReview('Goal: write. Input: data. Constraints: must be short. Output format: JSON. Test: empty input.').filter(Boolean).length,3);});
 test('all fourteen challenge references pass their contracts and every starter has a failing case',()=>{for(const c of challenges){const fn=new Function(c.solution+`;return ${c.entry};`)();for(const t of c.tests)assert.equal(JSON.stringify(fn(...structuredClone(t.args))),JSON.stringify(t.expected),c.id);const starter=new Function(c.starter+`;return ${c.entry};`)();assert(c.tests.some(t=>JSON.stringify(starter(...structuredClone(t.args)))!==JSON.stringify(t.expected)),c.id);}});
 test('thirty reference topics and eleven interview scenarios are complete in every language',()=>{assert.equal(referenceTopics.length,30);assert.equal(new Set(referenceTopics.map(x=>x.id)).size,30);assert.equal(interviews.length,11);for(const x of referenceTopics)for(const lang of ['en','zh-CN','zh-TW']){assert(x.title[lang]);assert(x.description[lang]);assert(x.task[lang]);}for(const x of interviews)assert.equal(x.questions.length,3);});
-test('output tracing is honest about unsupported code and does not fabricate execution',()=>{assert.deepEqual(traceProgram('python','name = "Forma"\nprint("Hello", name)'),['Hello Forma']);assert.deepEqual(traceProgram('c','int count = 3;\nprintf("Count: %d", count);'),['Count: 3']);assert.throws(()=>traceProgram('python','print(2 + 2)'));assert.throws(()=>traceProgram('c','while(1) {}'));});
+test('the free-coding interpreter really runs code and never invents output for code it cannot run',()=>{
+ assert.deepEqual(runTypedProgram('python','name = "Forma"\nprint("Hello", name)').logs,['Hello Forma']);
+ assert.deepEqual(runTypedProgram('python','total = 0\nfor i in range(3):\n    total += i\nprint(total)').logs,['3']);
+ assert.deepEqual(runTypedProgram('c','#include <stdio.h>\nint main(void) {\nint count = 3;\nprintf("Count: %d\\n", count);\nreturn 0;\n}').logs,['Count: 3']);
+ assert.deepEqual(runTypedProgram('cpp','#include <iostream>\nint main() {\nint n = 2;\nwhile (n < 5) { std::cout << n << std::endl; n++; }\nreturn 0;\n}').logs,['2','3','4']);
+ const missing=runTypedProgram('python','print(total)');
+ assert.equal(missing.error.kind,'runtime');assert.deepEqual(missing.logs,[]);
+ const broken=runTypedProgram('python','print(2 +)');
+ assert.equal(broken.error.kind,'syntax');assert.deepEqual(broken.logs,[]);
+ assert.equal(runTypedProgram('cpp','int main() {\nwhile (1) { }\nreturn 0;\n}').error.kind,'runtime');
+ assert.deepEqual(runTypedProgram('python','').error,{kind:'empty'});
+});
 test('challenge comparisons ignore object-key order but retain array order and value types',()=>{assert(semanticEqual({failed:1,passed:2},{passed:2,failed:1}));assert(!semanticEqual([1,2],[2,1]));assert(!semanticEqual({value:1},{value:'1'}));assert(!semanticEqual(null,{}));});
