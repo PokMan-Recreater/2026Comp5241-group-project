@@ -303,3 +303,19 @@
 .knowledge-topic-entry{display:block;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}.knowledge-topic-entry:hover{transform:translateY(-3px);border-color:#8270c8}.knowledge-topic-entry:focus-visible{outline:3px solid #8270c8;outline-offset:4px}.knowledge-topic-entry>div{display:flex;justify-content:space-between;align-items:center;color:#68608f;margin-top:28px}.knowledge-topic-entry h2{margin:0}
 
 .cloud-login{max-width:640px}.cloud-login form{margin-top:24px}.cloud-login input{width:100%}
+
+.auth-page{min-height:100dvh;background:#fff7c2;display:flex;flex-direction:column;align-items:center;padding:48px 24px;box-sizing:border-box;color:#0a033e}
+.auth-brand{margin-bottom:36px;align-self:center}
+.auth-card{width:100%;max-width:480px;box-sizing:border-box;padding:36px;background:#fffef8}
+.auth-card h1{font-size:30px;margin:28px 0 12px}
+.auth-card form{display:grid;gap:20px;margin-top:28px}
+.auth-card input{width:100%;box-sizing:border-box;min-height:48px}
+.auth-tabs{display:flex;gap:8px;border-bottom:1px solid #ddd6ff;padding-bottom:12px}
+.auth-tabs button{font:inherit;background:transparent;color:#635c91;border:0;padding:10px 20px;cursor:pointer;border-radius:12px}
+.auth-tabs button[aria-pressed=true]{background:#ffdf52;color:#0a033e;font-weight:700}
+.auth-submit{width:100%;justify-content:center}
+.auth-back{display:block;margin-top:24px;text-align:center}
+.account-actions{margin:40px 0 0;display:flex;gap:14px;align-items:center;justify-content:flex-end;flex-wrap:wrap;color:#635c91}.account-actions a,.account-actions button{font:inherit;color:inherit;background:none;border:0;padding:8px 0;cursor:pointer;text-decoration:none}.account-actions a:hover,.account-actions button:hover{text-decoration:underline}
+@media(max-width:540px){.auth-page{padding:28px 16px}.auth-card{padding:24px}.auth-brand{margin-bottom:24px}}
+
+.auth-language{align-self:flex-end;display:flex;align-items:center;gap:10px;margin-bottom:12px;color:#635c91}.auth-language select{background:#fffef8;border:1px solid #ddd6ff;border-radius:12px;padding:10px 14px;font:inherit;color:#0a033e}
