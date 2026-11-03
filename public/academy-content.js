@@ -1,6 +1,9 @@
 import {extraInterviews} from './interview-cases.js';
 import {peerChallenges} from './peer-challenges.js';
 import {tri as T} from './i18n.js';
+import {GIT_DRILLS} from './git-sim.js';
+/** The small practices share a short icon set: read, change, branch, publish. */
+const DRILL_ICONS=['info','plus','check','git-branch','search','refresh','back','trash','flag','globe'];
 import {programmingLessonById} from './programming-lessons.js';
 export const challenges=[
  ...peerChallenges,
@@ -24,12 +27,22 @@ export const interviews=[
 // [id, title, description, icon] — the icon key maps to an entry in icons.js.
 export const labs=[
  ['git',Q('Branch and merge','分支与合并','分支與合併'),Q('Make a branch, diverge, merge and resolve a conflict.','建立分支、制造分歧，再合并并解决冲突。','建立分支、製造分歧，再合併並解決衝突。'),'git-branch'],
+ ['git-cli',Q('Git command line','Git 命令行','Git 命令列'),Q('Practise the everyday Git workflow in a safe repository: commit, branch, merge a conflict, stash and push. Anything Git refuses is explained afterwards.','在安全的仓库里练习常用的 Git 流程：提交、分支、合并冲突、stash 和推送。被 Git 拒绝的命令会在之后说明原因。','在安全的倉庫裡練習常用的 Git 流程：提交、分支、合併衝突、stash 和推送。被 Git 拒絕的指令會在之後說明原因。'),'git-merge'],
+ // One entry per small practice, so each command can be opened and practised on
+ // its own instead of living inside one long list.
+ ...GIT_DRILLS.map((d,i)=>[`git-${d.id}`,Q('Git: '+d.title[0],'Git：'+d.title[1],'Git：'+d.title[2]),Q(...d.brief),DRILL_ICONS[i%DRILL_ICONS.length]]),
  ['prompt',Q('Prompt workshop','提示词工作坊','提示詞工作坊'),Q('Specify the reader, source, output contract and a worked example.','检查目标、输入、约束、输出格式和验证依据。','檢查目標、輸入、約束、輸出格式和驗證依據。'),'message'],
  ['rag',Q('Retrieval pipeline','检索流程','檢索流程'),Q('Inspect matches and compare top-k and exact-phrase weighting.','查看匹配结果，比较 top-k 和完整短语加权。','查看符合結果，比較 top-k 和完整片語加權。'),'database'],
  ['ci',Q('Repair a CI pipeline','修复 CI 流水线','修復 CI 流水線'),Q('Read the failing stage, apply a fix and run again.','阅读失败阶段，修复后重新运行。','閱讀失敗階段，修復後重新執行。'),'wrench'],
  ['docker',Q('Container lifecycle','容器生命周期','容器生命週期'),Q('Build an image and manage a container in a command simulation.','在命令模拟中构建镜像、运行和管理容器。','在指令模擬中建置映像、執行及管理容器。'),'container'],
  ['gradient',Q('Gradient descent','梯度下降','梯度下降'),Q('Change the learning rate and inspect convergence or divergence.','调整学习率，观察收敛或发散。','調整學習率，觀察收斂或發散。'),'trending-down']
 ];
+// Labs kept in the code but hidden from learners: their pages still render by
+// address, yet nothing lists them, no lesson, plan or home card links them, and
+// a lesson that used one falls back to a visible practice.
+export const hiddenLabs=new Set(['prompt','rag','ci','docker','gradient']);
+export const isHiddenLab=id=>hiddenLabs.has(id);
+export const isHiddenLabRoute=route=>typeof route==='string'&&route.startsWith('lab/')&&hiddenLabs.has(route.slice(4));
 export const retrievalDocs=[
  {id:'d1',text:'A classroom roster lists enrolled students. Roster import does not create participation events. 教学班 名单 导入 学生 参与 教學班 名單 匯入 學生 參與'},
  {id:'d2',text:'Course drafts should be reviewed by an instructor before publication. AI output can contain errors. 课程 草稿 教师 审核 AI 錯誤 課程 草稿 教師 審核'},

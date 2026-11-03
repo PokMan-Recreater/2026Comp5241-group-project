@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {courses} from '../public/data.js';
+import {knowledgeQuestions} from '../public/knowledge-checks.js';
 import {referenceTopics,challenges,labs,interviews} from '../public/academy-content.js';
 import {programmingLessons,programmingLessonById} from '../public/programming-lessons.js';
 import {practiceForLesson,nextStudyTarget} from '../public/learning-links.js';
@@ -11,7 +12,7 @@ test('every built-in lesson connects to an existing practice or teaching page',(
   const links=practiceForLesson(c.id,i);assert(links.length,c.id+':'+i);
   for(const route of links){
    const [kind,id,index]=route.split('/');
-   const valid=kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&courses.find(x=>x.id===id)?.lessons[Number(index)];
+   const valid=kind==='practice'&&id==='checks'&&knowledgeQuestions(courses).some(q=>q.key===index)||kind==='game'||kind==='lab'&&labs.some(x=>x[0]===id)||kind==='challenge'&&challenges.some(x=>x.id===id)||kind==='interview'&&interviews.some(x=>x.id===id)||kind==='tutorial'&&referenceTopics.some(x=>x.id===id)||kind==='learn'&&courses.find(x=>x.id===id)?.lessons[Number(index)];
    assert(valid,route);
   }
  }
