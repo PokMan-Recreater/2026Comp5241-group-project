@@ -6,7 +6,7 @@ import {interviewContext,reviewInterview,interviewFeedbackHTML} from './intervie
 import {syntaxCards} from './syntax-reference.js';
 import {knowledgeQuestions,saveKnowledgeAttempt} from './knowledge-checks.js';
 import {tri,local} from './i18n.js';
-import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete} from './academy-core.js';
+import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete} from './academy-core.js';
 import {challenges,interviews,labs,retrievalDocs,referenceTopics} from './academy-content.js';
 import {runSandbox,runTypedProgram} from './academy-runner.js';
 import {createLearningViews} from './academy-views.js';
@@ -135,7 +135,9 @@ export function createAcademy(ctx){
  function localExplanation(c,l){const body=T(l.body),first=body.split(/\n+/).find(x=>x.trim()&&!x.trim().startsWith('#'))||body;return `<p>${e(first)}</p><h3>${L('Make it concrete','用具体例子理解','用具體例子理解')}</h3><p>${e(T(l.workshop?.brief||l.hint||c.description))}</p><ol><li>${L('Name the input, decision and expected result.','写清输入、决定和预期结果。','寫清輸入、決定和預期結果。')}</li><li>${L('Try the smallest example, then one boundary case.','先试一个最小例子，再试一个边界情况。','先試一個最小例子，再試一個邊界情況。')}</li><li>${L('Explain what the evidence does and does not show.','说明证据能证明什么、不能证明什么。','說明證據能證明甚麼、不能證明甚麼。')}</li></ol><p class="small muted">${L('Study guide assembled from this lesson; not a new AI answer.','根据当前课文整理的学习提示，不是新的 AI 回答。','依目前課文整理的學習提示，不是新的 AI 回答。')}</p>`;}
  function completeLab(id,result){a().labResults[id]={...a().labResults[id],...result,at:new Date().toISOString()};touch('lab',id);}
  /** Runs one typed Git command in the sandbox and keeps the whole repository state. */
- function runGitLabCommand(input){const z=labState('git-cli'),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates['git-cli']=repo;if(gitComplete(repo))completeLab('git-cli',{completed:true});save();render();}
+ function runGitLabCommand(input){const z=labState('git-cli'),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates['git-cli']=repo;if(gitComplete(repo)||scenarioComplete(repo))completeLab('git-cli',{completed:true});save();render();}
+ /** Starts a production scenario, or restarts the active one. */
+ function startGitScenario(id){const chosen=id??document.querySelector('#git-scenario')?.value;if(!chosen)return;const next=startScenario(chosen);next.selectedFile=Object.keys(next.files)[0];a().labStates['git-cli']=next;save();render();}
  function previewPlan(data){const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,weeklyMinutes:profile.weeklyMinutes,skillLevel:profile.skillLevel};save();}
  async function click(action,el){
   if(await quest.click(action,el))return;
@@ -192,6 +194,8 @@ export function createAcademy(ctx){
    const which=action.slice(7);
    if(which==='run'){runGitLabCommand(el.dataset.command);return;}
    if(which==='clear'){z.transcript=[];save();render();return;}
+   if(which==='start-scenario'){startGitScenario();return;}
+   if(which==='restart-scenario'){startGitScenario(z.scenario?.id);return;}
    if(which==='save-file'){
     const path=document.querySelector('#git-file')?.value,content=document.querySelector('#git-file-content').value;
     if(path){const next=writeFile(z,path,content);next.selectedFile=path;a().labStates['git-cli']=next;save();render();}
@@ -247,6 +251,7 @@ export function createAcademy(ctx){
   if(el.id==='academy-rate'||el.id==='academy-voice'){a().narration.rate=Number(document.querySelector('#academy-rate').value);a().narration.voice=document.querySelector('#academy-voice').value;stopSpeech();updateSpeechButtons();save();}
   if(el.id==='git-checkout'){a().labStates.git=gitStep(labState('git'),'checkout',el.value);save();render();}
   if(el.id==='git-file'){a().labStates['git-cli'].selectedFile=el.value;save();render();}
+  if(el.id==='git-scenario'){a().labStates['git-cli'].scenarioPick=el.value;save();render();}
   if(el.id==='academy-edit-level'&&ctx.editor()){ctx.editor().level=el.value;}
   if(el.name==='knowledge-answer')document.querySelector('.knowledge-card .mini-feedback')?.remove();
   if(el.name==='tutorial-answer'){a().tutorialChecks??={};a().tutorialChecks[el.dataset.topic]={selected:Number(el.value)};el.closest('.mini-check')?.querySelector('.mini-feedback')?.remove();save();}
