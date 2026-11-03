@@ -139,3 +139,17 @@ html[lang="zh-TW"],.lesson-paper[lang="zh-TW"]{--font:'Plus Jakarta Sans','Sourc
 /* Lucide fine-line navigation icons. */
 .nav-link{font-size:13px;gap:12px;min-height:44px}
 .nav-link>.ui-icon{width:23px;height:23px}
+
+/* Share the first row between the page heading and account controls. */
+.topbar{border-bottom:0}
+.content:has(>.learning-home-hero)>.page-heading{display:block;margin-bottom:14px}
+.content:has(>.learning-home-hero)>.page-heading h1{font-size:36px;font-weight:700;line-height:1.2;letter-spacing:normal}
+@media(min-width:701px){
+ .main:has(>.content>.page-heading){position:relative}
+ .main:has(>.content>.page-heading)>.topbar{position:absolute;top:24px;left:0;right:0;max-width:1320px;margin-inline:auto;height:64px;justify-content:flex-end;background:transparent;pointer-events:none}
+ .main:has(>.content>.page-heading)>.topbar .top-tools{pointer-events:auto}
+ .main:has(>.content>.page-heading)>.content{padding-top:34px}
+ .content>.page-heading{min-height:44px}
+ .content>.page-heading h1{padding-right:320px;min-height:44px}
+}
+@media(min-width:701px) and (max-width:1000px){.content>.page-heading h1{font-size:28px;padding-right:260px}}
