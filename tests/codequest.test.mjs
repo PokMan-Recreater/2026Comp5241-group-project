@@ -99,7 +99,7 @@ test('progress unlocks levels in order',()=>{
 test('questProgress backfills missing fields on older records',()=>{
  const a={codequest:{}};
  const p=questProgress(a);
- assert.equal(p.lang,'cpp');
+ assert.equal(p.lang,'python');
  assert.deepEqual(p.cleared,{});
  assert.deepEqual(p.attempts,{});
 });
