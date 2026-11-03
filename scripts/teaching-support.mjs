@@ -1,5 +1,5 @@
 import {CloudError} from './supabase-support.mjs';
-import {isScene} from './teaching-scenes.mjs';
+import {isScene,itemsFitScene} from './teaching-scenes.mjs';
 const fail=()=>{throw new CloudError('invalid_request',400);};
 export function text(value,max,empty=false){if(typeof value!=='string'||value.length>max||(!empty&&!value.trim()))fail();return value.trim();}
 export function validateCourse(value,publishing=false){
@@ -17,7 +17,7 @@ export function validateCourse(value,publishing=false){
    keys(s,['heading','bullets','art']);
    if(!Array.isArray(s.bullets)||s.bullets.length<1||s.bullets.length>6)fail();
    keys(s.art,['scene','items']);
-   if(!isScene(s.art.scene)||!Array.isArray(s.art.items)||s.art.items.length<1||s.art.items.length>6)fail();
+   if(!isScene(s.art.scene)||!Array.isArray(s.art.items)||!itemsFitScene(s.art.scene,s.art.items.length))fail();
    return {heading:text(s.heading,120),bullets:s.bullets.map(b=>text(b,200)),art:{scene:s.art.scene,items:s.art.items.map(i=>text(i,80))}};
   });
   const questionIds=new Set();

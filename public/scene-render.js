@@ -56,12 +56,12 @@ const caption=title=>{
 };
 
 function flow(title,it,id){
- const n=Math.max(2,Math.min(5,it.length||2)),gap=22,w=(320-gap*(n-1))/n,size=n>3?10:12,y=70,h=96,cy=y+h/2;
+ const n=Math.max(2,Math.min(5,it.length||2)),gap=n>3?14:22,w=(320-gap*(n-1))/n,size=n>3?9:12,y=70,h=96,cy=y+h/2;
  let s='';
  for(let i=0;i<n;i++){
   const x=20+i*(w+gap);
   s+=box(x,y,w,h,FILLS[i%FILLS.length]);
-  s+=block(x+w/2,cy,wrap(it[i]||title,w-16,size,3),size);
+  s+=block(x+w/2,cy,wrap(it[i]||title,w-12,size,3),size);
   if(i<n-1)s+=arrow(`M${x+w} ${cy}h${gap-1}`,id);
  }
  return s+caption(title);
@@ -76,21 +76,21 @@ function compare(title,it){
   +caption(title);
 }
 function timeline(title,it){
- const n=Math.max(2,Math.min(5,it.length)),step=280/(n-1||1),size=10;
+ const n=Math.max(2,Math.min(5,it.length)),step=280/(n-1||1),size=9;
  let s=`<path d="M30 128H330" stroke="${INK}" stroke-width="2.5"/>`;
  for(let i=0;i<n;i++){
-  const x=40+i*step,up=i%2===0,lines=wrap(it[i]||title,64,size,2);
+  const x=40+i*step,up=i%2===0,lines=wrap(it[i]||title,64,size,3);
   s+=`<circle cx="${x}" cy="128" r="9" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="2"/>`;
   lines.forEach((line,j)=>s+=txt(x,up?100-(lines.length-1-j)*14:158+j*14,line,size));
  }
  return s+caption(title);
 }
 function cycle(title,it){
- const n=Math.max(2,Math.min(5,it.length)),cx=180,cy=110,r=72,size=9;
+ const n=Math.max(2,Math.min(5,it.length)),cx=180,cy=120,r=62,size=9;
  let s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${MUTED}" stroke-width="1.5" stroke-dasharray="4 5"/>`;
  for(let i=0;i<n;i++){
   const a=-Math.PI/2+i*2*Math.PI/n,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
-  const lines=wrap(it[i]||title,64,size,2),lx=x+Math.cos(a)*40,ly=y+Math.sin(a)*34+3;
+  const lines=wrap(it[i]||title,64,size,3),lx=x+Math.cos(a)*36,ly=y+Math.sin(a)*36+3;
   s+=`<circle cx="${x}" cy="${y}" r="21" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`;
   lines.forEach((line,j)=>s+=txt(lx,ly+(j-(lines.length-1)/2)*11,line,size));
  }
@@ -109,14 +109,14 @@ function layers(title,it){
  return s+caption(title);
 }
 function hub(title,it){
- const cx=180,cy=108,pts=[[cx-112,cy-50],[cx+112,cy-50],[cx-112,cy+58],[cx+112,cy+58],[cx,cy-92]];
+ const cx=180,cy=112,pts=[[cx-112,cy-50],[cx+112,cy-50],[cx-112,cy+58],[cx+112,cy+58],[cx,cy-84]];
  const n=Math.min(5,it.length);
- let s=`<circle cx="${cx}" cy="${cy}" r="34" fill="${FILLS[4]}" stroke="${INK}" stroke-width="2"/>`+block(cx,cy,wrap(title,56,8,2),8);
+ let s=`<circle cx="${cx}" cy="${cy}" r="36" fill="${FILLS[4]}" stroke="${INK}" stroke-width="2"/>`+block(cx,cy,wrap(title,64,8,3),8);
  for(let i=0;i<n;i++){
   const [x,y]=pts[i];
   s+=`<path d="M${cx} ${cy}L${x} ${y}" stroke="${ACCENT}" stroke-width="1.5" opacity=".55"/>`
-   +`<circle cx="${x}" cy="${y}" r="22" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`
-   +block(x,y,wrap(it[i],40,8,2),8);
+   +`<circle cx="${x}" cy="${y}" r="26" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`
+   +block(x,y,wrap(it[i],50,8,3),8);
  }
  return s;
 }
@@ -143,7 +143,7 @@ function network(title,it){
  const links=[[0,3],[1,4],[3,4],[0,2],[1,2],[2,3],[2,4]].filter(([,b])=>b<n);
  let s='';
  for(const [a,b] of links){const [x1,y1]=pts[a],[x2,y2]=pts[b];s+=`<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${ACCENT}" stroke-width="1.4" opacity=".45"/>`;}
- for(let i=0;i<n;i++){const [x,y]=pts[i];s+=`<circle cx="${x}" cy="${y}" r="24" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`+block(x,y,wrap(it[i]||title,40,8,2),8);}
+ for(let i=0;i<n;i++){const [x,y]=pts[i];s+=`<circle cx="${x}" cy="${y}" r="24" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`+block(x,y,wrap(it[i]||title,46,8,3),8);}
  return s+caption(title);
 }
 function chain(title,it){
