@@ -2,6 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createLearningViews} from '../public/academy-views.js';
 import {ensureAcademy} from '../public/academy-core.js';
+import {practiceForLesson} from '../public/course-practices.js';
+import {isHiddenLab,isHiddenLabRoute,labs} from '../public/academy-content.js';
+import {courses} from '../public/data.js';
 const state={profile:{},progress:{},events:[],lang:'zh-CN'};
 const views=createLearningViews({courses:()=>[],course:()=>null},{
  e:String,L:(en,cn)=>cn,T:x=>typeof x==='object'?x['zh-CN']:x,s:()=>state,a:()=>ensureAcademy(state),
@@ -32,4 +35,12 @@ test('games have their own hub and do not appear in the practice lab list',()=>{
 });
 test('the rebuilt catalog no longer repeats the old topic taxonomy',()=>{
  assert.equal(views.courseTabs('software'),'');
+});
+test('the five hidden labs stay registered but no lesson or practice page links them',()=>{
+ for(const id of ['prompt','rag','ci','docker','gradient']){
+  assert(labs.some(l=>l[0]===id),'the hidden page must stay in the code: '+id);
+  assert(isHiddenLab(id),id+' must be marked hidden');
+ }
+ for(const c of courses)for(const [i] of c.lessons.entries())for(const route of practiceForLesson(c.id,i))assert(!isHiddenLabRoute(route),c.id+':'+i+' links '+route);
+ assert.doesNotMatch(views.practice('checks','topic-git'),/#lab\/(prompt|rag|ci|docker|gradient)"/);
 });

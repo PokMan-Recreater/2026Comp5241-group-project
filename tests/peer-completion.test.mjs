@@ -24,7 +24,7 @@ test('language topics coexist with Git and other languages without discarding in
 });
 test('every matched course has readings before its own practice in multi-topic plans',()=>{
  const p=plan('Git Docker SQL').plan;assert(p.matchedCourses.includes('docker-containers'));
- for(const route of ['lab/git','lab/docker','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
+ for(const route of ['lab/git','practice/checks/docker-containers:docker-image','challenge/group']){const at=p.steps.findIndex(x=>x.route===route);assert(at>=0,route);const from=p.steps[at].from;assert(p.steps.slice(0,at).some(x=>x.courseId===from),route);}
  assert.equal(p.modules.flatMap(x=>x.steps).length,p.steps.length);const totals={};for(const s of p.steps)totals[s.week]=(totals[s.week]||0)+s.minutes;assert(Object.values(totals).every(x=>x<=30));
 });
 test('original SE practice relationships are present in generated intermediate plans',()=>{
