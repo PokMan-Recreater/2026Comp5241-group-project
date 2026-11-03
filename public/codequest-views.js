@@ -6,48 +6,8 @@
 // slate. Only the learner's code draft and cleared exercises are saved.
 
 import {QUEST_LANGUAGES,findLevel,questProgress,isQuestLanguage,buildProgram,checkProgram,renderProgram} from './codequest.js';
+import {sprite,BOT,BADGES,CAST,WORLD,CHAPTER_STORY,chapterScene,worldScene} from './codequest-story.js';
 import {CHAPTERS,BADGE_NAMES,XP_PER_LEVEL,findExercise,isWriteExercise,exerciseXp,exerciseLevel,courseStats,chapterProgress,nextExercise,neighbours,checkTyped,starterFor,SYNTAX_TIPS} from './codequest-course.js';
-
-const PAL={'2':'#050038','3':'#b9afe8','4':'#ffd02f','5':'#e4ddff'};
-
-function spriteRects(rows,scale,mono){
- let out='';
- rows.forEach((row,y)=>{
-  row.split('').forEach((ch,x)=>{
-   const fill=mono?(PAL[ch]?'#b9afe8':null):PAL[ch];
-   if(fill)out+=`<rect x="${x*scale}" y="${y*scale}" width="${scale}" height="${scale}" fill="${fill}"/>`;
-  });
- });
- return out;
-}
-
-function sprite(rows,scale=5,mono=false){
- const w=rows[0].length*scale,h=rows.length*scale;
- return `<svg class="quest-sprite" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${spriteRects(rows,scale,mono)}</svg>`;
-}
-
-const BOT=['.222222.','.222222.','.244442.','.244442.','.222222.','..2222..','..2..2..','.22..22.'];
-const BADGES={
- terminal:['22222222','25555552','25255552','25525552','25255542','25555552','25555552','22222222'],
- box:['.222222.','22444422','24444442','24444442','24444442','24444442','22444422','.222222.'],
- fork:['...22...','..2442..','..2442..','.224422.','22.22.22','24.22.42','24.22.42','22.22.22'],
- loop:['..2222..','.244442.','24555542','24522542','24522542','24555542','.244442.','..2222..'],
- trophy:['22222222','24444442','24444442','.244442.','..2442..','...22...','..2222..','.222222.']
-};
-
-// A small pixel landscape for the course banner, drawn from plain rectangles.
-const SCENE=`<svg class="quest-scene" viewBox="0 0 320 96" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">
- <rect width="320" height="96" fill="#e4ddff"/>
- <rect x="30" y="14" width="36" height="6" fill="#fff"/><rect x="38" y="8" width="20" height="6" fill="#fff"/>
- <rect x="170" y="22" width="44" height="6" fill="#fff"/><rect x="180" y="16" width="24" height="6" fill="#fff"/>
- <rect x="268" y="10" width="12" height="12" fill="#ffd02f"/>
- <rect x="0" y="58" width="96" height="26" fill="#b9afe8"/><rect x="96" y="48" width="84" height="36" fill="#b9afe8"/><rect x="180" y="62" width="140" height="22" fill="#b9afe8"/>
- <rect x="0" y="70" width="120" height="14" fill="#a698da"/><rect x="190" y="68" width="130" height="16" fill="#a698da"/>
- <rect x="0" y="82" width="320" height="4" fill="#ffd02f"/><rect x="0" y="86" width="320" height="10" fill="#050038"/>
- <g><rect x="212" y="40" width="48" height="8" fill="#ffd02f" stroke="#050038" stroke-width="2"/><rect x="262" y="26" width="28" height="8" fill="#ffd02f" stroke="#050038" stroke-width="2"/></g>
- <g transform="translate(150 42)">${spriteRects(BOT,5,false)}</g>
- <g transform="translate(232 12)">${spriteRects(['..4..','.444.','44444','.444.','..4..'],5,false)}</g>
-</svg>`;
 
 export const SYNTAX_MESSAGES={
  unterminatedText:['A piece of text is missing its closing quote.','有一段文字缺少结尾的引号。','有一段文字缺少結尾的引號。'],
@@ -95,6 +55,18 @@ export function createQuestViews(ctx,h){
   return `<div class="quest-langbar" role="group" aria-label="${e(L('Language','语言','語言'))}">${QUEST_LANGUAGES.map(x=>`<button type="button" class="quest-lang ${x.id===lang?'on':''}" data-ac="quest-language" data-id="${e(x.id)}" aria-pressed="${x.id===lang}"><code>${e(x.label)}</code></button>`).join('')}</div>`;
  }
 
+ // ---------- story ----------
+
+ // The story card sits at the top of the left column: this chapter's scene,
+ // its place, and what its guardian says (changing once the chapter is done).
+ function storyCard(chapter,wide){
+  const story=CHAPTER_STORY[chapter.id];
+  const done=chapterProgress(ctx.a(),chapter).complete;
+  const guide=CAST[story.guide];
+  const label=pickT(WORLD.name)+' · '+pickT(story.place);
+  return `<div class="quest-card quest-story${wide?' wide':''}">${chapterScene(chapter.id,done,e(label))}<div class="quest-story-text"><span class="quest-story-tags"><span class="pill">${e(pickT(story.place))}</span><span class="pill">${e(pickT(guide.name))}</span></span><p>${e(pickT(done?story.done:story.intro))}</p></div></div>`;
+ }
+
  // ---------- course page ----------
 
  function chapterBlock(chapter,index,open,cleared){
@@ -105,7 +77,7 @@ export function createQuestViews(ctx,h){
   }).join('');
   return `<details class="quest-chapter ${prog.complete?'complete':''}" ${open?'open':''}>
    <summary><span class="quest-chapter-dot">${prog.complete?'✓':index+1}</span><span class="quest-chapter-title">${e(T(chapter.title))}</span><span class="quest-chapter-count">${prog.done} / ${prog.total}</span></summary>
-   <div class="quest-chapter-body"><p>${e(T(chapter.summary))}</p>${rows}</div>
+   <div class="quest-chapter-body"><p>${e(T(chapter.summary))}</p><p class="quest-story-line">${e(pickT(prog.complete?CHAPTER_STORY[chapter.id].done:CHAPTER_STORY[chapter.id].intro))}</p>${rows}</div>
   </details>`;
  }
 
@@ -136,7 +108,7 @@ export function createQuestViews(ctx,h){
   const cta=next?link('codequest/'+next.id,e(stats.done?L('Continue learning','继续学习','繼續學習'):L('Start learning','开始学习','開始學習')),false):`<span class="pill">${e(L('Course complete','课程已完成','課程已完成'))}</span>`;
   return heading(L('Code quest','编程闯关','程式闖關'),L('Learn to code by writing it in Python, C++ or Java: printing, variables, if and loops, one small exercise at a time.','用 Python、C++ 或 Java 边写边学：输出、变量、if 和循环，每次一个小练习。','用 Python、C++ 或 Java 邊寫邊學：輸出、變數、if 和迴圈，每次一個小練習。'))
    +languageBar(lang)
-   +`<section class="quest-hero">${SCENE}<div class="quest-hero-copy"><span class="pill">${e(L('Beginner course','入门课程','入門課程'))}</span><h2>${e(langLabel)}</h2><p>${e(L('Type real code, run it, and earn XP and badges as the output matches.','输入真实代码并运行，输出正确就能获得 XP 和徽章。','輸入真實程式碼並執行，輸出正確就能獲得 XP 和徽章。'))}</p>${cta}</div></section>`
+   +`<section class="quest-hero">${worldScene(stats.badgeCount===CHAPTERS.length,e(pickT(WORLD.name)))}<div class="quest-hero-copy"><span class="pill">${e(pickT(WORLD.name))} · ${e(L('Beginner course','入门课程','入門課程'))}</span><h2>${e(langLabel)}</h2><p>${e(pickT(stats.badgeCount===CHAPTERS.length?WORLD.won:WORLD.story))}</p>${cta}</div></section>`
    +`<div class="quest-course"><div class="quest-chapters">${CHAPTERS.map((c,i)=>chapterBlock(c,i,i===Math.max(firstOpen,0),cleared)).join('')}</div>${sidePanels(stats)}</div>`;
  }
 
@@ -204,13 +176,14 @@ export function createQuestViews(ctx,h){
 
   return heading(exTitle(ex),T(chapter.title))+top+languageBar(lang)
    +`<section class="quest-lesson">
+     <div class="quest-leftcol">${storyCard(chapter,false)}
      <div class="quest-card quest-brief">
       <h2>${e(L('Your task','任务','任務'))}</h2><p>${e(T(ex.brief))}</p>
       <h2>${e(L('Goal output','目标输出','目標輸出'))}</h2><pre class="quest-goal">${ex.goal.map(line=>`<span>${e(line)}</span>`).join('')}</pre>
       <details class="quest-hint" ${failed?'open':''}><summary>${e(L('Need a hint?','需要提示？','需要提示？'))}</summary><p>${e(T(ex.hint))}</p></details>
       <details class="quest-hint"><summary>${e(L('Syntax reminder','语法提示','語法提示'))} · ${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.label||'')}</summary><div class="quest-tips">${tips}</div></details>
       ${cleared&&!run?`<div class="quest-result good"><strong>${e(L('Already cleared','已通关','已通關'))}</strong><p>${e(T(ex.teach))}</p></div>`:''}
-     </div>
+     </div></div>
      <div class="quest-work">
       <div class="quest-codewrap"><div class="quest-filebar"><span>${e(file)}</span><button type="button" class="quest-link" data-ac="quest-reset-code">${e(L('Reset code','重置代码','重置程式碼'))}</button></div>
        <textarea id="quest-code-input" class="code-editor academy-editor quest-editor" spellcheck="false" autocomplete="off" aria-label="${e(file)}" rows="${Math.max(9,code.split('\n').length+2)}">${e(code)}</textarea></div>
@@ -267,7 +240,7 @@ export function createQuestViews(ctx,h){
     ?`<div class="quest-result good"><strong>${e(L('Cleared','通关','通關'))}</strong><p>${e(T(level.teach))}</p></div>`
     :`<div class="quest-result bad"><strong>${e(L('Not this time','还差一点','還差一點'))}</strong><p>${e(L('The output does not match the goal yet. Try another option.','输出和目标还不一致，换一个选项试试。','輸出和目標還不一致，換一個選項試試。'))}</p></div>`):'';
 
-  return heading(T(level.title),T(chapter.title))+top+languageBar(lang)
+  return heading(T(level.title),T(chapter.title))+top+storyCard(chapter,true)+languageBar(lang)
    +`<section class="quest-stage">
       <div class="quest-codewrap"><div class="quest-filebar"><span>${e(QUEST_LANGUAGES.find(x=>x.id===lang)?.file||'main')}</span></div><div class="quest-code">${codePanel}</div></div>
       <aside class="quest-side">
