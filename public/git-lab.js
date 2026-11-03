@@ -1,4 +1,4 @@
-import {gitMilestones,GIT_SCENARIOS,scenarioById,scenarioGoals} from './git-sim.js';
+import {gitMilestones,GIT_SCENARIOS,scenarioById,scenarioTasks} from './git-sim.js';
 
 /** Ready-made commands, so a learner can start without memorising syntax. */
 export const gitPresets=[
@@ -58,15 +58,16 @@ function gitGoals(z,h){
  const required=milestones.filter(m=>m.core),done=required.filter(m=>m.done).length;
  return `<section class="git-goals"><h2>${L('Goals','学习目标','學習目標')} <span class="pill">${done} / ${required.length} ${L('required','必做','必做')}</span></h2><ul class="git-goal-list">${milestones.map(m=>`<li class="${m.done?'done':''}">${m.done?'✓':'○'} ${L(...m.label)}${m.core?'':` <span class="small muted">(${L('optional','选做','選做')})</span>`}</li>`).join('')}</ul></section>`;
 }
-/** A production situation to fix, with a live checklist and the reference fix. */
+/** A production situation, broken into small ordered tasks with the next step shown. */
 function gitScenario(z,h){
  const {e,L,button,option}=h;
  const active=scenarioById(z.scenario?.id);
- const goals=scenarioGoals(z);
- const done=goals.filter(g=>g.done).length;
+ const tasks=scenarioTasks(z);
+ const done=tasks.filter(t=>t.done).length;
+ const current=tasks.findIndex(t=>!t.done);
  const picker=`<div class="form-grid"><div class="field"><label for="git-scenario">${L('Situation','场景','情境')}</label><select id="git-scenario">${GIT_SCENARIOS.map(s=>option(s.id,L(...s.title),z.scenarioPick??z.scenario?.id??'')).join('')}</select></div><div class="field"><label>${L('Start or restart','开始或重开','開始或重開')}</label><div class="row">${button('gitcli-start-scenario',L('Start this situation','开始这个场景','開始這個情境'),'',false)}${active?button('gitcli-restart-scenario',L('Start it again','重新开始','重新開始')):''}</div></div></div>`;
- if(!active)return `<section class="git-scenario"><h2>${L('Production situations','生产场景','生產情境')}</h2>${picker}<p class="small muted">${L('Choose a situation that happens on a real team and press start. The setup commands are written into the terminal, so you can see how the problem arose, and the checklist tracks what counts as fixed.','选择一个真实团队会遇到的情况并按开始。搭建这些情况的命令会写进终端，你能看到问题是怎么产生的，清单会显示什么才算修好。','選擇一個真實團隊會遇到的情況並按開始。搭建這些情況的指令會寫進終端，你能看到問題是怎麼產生的，清單會顯示什麼才算修好。')}</p></section>`;
- return `<section class="git-scenario"><h2>${L('Production situations','生产场景','生產情境')}</h2>${picker}<div class="git-brief"><p><strong>${L(...active.title)}</strong></p><p>${L(...active.brief)}</p></div><p class="pill">${done} / ${goals.length} ${L('fixed','已解决','已解決')}</p><ul class="git-goal-list">${goals.map(g=>`<li class="${g.done?'done':''}">${g.done?'✓':'○'} ${L(...g.label)}${g.done?'':` <span class="small muted">→ ${L(...g.hint)}</span>`}</li>`).join('')}</ul>${done===goals.length?`<div class="callout"><p><strong>${L('Solved.','已解决。','已解決。')}</strong> ${L('One way to do it:','一种做法：','一種做法：')}</p><ol class="git-solution">${active.solution.map(c=>`<li><code>${e(c)}</code></li>`).join('')}</ol></div>`:''}</section>`;
+ if(!active)return `<section class="git-scenario"><h2>${L('Practice tasks','练习任务','練習任務')}</h2>${picker}<p class="small muted">${L('Choose a situation that happens on a real team and press start. Each situation is broken into small tasks, one step at a time, and the setup commands are written into the terminal so you can see how the problem arose.','选择一个真实团队会遇到的情况并按开始。每个场景会拆成一个个小任务，一步一步完成；搭建这些情况的命令会写进终端，你能看到问题是怎么产生的。','選擇一個真實團隊會遇到的情況並按開始。每個情境會拆成一個個小任務，一步一步完成；搭建這些情況的指令會寫進終端，你能看到問題是怎麼產生的。')}</p></section>`;
+ return `<section class="git-scenario"><h2>${L('Practice tasks','练习任务','練習任務')}</h2>${picker}<div class="git-brief"><p><strong>${L(...active.title)}</strong></p><p>${L(...active.brief)}</p></div><p class="pill">${done} / ${tasks.length} ${L('tasks done','任务已完成','任務已完成')}</p><ul class="git-task-list">${tasks.map((t,i)=>`<li class="${t.done?'done':i===current?'current':''}">${t.done?'✓':i===current?'▶':'○'} ${L(...t.label)}${i===current?`<span class="git-task-hint">${L('Next step','下一步','下一步')}: ${L(...t.hint)}</span>`:''}</li>`).join('')}</ul>${done===tasks.length?`<div class="callout"><p><strong>${L('Every task is done.','所有任务已完成。','所有任務已完成。')}</strong> ${L('One way to do it:','一种做法：','一種做法：')}</p><ol class="git-solution">${active.solution.map(c=>`<li><code>${e(c)}</code></li>`).join('')}</ol></div>`:''}</section>`;
 }
 /**
  * The whole Git command-line lab: terminal, state, editor, graph, goals and
