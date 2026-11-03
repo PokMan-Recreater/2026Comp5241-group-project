@@ -303,10 +303,15 @@ test('every production situation is split into small ordered tasks that its docu
  assert.equal(GIT_SCENARIOS.length,7);
  assert.deepEqual(Object.keys(SCENARIO_FIXES).sort(),GIT_SCENARIOS.map(s=>s.id).sort());
  assert.ok(GIT_SCENARIOS.every(s=>s.tasks.length>=2),'every situation must be broken into small tasks');
- assert.ok(GIT_SCENARIOS.reduce((n,s)=>n+s.tasks.length,0)>=20,'the work must be broken into many small steps');
+ assert.ok(GIT_SCENARIOS.reduce((n,s)=>n+s.tasks.length,0)>=28,'the work must be broken into many small steps');
+ for(const scenario of GIT_SCENARIOS)for(const task of scenario.tasks){
+  assert.ok((task.hint[0].match(/\bgit\b/g)||[]).length<=1,scenario.id+'/'+task.id+' must ask for one command');
+  assert.ok(!/\bthen\b/.test(task.hint[0]),scenario.id+'/'+task.id+' must not chain commands');
+ }
  for(const scenario of GIT_SCENARIOS){
   let repo=startScenario(scenario.id);
   assert.deepEqual(scenarioTasks(repo).filter(t=>t.done),[],scenario.id+' must start unsolved');
+  assert.deepEqual(scenarioTasks(runGit(repo,'git status').repo).filter(t=>t.done),[],scenario.id+' must not latch a task before the one before it is done');
   assert.equal(scenarioComplete(repo),false,scenario.id);
   assert.equal(repo.stats.commits,0,scenario.id+' resets the counters so only the learner\'s work counts');
   assert.ok(repo.transcript.some(line=>line.startsWith('$ git ')),scenario.id+' writes its setup into the terminal');
