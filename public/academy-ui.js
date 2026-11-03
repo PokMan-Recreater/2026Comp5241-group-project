@@ -4,6 +4,8 @@ import {studyTimeHTML,resolveStudyTime} from './study-time.js';
 import {rewritePrompt} from './prompt-rewrite.js';
 import {interactivePageExample,domPageExample,mountInteractivePage} from './academy-runner.js';
 import {renderLabBody} from './lab-views.js';
+import {gitGraph,gitState,gitFileEditor,gitMistakeReview} from './git-lab.js';
+import {newSandboxRepo,sandboxStep,sandboxTranscript,gitSandboxExamples} from './git-sandbox.js';
 import {diagnosePipeline} from './academy-models.js';
 import {interviewContext,reviewInterview,interviewFeedbackHTML} from './interview-review.js';
 import {syntaxCards} from './syntax-reference.js';
@@ -128,6 +130,27 @@ export function createAcademy(ctx){
  function runGitLabCommand(input,labId){const id=labId??'git-cli',z=labState(id),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates[id]=repo;if(gitComplete(repo)||scenarioComplete(repo))completeLab(id,{completed:true});save();render();}
  /** Starts a production scenario, or restarts the active one. */
  function startGitScenario(id,labId){const chosen=id??document.querySelector('#git-scenario')?.value;if(!chosen)return;const next=startScenario(chosen);next.selectedFile=Object.keys(next.files)[0];a().labStates[labId??'git-cli']=next;save();render();}
+ /** Free practice: the same repository engine as the labs, with no task and no goal. */
+ function sandboxState(){a().labStates??={};if(!a().labStates['git-sandbox'])a().labStates['git-sandbox']=newSandboxRepo();return a().labStates['git-sandbox'];}
+ function gitSandboxPage(){
+  const z=sandboxState(),h={e,L,T,button,option};
+  const examples=gitSandboxExamples.map(([,label,command])=>option(command,L(...label),''));
+  return heading(L('Free Git practice','自由 Git 练习','自由 Git 練習'),L('Type any Git command and watch the repository change. Nothing real is touched.','输入任意 Git 命令，观察仓库如何变化。不会接触真实文件。','輸入任意 Git 指令，觀察倉庫如何變化。不會接觸真實檔案。'))
+   +views.practiceTabs('git-sandbox')+views.practiceSections('git-sandbox')
+   +`<div class="academy-playground"><section class="panel"><div class="field"><label for="git-sandbox-example">${L('Load an example command','加载示例命令','載入範例指令')}</label><select id="git-sandbox-example"><option value="">${L('Choose an example','选择一个示例','選擇一個範例')}</option>${examples.join('')}</select></div><form id="academy-git-sandbox-form" class="row mt"><label class="grow" for="git-sandbox-command">${L('Command','命令','指令')}<input id="git-sandbox-command" required maxlength="200" autocomplete="off" placeholder="git status"></label><button class="btn small-btn" type="submit">${L('Run','执行','執行')}</button>${button('gitcli-clear',L('Clear terminal','清空终端','清空終端'))}${button('git-sandbox-reset',L('Reset repository','重置仓库','重設倉庫'))}</form><h2>${L('Terminal','终端','終端')}</h2><pre id="git-sandbox-output" class="academy-output docker-terminal" aria-live="polite">${e(sandboxTranscript(z)||L('Type git help to list the commands this sandbox runs.','输入 git help 查看沙盒支持的命令。','輸入 git help 查看沙盒支援的指令。'))}</pre>${gitState(z,h)}${gitFileEditor(z,h)}${gitGraph(z,h)}${gitMistakeReview(z,h)}<p class="lab-disclosure">${L('No real repository, files or network are touched. Commands, conflicts and history are simulated so mistakes are safe, and rebase, cherry-pick or revert stop instead of guessing when they would conflict.','不会接触真实的仓库、文件或网络。命令、冲突和历史都是模拟的，所以出错是安全的；rebase、cherry-pick 或 revert 遇到冲突时会停下，不会替你猜测。','不會接觸真實的倉庫、檔案或網路。指令、衝突和歷史都是模擬的，所以出錯是安全的；rebase、cherry-pick 或 revert 遇到衝突時會停下，不會替你猜測。')}</p></section></div>`;
+ }
+ /** Runs one sandbox command, keeps the whole repository state and leaves the prompt ready for the next one. */
+ function runGitSandboxCommand(input){
+  const text=String(input??'').trim();if(!text)return;
+  const current=sandboxState(),{repo}=sandboxStep(current,text);
+  repo.selectedFile=current.selectedFile&&repo.files[current.selectedFile]!==undefined?current.selectedFile:Object.keys(repo.files)[0];
+  a().labStates['git-sandbox']=repo;
+  a().pageExercises??={};
+  if(!a().pageExercises['git-sandbox']){a().pageExercises['git-sandbox']={completed:true,at:new Date().toISOString()};touch('page','git-sandbox');}
+  save();render();
+  const field=document.querySelector('#git-sandbox-command');if(field)field.focus();
+  const out=document.querySelector('#git-sandbox-output');if(out)out.scrollTop=out.scrollHeight;
+ }
  function previewPlan(data){const draft={...data};data=resolveStudyTime(data,lang());const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,weeklyMinutes:draft.weeklyMinutes,customWeeklyMinutes:draft.customWeeklyMinutes,skillLevel:profile.skillLevel};save();}
  async function click(action,el){
   if(await quest.click(action,el))return;
@@ -187,8 +210,9 @@ export function createAcademy(ctx){
   if(action==='undo-reset'){if(lastReset){Object.assign(s(),lastReset);lastReset=null;save();render();}return;}
   if(action==='reset-lab'){delete a().labStates?.[id];save();render();return;}
   const lab=route[1];if(page!=='lab')return;
-  const z=labState(lab);
+  const z=lab==='git-sandbox'?sandboxState():labState(lab);
   if(action.startsWith('git-')){const which=action.slice(4);const value=which==='commit'?document.querySelector('#git-message').value:which==='branch'?document.querySelector('#git-branch').value:which==='merge'?document.querySelector('#git-merge').value:el.dataset.choice;a().labStates.git=gitStep(z,which,value);if(which==='merge'&&!a().labStates.git.conflict||which==='resolve')completeLab('git',{completed:true});save();render();return;}
+  if(action==='git-sandbox-reset'){a().labStates['git-sandbox']=newSandboxRepo();save();render();return;}
   if(action.startsWith('gitcli-')){
    const which=action.slice(7);
    if(which==='run'){runGitLabCommand(el.dataset.command,lab);return;}
@@ -258,6 +282,7 @@ export function createAcademy(ctx){
   if(el.id==='knowledge-group'){const q=knowledgeQuestions(ctx.courses()).find(x=>el.value==='all'||x.group===el.value);if(q)go('practice/checks/'+q.key);}
   if(el.id==='knowledge-question')go('practice/checks/'+el.value);
   if(el.id==='academy-interview-scenario'){go('interview/'+el.value);}
+  if(el.id==='git-sandbox-example'&&el.value){const input=document.querySelector('#git-sandbox-command');if(input){input.value=el.value;input.focus();}el.value='';return;}
   if(el.id==='academy-play-language'){a().playground.language=el.value;a().playground.code=null;view.output='';save();if(ctx.route()[0]==='playground')go('playground/'+el.value);else render();}
   if(el.id==='academy-template'&&el.value){const t=referenceTopics.find(x=>x.id===el.value);if(t){a().playground.sources??={};a().playground.sources[t.language]=runnableExample(t);view.output='';save();render();}}
   if(el.id==='academy-rate'||el.id==='academy-voice'){a().narration.rate=Number(document.querySelector('#academy-rate').value);a().narration.voice=document.querySelector('#academy-voice').value;stopSpeech();updateSpeechButtons();save();}
@@ -272,20 +297,21 @@ export function createAcademy(ctx){
  document.addEventListener('keydown',event=>quest.key(event));
  document.addEventListener('keydown',event=>{const el=event.target;if(event.key==='Tab'&&el.matches('textarea.code-editor')){event.preventDefault();const start=el.selectionStart,end=el.selectionEnd;el.value=el.value.slice(0,start)+'  '+el.value.slice(end);el.selectionStart=el.selectionEnd=start+2;el.dispatchEvent(new Event('input',{bubbles:true}));}});
  document.addEventListener('submit',event=>{
-  const f=event.target;if(!['academy-plan-form','academy-setup-form','academy-interview-form','academy-docker-form','academy-git-form'].includes(f.id))return;event.preventDefault();
+  const f=event.target;if(!['academy-plan-form','academy-setup-form','academy-interview-form','academy-docker-form','academy-git-form','academy-git-sandbox-form'].includes(f.id))return;event.preventDefault();
   try{
    if(f.id==='academy-plan-form'){previewPlan(Object.fromEntries(new FormData(f)));render();}
    if(f.id==='academy-setup-form'){const d=Object.fromEntries(new FormData(f));view.setupDraft={...view.setupDraft,...d};if(view.setupStep===1)view.setupDraft.interests=new FormData(f).getAll('interests');if(view.setupStep<2){view.setupStep++;render();}else{previewPlan(view.setupDraft);view.setupStep=0;go('path');}}
    if(f.id==='academy-interview-form'){const scenario=interviews.find(x=>x.id===view.interviewId);a().interviewDrafts??={};a().interviewDrafts[scenario.id]??=[];a().interviewDrafts[scenario.id][view.question]=document.querySelector('#academy-interview-answer').value;view.questionReview=reviewInterview(scenario,a().interviewDrafts[scenario.id],contentLang())[view.question];save();render();}
    if(f.id==='academy-docker-form'){a().labStates.docker=dockerStep(labState('docker'),document.querySelector('#docker-command').value);if(a().labStates.docker.status==='stopped')completeLab('docker',{completed:true});save();render();}
    if(f.id==='academy-git-form'){runGitLabCommand(document.querySelector('#git-command').value,ctx.route()[1]);}
+   if(f.id==='academy-git-sandbox-form'){runGitSandboxCommand(document.querySelector('#git-sandbox-command').value);}
   }catch(error){ctx.toast(error.message);}
  });
  if('speechSynthesis' in window)window.speechSynthesis.addEventListener('voiceschanged',voiceOptions);
  ensureAcademy(s());
  return {
   label:key=>key==='mock-interview'?L('AI mock interview','AI 模拟面试','AI 模擬面試'):key==='profile'?L(s().role==='learner'?'Learning profile':'Personal settings',s().role==='learner'?'学习档案':'个人设置',s().role==='learner'?'學習檔案':'個人設定'):labels[key]?local(labels[key],lang()):null,
-  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:views.games,explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
+  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:views.games,explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():id==='git-sandbox'?gitSandboxPage():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
   afterRender,afterModal,activePlan,template:buildTemplate,
   beforeRender(){browserRunner.cancelActive();runAbort?.abort();voiceInterview.cleanup();view.pageCleanup?.();view.pageCleanup=null;stopSpeech();view.runToken++;view.running=false;},
   recordEvent(type,cid,detail){const key=lessonKey(cid,detail.lessonId||ctx.course(cid)?.lessons[Number(ctx.route()[2])||0]?.id||'');if(type==='checkpoint'){const prior=a().quizzes[key]||{};a().quizzes[key]={...prior,correct:!!prior.correct||!!detail.passed,lastCorrect:!!detail.passed,selected:s().checks?.[key]?.checked,attempts:(prior.attempts||0)+1,at:new Date().toISOString()};}if(type==='code'){const prior=a().challenges['course/'+key]||{};a().challenges['course/'+key]={...prior,passed:!!prior.passed||!!detail.passed,attempts:(prior.attempts||0)+1};}if(['lesson','checkpoint','code','game','scope-lab','access-lab'].includes(type)){recordActivity(s(),type,key,{passed:detail.passed});save();}},

@@ -19,7 +19,7 @@ export const gitPresets=[
 ];
 
 /** Commit graph with one lane per branch and an edge per parent link. */
-function gitGraph(z,h){
+export function gitGraph(z,h){
  const {e,L}=h;
  const lanes=[...new Set(['main',...z.commits.map(c=>c.branch),...Object.keys(z.branches)])];
  const width=Math.max(660,z.commits.length*110+130),height=80+lanes.length*80;
@@ -27,7 +27,7 @@ function gitGraph(z,h){
  return `<div class="lab-graph-scroll"><svg class="git-dag" viewBox="0 0 ${width} ${height}" style="min-width:${width}px" role="img" aria-label="${L('Commit graph with every parent link','显示所有父连接的提交图','顯示所有父連接的提交圖')}">${lanes.map((name,i)=>`<text x="6" y="${49+i*80}" class="graph-label">${e(name)}</text><path d="M80 ${45+i*80}H${width}" class="lane-line"/>`).join('')}${z.commits.flatMap(c=>c.parents.filter(Boolean).map((parent,i)=>{const p=z.commits.find(x=>x.id===parent);if(!p)return '';const a=xy(c),b=xy(p);return `<path d="M${a.x} ${a.y} C${a.x-40} ${a.y} ${b.x+40} ${b.y} ${b.x} ${b.y}" class="parent-edge ${i?'merge-edge':''}"/>`;})).join('')}${z.commits.map(c=>{const a=xy(c),heads=Object.entries(z.branches).filter(([,tip])=>tip===c.id).map(([name])=>name).join(', '),tags=Object.entries(z.tags??{}).filter(([,tip])=>tip===c.id).map(([name])=>'tag: '+name).join(', ');return `<g><title>${e(c.message)}${heads?' · '+e(heads):''}</title><circle cx="${a.x}" cy="${a.y}" r="9" class="commit-dot"/><text x="${a.x}" y="${a.y+25}" text-anchor="middle" class="graph-label">${e(c.id.slice(0,7))}</text>${heads||tags?`<text x="${a.x}" y="${a.y-17}" text-anchor="middle" class="graph-label">${e([heads,tags].filter(Boolean).join(' · '))}</text>`:''}</g>`;}).join('')}</svg></div>`;
 }
 /** Working tree, index and conflict state, in the order Git reports them. */
-function gitState(z,h){
+export function gitState(z,h){
  const {e,L}=h;
  const head=z.head.detached?z.head.name:z.branches[z.head.name];
  const tree=head?(z.commits.find(c=>c.id===head)?.tree??{}):{};
@@ -41,14 +41,14 @@ function gitState(z,h){
  return `<div class="git-state"><div><h3>${L('Where you are','当前状态','目前狀態')}</h3><p>${L('Branch','分支','分支')}: <strong>${e(z.head.detached?L('detached HEAD','游离 HEAD','游離 HEAD'):z.head.name)}</strong>${z.head.detached?` (${e(z.head.name.slice(0,7))})`:''}</p><p>${L('Commits','提交数','提交數')}: ${z.commits.length} · ${L('Branches','分支数','分支數')}: ${Object.keys(z.branches).length} · ${L('Remotes','远程数','遠端數')}: ${Object.keys(z.remotes).length}</p>${z.conflict?`<p class="callout warning">${L('A merge is waiting: resolve each file, then git add and git commit.','有一个合并待完成：解决每个文件后运行 git add 与 git commit。','有一個合併待完成：解決每個檔案後執行 git add 與 git commit。')}</p>`:''}</div><div><h3>${L('Index and working tree','暂存区与工作区','暫存區與工作區')}</h3>${z.conflict?row(L('Unmerged','冲突未解决','衝突未解決'),z.conflict.paths):''}${row(L('Staged (new)','已暂存（新增）','已暫存（新增）'),added)}${row(L('Staged (modified)','已暂存（修改）','已暫存（修改）'),modified)}${row(L('Staged (deleted)','已暂存（删除）','已暫存（刪除）'),deleted)}${row(L('Not staged','未暂存','未暫存'),unstaged)}${row(L('Untracked','未跟踪','未追蹤'),untracked)}${clean?'<p>'+L('Nothing to commit, working tree clean.','没有待提交内容，工作区干净。','沒有待提交內容，工作區乾淨。')+'</p>':''}</div></div>`;
 }
 
-function gitFileEditor(z,h){
+export function gitFileEditor(z,h){
  const {e,L,button,option}=h;
  const paths=Object.keys(z.files).sort();
  const selected=paths.includes(z.selectedFile)?z.selectedFile:(paths[0]??'');
  const conflicted=!!selected&&/^(<{7}|={7}|>{7})/m.test(String(z.files[selected]??''));
  return `<div class="git-files"><div class="form-grid"><div class="field"><label for="git-file">${L('Working tree file','工作区文件','工作區檔案')}</label><select id="git-file">${paths.map(p=>option(p,p,selected)).join('')||`<option value="">${L('No files yet','还没有文件','還沒有檔案')}</option>`}</select></div><div class="field"><label for="git-new-file">${L('New file path','新文件路径','新檔案路徑')}</label><input id="git-new-file" placeholder="src/format.js" maxlength="80"></div></div>${conflicted?`<div class="callout warning"><p>${L('This file still has conflict markers. Edit them out by hand, or resolve the whole file in one click:','这个文件还有冲突标记。可以手动删掉，也可以一键解决整个文件：','這個檔案還有衝突標記。可以手動刪掉，也可以一鍵解決整個檔案：')}</p><div class="row">${button('gitcli-resolve-file',L('Keep current','保留当前','保留目前'),'data-choice="ours"',false)}${button('gitcli-resolve-file',L('Keep incoming','保留来源','保留來源'),'data-choice="theirs"')}${button('gitcli-resolve-file',L('Combine both','综合两边','整合兩邊'),'data-choice="both"')}</div></div>`:''}<label for="git-file-content">${L('File content','文件内容','檔案內容')}</label><textarea id="git-file-content" class="code-editor" spellcheck="false" rows="6">${e(selected?z.files[selected]:'')}</textarea><div class="row mt">${button('gitcli-save-file',L('Save file','保存文件','儲存檔案'),'',false)}${button('gitcli-create-file',L('Create file','创建文件','建立檔案'))}${button('gitcli-delete-file',L('Delete file','删除文件','刪除檔案'))}</div><p class="small muted">${L('Editing here changes the working tree only. Nothing reaches a commit until you stage it with git add.','在这里编辑只改动工作区。只有用 git add 暂存后，才会进入提交。','在這裡編輯只改動工作區。只有用 git add 暫存後，才會進入提交。')}</p></div>`;
 }
-function gitMistakeReview(z,h){
+export function gitMistakeReview(z,h){
  const {e,L,button}=h;
  const all=z.mistakes??[];
  if(!all.length)return '';
