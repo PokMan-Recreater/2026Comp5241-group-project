@@ -15,9 +15,14 @@ test('configuration accepts only HTTPS project origins and cookies are HttpOnly'
  assert.equal(supabaseConfig({SUPABASE_URL:'http://example.com',SUPABASE_PUBLISHABLE_KEY:'x',SUPABASE_SECRET_KEY:'y'}),null);const res=response();setAuthCookies({headers:{}},res,{access_token:'access',refresh_token:'refresh'});assert(res.headers['Set-Cookie'].every(x=>x.includes('HttpOnly; SameSite=Lax; Path=/api')));
 });
 test('missing session is never treated as role preview authentication',async()=>{await assert.rejects(()=>authenticatedUser({headers:{}},response(),{url:'https://example.supabase.co',key:'x'}),/login_required/);});
-test('account returns no tokens and unconfirmed signup requires email confirmation',async()=>{
- const restore=env(),old=globalThis.fetch;globalThis.fetch=async()=>new Response(JSON.stringify({user:{id:owner,email:'student@example.test'}}));
- try{const res=response();await account({method:'POST',headers:{host:'local',origin:'http://local'},body:{action:'signup',email:'student@example.test',password:'test-password'}},res);assert.equal(res.code,200);assert.equal(res.data.confirmationRequired,true);assert.equal(res.data.user,null);assert(!JSON.stringify(res.data).includes('token'));}finally{globalThis.fetch=old;restore();}
+test('username registration uses server-assigned student role and never returns tokens',async()=>{
+ const restore=env(),old=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,opts)=>{calls.push({url,opts});return new Response(JSON.stringify(url.includes('/admin/users')?{id:owner}:{access_token:'private-access',refresh_token:'private-refresh',user:{id:owner,user_metadata:{username:'alice'},app_metadata:{role:'student'}}}));};
+ try{const res=response();await account({method:'POST',headers:{host:'local',origin:'http://local'},body:{action:'signup',username:'Alice',password:'test-password',role:'admin'}},res);assert.equal(res.code,200);assert.equal(res.data.user.username,'alice');assert.equal(res.data.user.role,'student');assert.equal(JSON.parse(calls[0].opts.body).app_metadata.role,'student');assert.equal(JSON.parse(calls[0].opts.body).email_confirm,true);assert(!JSON.stringify(res.data).includes('private-access'));assert(res.headers['Set-Cookie']);}finally{globalThis.fetch=old;restore();}
+});
+test('reserved administrator signup and bcrypt-truncating passwords are rejected before network access',async()=>{
+ const restore=env(),old=globalThis.fetch;globalThis.fetch=()=>{throw Error('Must not fetch');};
+ try{for(const body of [{username:'admin',password:'test-password'},{username:'alice',password:'密'.repeat(30)}]){const res=response();await account({method:'POST',headers:{host:'local',origin:'http://local'},body:{action:'signup',...body}},res);assert.equal(res.code,400);}}finally{globalThis.fetch=old;restore();}
 });
 test('records use verified auth token and enforce RLS on reads/deletes',async()=>{
  const restore=env(),old=globalThis.fetch,calls=[];

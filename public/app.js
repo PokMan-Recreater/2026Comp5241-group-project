@@ -1,4 +1,5 @@
-import {cloudRecordsHTML,mountCloudRecords,stopCloudRecords} from './cloud-records.js';
+import {mountAccountPage} from './account-page.js';
+import {cloudRecordsHTML,mountCloudRecords,stopCloudRecords,cloudAPI} from './cloud-records.js';
 import {lessonHTMLFor,mountLessonFor,stopAllLessons,hasLesson} from './learn.js';
 import {storyboardCourse,storyboardHTML,mountStoryboard,stopStoryboard} from './storyboard-course.js';
 import {courseMapHTML,topicHTML,courseById} from './course-map.js';
@@ -12,9 +13,12 @@ import {actions,spent,simulate,recommendation,parseRoster,csvCell} from './engin
 
 import {studyLabel,readingHTML,workshopHTML,checkpointHTML,caseFileHTML,accessLabHTML,scopeLabHTML,evaluateScope,evaluateAccess,checkAnswer,courseGuideHTML,portfolioText} from './learning-studio.js';
 
-const KEY='forma.workspace.v1';
+let KEY='forma.workspace.v1';
+let accountUser=null,accountChecked=false;
+const accountRole=user=>({student:'learner',teacher:'instructor',admin:'admin'}[user?.role]||'learner');
 const fresh=()=>({version:1,lang:'en',role:'learner',profile:{name:'Alex',background:'noCoding',goal:'build',depth:'beginner',learningLanguage:''},courses:[],progress:{},notes:{},code:{},classes:[],people:[],events:[],work:{},checks:{},path:null,game:{selected:[],result:null}});
 let state;try{state={...fresh(),...JSON.parse(localStorage.getItem(KEY)||'null')};}catch{state=fresh();}
+try{const language=localStorage.getItem('forma.interface-language');if(languages[language])state.lang=language;}catch{/* Keep the current language when storage is unavailable. */}
 if(!languages[state.lang])state.lang='en';
 let academy;
 let aiConfigured=false,editorDraft=null,editorLang='en',modalLastFocus=null,toastTimer,gameTimer,worker=null;
@@ -25,7 +29,7 @@ const t=k=>academy?.label(k)??tr(k,state.lang);
 const ll=()=>state.profile.learningLanguage||state.lang;
 const text=v=>local(v,state.lang);
 const learnText=v=>local(v,ll());
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch{toast(t('localData')+': storage unavailable');}}
+function save(){try{localStorage.setItem('forma.interface-language',state.lang);localStorage.setItem(KEY,JSON.stringify(state));}catch{toast(t('localData')+': storage unavailable');}}
 function event(type,courseId='',detail={}){state.events.push({type,courseId,time:new Date().toISOString(),...detail});academy?.recordEvent(type,courseId,detail);if(state.events.length>1000)state.events=state.events.slice(-1000);save();}
 
 function allCourses(){const overrides=new Map(state.courses.map(c=>[c.id,c]));const archived=[...seeds.map(c=>({...c,...overrides.get(c.id)})),...state.courses.filter(c=>!seeds.some(s=>s.id===c.id))].filter(c=>c.id!==storyboardCourse.id).map(c=>({...c,retired:true}));return [storyboardCourse,...archived];}
@@ -40,6 +44,16 @@ function route(){return decodeURIComponent(location.hash.slice(1)||'learning').s
 function go(hash){location.hash=hash;}
 function render(){
  stopCloudRecords();
+ if(!accountChecked){$('#app').innerHTML='<main class="auth-page"><p role="status">正在连接 / Connecting…</p></main>';return;}
+ if(!accountUser||['login','register'].includes(route()[0])){
+  stopStoryboard();stopAllLessons();academy?.beforeRender();
+  document.title='Forma — '+(state.lang==='en'?'Sign in / Register':state.lang==='zh-TW'?'登入 / 註冊':'登录 / 注册');
+  document.documentElement.lang=state.lang;
+  mountAccountPage($('#app'),state.lang,acceptAccount,accountUser,(language,signup)=>{state.lang=language;save();location.hash=signup?'register':'login';render();});return;
+ }
+ state.role=accountRole(accountUser);
+ const protectedRoles={courses:'instructor',classrooms:'instructor',engagement:'instructor',editor:'instructor',overview:'admin',users:'admin',catalog:'admin'};
+ if(protectedRoles[route()[0]]&&protectedRoles[route()[0]]!==state.role){location.replace('#profile');return;}
  const [routePage,routeId]=route();
  if(routePage==='module'){const found=courseById(routeId);const first=found?.course.lessons.find(l=>l.id);if(first){location.replace(`#learn/${first.id}/0`);return;}}
  stopStoryboard();
@@ -49,7 +63,7 @@ function render(){
  const [page,id,index]=route();const role=state.role;document.documentElement.lang=state.lang;document.title='Forma — '+t(['learn','course','module'].includes(page)?'explore':page==='editor'?'editor':page==='game'?'gameLabel':page);
  const navpage=page==='interview-records'?'records':['game','codequest'].includes(page)?'games':['learn','course','module','tutorial','reference'].includes(page)?'explore':['mock-interview','lab','challenge','interview','playground','next'].includes(page)?'practice':['setup','plan'].includes(page)?'path':page==='editor'?'courses':page;
  const nav=navs[role]||navs.learner;
- $('#app').innerHTML=`<div class="mobile-shade" data-action="mobile"></div><aside class="sidebar"><a href="#${nav[0][0]}" class="brand" aria-label="Forma"><span class="brand-word">forma<span class="brand-period" aria-hidden="true">.</span></span></a><nav aria-label="${esc(t('workspace'))}">${nav.map(([k,i])=>`<a class="nav-link ${navpage===k?'active':''}" href="#${k}">${ico(i,17)}<span>${t(k)}</span>${navpage===k?'<i class="nav-dot"></i>':''}</a>`).join('')}</nav><div class="sidebar-bottom"><a class="account profile-entry" href="#profile" aria-label="${esc(t('profile'))}" ${page==='profile'?'aria-current="page"':''}><span class="avatar">${esc(state.profile.name.slice(0,2).toUpperCase())}</span><div><strong>${esc(state.profile.name)}</strong></div></a></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" data-action="mobile" aria-label="${esc(t('workspace'))}">${ico('menu')}</button></div><div class="top-tools"><label class="language-wrap">${ico('globe',17)}<select id="language" class="language" aria-label="${t('interfaceLanguage')}">${Object.entries(languages).map(([k,v])=>`<option value="${k}" ${state.lang===k?'selected':''}>${v}</option>`).join('')}</select></label><select class="role-select" id="role" aria-label="${t('previewAs')}">${['learner','instructor','admin'].map(k=>`<option value="${k}" ${role===k?'selected':''}>${t(k==='admin'?'adminShort':k)}</option>`).join('')}</select><button class="icon-btn" data-action="about" aria-label="${t('help')}">${ico('help',20)}</button></div></header><div class="content" id="content">${pageContent(page,id,index)}</div></main>`;
+ $('#app').innerHTML=`<div class="mobile-shade" data-action="mobile"></div><aside class="sidebar"><a href="#${nav[0][0]}" class="brand" aria-label="Forma"><span class="brand-word">forma<span class="brand-period" aria-hidden="true">.</span></span></a><nav aria-label="${esc(t('workspace'))}">${nav.map(([k,i])=>`<a class="nav-link ${navpage===k?'active':''}" href="#${k}">${ico(i,17)}<span>${t(k)}</span>${navpage===k?'<i class="nav-dot"></i>':''}</a>`).join('')}</nav><div class="sidebar-bottom"><a class="account profile-entry" href="#profile" aria-label="${esc(t('profile'))}" ${page==='profile'?'aria-current="page"':''}><span class="avatar">${esc(state.profile.name.slice(0,2).toUpperCase())}</span><div><strong>${esc(state.profile.name)}</strong></div></a></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" data-action="mobile" aria-label="${esc(t('workspace'))}">${ico('menu')}</button></div><div class="top-tools"><label class="language-wrap">${ico('globe',17)}<select id="language" class="language" aria-label="${t('interfaceLanguage')}">${Object.entries(languages).map(([k,v])=>`<option value="${k}" ${state.lang===k?'selected':''}>${v}</option>`).join('')}</select></label></div></header><div class="content" id="content">${pageContent(page,id,index)}</div></main>`;
  const c=$('#content');c.insertAdjacentHTML('beforeend',`<footer class="footer"><span>© 2026 Forma</span></footer>`);
  bindPage(page,id,index);academy?.afterRender(page,id,index);window.scrollTo({top:0,behavior:'instant'});
 }
@@ -60,7 +74,8 @@ function dashboard(){const cs=learnerCourses().filter(c=>!c.personal);const firs
 function explore(){return `${heading(t('exploreTitle'),'',t('explore'))}<div class="toolbar"><label class="search">${ico('search',16)}<input id="course-search" placeholder="${esc(t('search'))}" aria-label="${esc(t('search'))}"></label><select id="topic-filter" class="filter" aria-label="${t('topic')}">${['allTopics','foundations'].map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div class="course-grid" id="course-results">${learnerCourses().map(card).join('')}</div>`;}
 function pathPage(){const order=learningOrder();const cs=order.map(getCourse).filter(c=>c?.status==='published');const personal=learnerCourses().filter(c=>c.personal&&!order.includes(c.id));return `${heading(t('pathTitle'),t('pathSub'),t('path'))}<div class="callout row between"><span>${t('background')}: ${t(state.profile.background)} · ${t('goal')}: ${t(state.profile.goal)}</span><a href="#profile" class="btn ghost small-btn">${t('setProfile')}${ico('arrow',12)}</a></div><div class="path-list mt">${[...cs,...personal].map((c,i)=>`<article class="path-item"><div class="path-index">${String(i+1).padStart(2,'0')}</div><div class="grow"><h3>${esc(text(c.title))}</h3><p>${esc(text(c.description))}</p><div class="row mt-sm"><span class="pill green">${t(courseStatus(c))}</span><span class="small muted">${coursePct(c)}%</span></div></div><div class="reorder"><button class="icon-btn" data-action="reorder" data-id="${c.id}" data-dir="-1" aria-label="${t('moveUp')}" ${i===0?'disabled':''}>${ico('up',14)}</button><button class="icon-btn" data-action="reorder" data-id="${c.id}" data-dir="1" aria-label="${t('moveDown')}" ${i===[...cs,...personal].length-1?'disabled':''}>${ico('down',14)}</button></div><a class="btn secondary" href="#learn/${c.id}/0">${t('startLearning')}${ico('arrow',13)}</a></article>`).join('')}</div><button class="btn secondary mt" data-action="new-personal">${ico('plus',14)}${t('selfStudy')}</button>`;}
 function selectOptions(keys,value){return keys.map(k=>`<option value="${k}" ${value===k?'selected':''}>${t(k)}</option>`).join('');}
-function profilePage(){return profileSettingsHTML(state.profile,state.role,state.lang);}
+function profilePage(){const en=state.lang==='en',tw=state.lang==='zh-TW';return profileSettingsHTML(state.profile,state.role,state.lang)+`<div class="account-actions"><a href="#login">${en?'Switch account':tw?'切換帳號':'切换账号'}</a><span aria-hidden="true">/</span><button type="button" data-account-logout>${en?'Sign out':tw?'登出':'退出登录'}</button></div>`;}
+
 function readingDepth(courseId){return lessonReadingDepth(state.profile,state.academy||{},courseId);}
 function lessonPage(id,index){const c=getCourse(id);if(!c||!c.lessons.length)return `<div class="empty">${t('emptyCourse')}<br><a class="btn secondary mt" href="#explore">${t('backCourses')}</a></div>`;const i=Math.max(0,Math.min(index,c.lessons.length-1)),l=c.lessons[i];const body=learnText(l.body)+(readingDepth(c.id)==='advanced'&&c.curriculumVersion&&l.advanced?'\n\n## '+studyLabel('extension',ll())+'\n'+learnText(l.advanced):'');const displayedBody=readingDepth(c.id)==='advanced'&&!c.curriculumVersion?learnText(l.advanced||l.body):body;const fallback=typeof l.body==='object'&&!l.body[ll()]?`<div class="availability">${t('translationFallback')} ${languages[Object.keys(l.body)[0]]||''}</div>`:'';return `<div class="lesson-top"><a href="#course/${c.id}">${ico('back',13)}${studyLabel('courseGuide',ll())}</a><div class="row"><span class="pill">${esc(learnText(c.title))}</span><select id="lesson-depth" class="filter" aria-label="${t('depth')}">${selectOptions(['beginner','advanced'],readingDepth(c.id))}</select></div></div><div class="lesson-layout"><aside class="outline"><h3>${t('courseOutline')}</h3><div class="outline-items">${c.lessons.map((x,n)=>`<a href="#learn/${c.id}/${n}" class="outline-item ${n===i?'active':''}"><span class="outline-num ${state.progress[id]?.includes(x.id)?'done':''}">${state.progress[id]?.includes(x.id)?ico('check',10):n+1}</span><span>${esc(learnText(x.title))}</span></a>`).join('')}</div><div class="progress-track mt-sm"><div class="progress-fill" style="width:${coursePct(c)}%"></div></div><p class="small muted mt-sm">${coursePct(c)}% ${t('completed')}</p></aside><div><article class="lesson-paper" lang="${esc(ll())}"><span class="eyebrow muted">${String(i+1).padStart(2,'0')} / ${String(c.lessons.length).padStart(2,'0')} · ${t(l.type)}${l.minutes?' · '+l.minutes+' '+t('min'):''}</span><h1>${esc(learnText(l.title))}</h1>${fallback}<div class="lesson-text">${readingHTML(displayedBody)}</div>${i===0&&c.outcomes?`<div class="outcomes"><div class="eyebrow">${t('outcomes')}</div><p>${esc(learnText(c.outcomes))}</p></div>`:''}${activity(c,l,displayedBody)}${workshopHTML(c,l,state,ll())}<div class="mt"><label for="lesson-notes"><strong class="small">${t('notes')}</strong></label><textarea id="lesson-notes" class="notes-area" data-course="${c.id}" data-lesson="${l.id}" placeholder="${esc(t('notesHint'))}">${esc(state.notes[id+':'+l.id]||'')}</textarea></div><div class="lesson-actions"><button class="btn ghost" data-action="download-notes" data-id="${c.id}">${ico('download',13)}${t('download')}</button><button class="btn" data-action="complete" data-id="${c.id}" data-index="${i}">${t(state.progress[id]?.includes(l.id)?'completedLesson':i===c.lessons.length-1?'finishCourse':'markComplete')}${ico('check',14)}</button></div></article><section class="support-panel"><h3>${studyLabel("checkpoint",ll())}</h3><button class="btn ghost small-btn" data-action="hint">${ico("help",13)}${t("hint")}</button><div id="hint-text" class="hint-text hidden">${esc(learnText(l.hint||l.body))}</div></section></div></div>`;}
 function aiIndicator(){return `<span class="ai-indicator ${aiConfigured?'on':''}"><i class="status-dot"></i>${t(aiConfigured?'aiReady':'aiSetup')}</span>`;}
@@ -93,6 +108,7 @@ function bindPage(page,id,index){
  if(page==='explore'&&$('#course-search')){
   const filter=()=>{const query=$('#course-search').value.trim().toLowerCase();const topic=$('#topic-filter').value;const cs=learnerCourses().filter(c=>(text(c.title)+' '+text(c.description)).toLowerCase().includes(query)&&(topic==='allTopics'||c.topic===topic));$('#course-results').innerHTML=cs.length?cs.map(card).join(''):`<div class="empty" style="grid-column:1/-1">${t('noResults')}</div>`;};$('#course-search').addEventListener('input',filter);$('#topic-filter').addEventListener('change',filter);
  }
+ if(page==='profile')$('[data-account-logout]')?.addEventListener('click',async()=>{try{await cloudAPI('/api/account',{action:'logout'});save();accountUser=null;closeModal();location.hash='login';render();}catch{toast(state.lang==='en'?'Unable to sign out. Try again.':'退出失败，请重试。');}});
  if(page==='profile')$('#profile-form').addEventListener('submit',e=>{e.preventDefault();try{state.profile=updatedProfile(state.profile,new FormData(e.target),state.role);save();render();toast(t('saved'));}catch{toast(t('required'));}});
  if(page==='learn'){
   slideIndex=0;
@@ -120,7 +136,7 @@ document.addEventListener('change',e=>{
  if(e.target.dataset.studyChoice!==undefined){const key=e.target.dataset.studyChoice;state.checks??={};state.checks[key]??={};state.checks[key].selected=Number(e.target.value);delete state.checks[key].checked;save();const panel=e.target.closest('.study-check');if(panel){panel.querySelector('.study-feedback').textContent='';}}
 
  if(e.target.id==='language'){collectEditor();state.lang=e.target.value;clearTimeout(toastTimer);$('#toast').classList.remove('show');save();closeModal();render();}
- if(e.target.id==='role'){collectEditor();state.role=e.target.value;save();go(navs[state.role][0][0]);render();}
+ if(e.target.id==='role'){go('login');}
  if(e.target.id==='lesson-depth'){const [,courseId]=route();state.academy.lessonDepths??={};state.academy.lessonDepths[courseId]=e.target.value;save();render();}
  if(e.target.id==='editor-language'){collectEditor();editorLang=e.target.value;render();}
  if(e.target.dataset.personRole){const p=state.people.find(x=>x.id===e.target.dataset.personRole);p.role=e.target.value;save();toast(t('saved'));}
@@ -190,4 +206,20 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(e.ke
 window.addEventListener('hashchange',()=>{collectEditor();render();});
 academy=createAcademy({state:()=>state,save,render,go,route,esc,ico,label:t,courses:()=>allCourses().filter(c=>!c.retired),course:getCourse,card,heroNotes,basePath:pathPage,editor:()=>editorDraft,openModal,closeModal,toast,download:downloadFile,ai:aiRequest,aiReady:()=>aiConfigured});
 render();
+checkAccount();
 fetch('/api/ai').then(r=>r.json()).then(data=>{aiConfigured=!!data.configured;document.querySelectorAll('.ai-indicator').forEach(el=>{el.outerHTML=aiIndicator();});}).catch(()=>{});
+
+function acceptAccount(user){
+ if(accountUser)save();
+ const language=state.lang;KEY='forma.workspace.v1.user.'+user.id;
+ try{state={...fresh(),...JSON.parse(localStorage.getItem(KEY)||'null')};}catch{state=fresh();}
+ state.lang=language;state.role=accountRole(user);state.profile={...fresh().profile,...state.profile,name:state.profile.name==='Alex'?user.username:state.profile.name};
+ accountUser=user;accountChecked=true;editorDraft=null;closeModal();save();
+ location.hash='profile';render();
+}
+async function checkAccount(){
+ try{const {user}=await cloudAPI('/api/account');if(user){acceptAccount(user);return;}accountChecked=true;location.hash='login';render();}
+ catch{$('#app').innerHTML='<main class="auth-page"><section class="panel"><p>连接失败，请重试 / Unable to connect</p><button class="btn" id="account-retry">重试 / Retry</button></section></main>';$('#account-retry').onclick=checkAccount;}
+}
+
+window.addEventListener('forma-signed-out',()=>{save();accountUser=null;closeModal();location.hash='login';render();});
