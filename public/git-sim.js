@@ -348,7 +348,7 @@ function cmdCommit(r,args,cmd){
   ['A commit message explains why the change happened.','提交说明要解释改动的理由。','提交說明要解釋改動的理由。'],
   ['Run git commit -m "Reject blank sign-up names".','运行 git commit -m "Reject blank sign-up names"。','執行 git commit -m "Reject blank sign-up names"。']);
  const message=given||(merging?`Merge branch '${r.conflict.from}'`:commitOf(r,head)?.message||'Change');
- const parents=merging?[head,r.conflict.from]:head?[head]:[];
+ const parents=merging?[head,r.conflict.fromId??r.conflict.from]:head?[head]:[];
  const tree={...r.index};
  if(amend){
   const replaced=commitOf(r,head);
@@ -612,7 +612,7 @@ function mergeInto(r,theirId,label,message){
    'Automatic merge failed; fix conflicts and then commit the result.'
   ];
  }
- const id=writeCommit(r,{message:message||`Merge branch '${label}'`,parents:[ours,theirId],tree:clean});
+ const id=writeCommit(r,{message:message||`Merge branch '${label}'`,parents:[ours,theirId],tree:clean}).id;
  if(r.head.detached)r.head.name=id;
  else r.branches[r.head.name]=id;
  r.files={...clean};
@@ -1110,3 +1110,168 @@ export function gitMilestones(repo){
 }
 /** True once every required goal has been met. */
 export const gitComplete=repo=>gitMilestones(repo).filter(m=>m.core).every(m=>m.done);
+/** True when `id` is reachable from the tip of `branch` (or a commit). */
+function onBranch(r,branch,id){
+ const tip=Object.hasOwn(r.branches,branch)?r.branches[branch]:branch;
+ return !!tip&&reachable(r,[tip]).has(id);
+}
+/** Builds the situation a scenario describes, so the learner sees how it arose. */
+function build(setup){
+ let repo=createRepo();
+ for(const step of setup)repo=typeof step==='function'?step(repo):runGit(repo,step).repo;
+ return repo;
+}
+/** A commit a teammate made on the remote, as if they pushed before you did. */
+function teammateCommit(r,remoteName,message,files){
+ const remote=r.remotes[remoteName];
+ const branch=Object.keys(remote.branches)[0]??'main';
+ const tip=remote.branches[branch]??null;
+ const tree={...remote.objects[tip]?.tree,...files};
+ const commit={id:hashOf(['teammate',message,same(tree),Object.keys(remote.objects).length].join('|')),message,parents:tip?[tip]:[],tree,branch,at:50+Object.keys(remote.objects).length};
+ remote.objects[commit.id]=commit;
+ remote.branches[branch]=commit.id;
+ return r;
+}
+const APP_ORIGINAL='export function validateSignup(form) {\n  return form.name.trim().length > 0;\n}';
+const APP_STRICT='export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}';
+const APP_LOOSE='export function validateSignup(form) {\n  return form.name.trim() !== "";\n}';
+/** The urgent README line is committed on main. */
+const hotfixShipped=r=>onBranch(r,'main',r.commits.find(c=>String(c.tree['README.md']||'').includes('Urgent'))?.id??'');
+
+/**
+ * Situations that really happen on a team. Each one starts a repository in the
+ * middle of the problem, states the outcome that counts as fixed, and keeps a
+ * reference solution for after the learner has solved it.
+ */
+export const GIT_SCENARIOS=[
+ {
+  id:'divergent',
+  title:['Two branches changed the same line','两个分支改了同一行','兩個分支改了同一行'],
+  brief:['You and a teammate both fixed the sign-up validation, on different branches. Merge the branches and keep the rule you decide is right.','你和同事都在各自分支上修改了报名校验。请合并两个分支，并保留你认为正确的规则。','你和同事都在各自分支上修改了報名校驗。請合併兩個分支，並保留你認為正確的規則。'],
+  setup:['git init','git add .','git commit -m "Add the sign-up form"','git switch -c feature/validation',
+   r=>writeFile(r,'src/app.js',APP_STRICT),'git add .','git commit -m "Require three characters"','git switch main',
+   r=>writeFile(r,'src/app.js',APP_LOOSE),'git add .','git commit -m "Reject blank names only"'],
+  solution:['git merge feature/validation','# edit src/app.js and keep the rule you chose','git add src/app.js','git commit -m "Merge the validation rules"'],
+  goals:[
+   {id:'merged',label:['A merge commit is created','创建了合并提交','建立了合併提交'],hint:['git merge feature/validation','git merge feature/validation','git merge feature/validation'],done:r=>r.commits.some(c=>c.parents.length>1)},
+   {id:'markers',label:['The merged file has no conflict markers','合并后的文件没有冲突标记','合併後的檔案沒有衝突標記'],hint:['edit src/app.js and remove the <<<<<<< lines','编辑 src/app.js，删掉 <<<<<<< 这些行','編輯 src/app.js，刪掉 <<<<<<< 這些行'],done:r=>{const merge=r.commits.filter(c=>c.parents.length>1).at(-1);return !!merge&&!String(merge.tree['src/app.js']||'').includes('<<<<<<<');}},
+   {id:'joined',label:['Both branches are joined in main','两个分支已并入 main','兩個分支已併入 main'],hint:['finish the merge so the feature branch becomes part of main','完成合并，让功能分支成为 main 的一部分','完成合併，讓功能分支成為 main 的一部分'],done:r=>!!r.branches['feature/validation']&&!!r.branches.main&&isAncestor(r,r.branches['feature/validation'],r.branches.main)}
+  ]
+ },
+ {
+  id:'teammate-pushed',
+  title:['A teammate pushed first','同事先推送了','同事先推送了'],
+  brief:['You cloned the team project and made a local note. While you were working, a teammate pushed a change to the same branch. Publish your work without erasing theirs.','你克隆了团队项目并在本地做了笔记。你工作期间，同事向同一分支推送了改动。请在不清除同事工作的前提下发布你的改动。','你複製了團隊專案並在本機做了筆記。你工作期間，同事向同一分支推送了改動。請在不清除同事工作的前提下發布你的改動。'],
+  setup:['git clone https://example.edu/team/project.git',
+   r=>teammateCommit(r,'origin','Add the sign-up form',{'src/signup.js':'export const fields = ["name", "email"];'}),
+   r=>writeFile(r,'README.md',r.files['README.md']+'\nReviewed on the team branch.')],
+  solution:['git add .','git commit -m "Add a local note"','git pull origin main','git push origin main'],
+  goals:[
+   {id:'committed',label:['Your own change is committed','你自己的改动已提交','你自己的改動已提交'],hint:['git add . then git commit -m "…"','先 git add . 再 git commit -m "…"','先 git add . 再 git commit -m "…"'],done:r=>!workChanges(r).modified.length&&r.commits.length>2},
+   {id:'pulled',label:['The teammate change is in your history','同事的改动已进入你的历史','同事的改動已進入你的歷史'],hint:['git pull origin main','git pull origin main','git pull origin main'],done:r=>r.commits.some(c=>c.message==='Add the sign-up form')},
+   {id:'pushed',label:['The remote has your work','远程已有你的工作','遠端已有你的工作'],hint:['git push origin main after pulling','拉取后运行 git push origin main','拉取後執行 git push origin main'],done:r=>r.remotes.origin.branches.main===r.branches.main}
+  ]
+ },
+ {
+  id:'conflict-and-push',
+  title:['A teammate changed the file you are editing','同事改了你正在编辑的文件','同事改了你正在編輯的檔案'],
+  brief:['You are improving the sign-up check locally, and a teammate already pushed a different version of the same file. Integrate their work, resolve the conflict and publish the result.','你正在本地改进报名校验，而同事已经推送了同一文件的另一个版本。请整合他们的工作、解决冲突并发布结果。','你正在本機改進報名校驗，而同事已經推送了同一檔案的另一個版本。請整合他們的工作、解決衝突並發布結果。'],
+  setup:['git clone https://example.edu/team/project.git',
+   r=>teammateCommit(r,'origin','Require three characters',{'src/app.js':APP_STRICT}),
+   r=>writeFile(r,'src/app.js',APP_LOOSE)],
+  solution:['git add .','git commit -m "Reject blank names only"','git pull origin main','# edit src/app.js and keep the rule you chose','git add src/app.js','git commit -m "Merge the teammate change"','git push origin main'],
+  goals:[
+   {id:'own',label:['Your edit is committed','你的改动已提交','你的改動已提交'],hint:['git add . then git commit -m "…"','先 git add . 再 git commit -m "…"','先 git add . 再 git commit -m "…"'],done:r=>r.commits.some(c=>c.message==='Reject blank names only')},
+   {id:'merged',label:['The teammate change is merged, with no markers left','同事的改动已合并，且无残留标记','同事的改動已合併，且無殘留標記'],hint:['git pull origin main, then resolve and commit','先 git pull origin main，再解决并提交','先 git pull origin main，再解決並提交'],done:r=>r.commits.some(c=>c.parents.length>1)&&!Object.values(r.files).some(v=>String(v).includes('<<<<<<<'))},
+   {id:'pushed',label:['The remote has the finished version','远程已有完成的版本','遠端已有完成的版本'],hint:['git push origin main','git push origin main','git push origin main'],done:r=>r.remotes.origin.branches.main===r.branches.main}
+  ]
+ },
+ {
+  id:'stash-hotfix',
+  title:['Urgent fix while your work is unfinished','工作没做完就来紧急修复','工作沒做完就來緊急修復'],
+  brief:['Production is broken and the fix belongs on main, but you have unfinished edits on feature/form. Put your work aside, ship the hotfix, then bring your work back.','生产环境出故障，修复要放在 main 上，而你在 feature/form 上有未完成的改动。请先暂存工作、发布热修复，再把工作取回。','正式環境出故障，修復要放在 main 上，而你在 feature/form 上有未完成的改動。請先暫存工作、發布熱修復，再把工作取回。'],
+  setup:['git init','git add .','git commit -m "Initial version"','git switch -c feature/form',
+   r=>writeFile(r,'notes.txt','Review checklist:\n- half-finished thought')],
+  solution:['git stash','git switch main','# edit README.md and add the line "Urgent: sign-up is broken"','git add README.md','git commit -m "Urgent: note the sign-up outage"','git switch feature/form','git stash pop'],
+  goals:[
+   {id:'hotfix',label:['The hotfix is committed on main','热修复已提交到 main','熱修復已提交到 main'],hint:['switch to main, add the urgent line to README.md and commit it','切换到 main，把紧急说明加到 README.md 并提交','切換到 main，把緊急說明加到 README.md 並提交'],done:hotfixShipped},
+   {id:'back',label:['Your unfinished edit is back','你的未完成改动已取回','你的未完成改動已取回'],hint:['git stash pop','git stash pop','git stash pop'],done:r=>hotfixShipped(r)&&String(r.files['notes.txt']||'').includes('half-finished thought')},
+   {id:'branch',label:['You are back on feature/form','你已回到 feature/form','你已回到 feature/form'],hint:['git switch feature/form','git switch feature/form','git switch feature/form'],done:r=>hotfixShipped(r)&&r.head.name==='feature/form'}
+  ]
+ },
+ {
+  id:'revert-bad',
+  title:['A bad commit is already shared','错误提交已经共享','錯誤提交已經共享'],
+  brief:['The last commit removed the sign-up check and other people already have it, so rewriting history is not allowed. Undo the change without deleting the commit.','最后一次提交去掉了报名校验，而且别人已经拉取过，所以不能改写历史。请在不删除该提交的前提下撤销改动。','最後一次提交去掉了報名校驗，而且別人已經拉取過，所以不能改寫歷史。請在不刪除該提交的前提下撤銷改動。'],
+  setup:['git init','git add .','git commit -m "Initial version"',
+   r=>writeFile(r,'src/app.js','export function validateSignup() {\n  return true; // accepts every name\n}'),
+   'git add .','git commit -m "Skip the name check"'],
+  solution:['git log --oneline','git revert HEAD','git status'],
+  goals:[
+   {id:'restored',label:['The check works again','校验恢复正常','校驗恢復正常'],hint:['git revert HEAD','git revert HEAD','git revert HEAD'],done:r=>r.files['src/app.js']===APP_ORIGINAL},
+   {id:'kept',label:['The bad commit is still in history','错误提交仍保留在历史中','錯誤提交仍保留在歷史中'],hint:['do not use reset or commit --amend on a shared branch','共享分支上不要用 reset 或 commit --amend','共享分支上不要用 reset 或 commit --amend'],done:r=>r.commits.length>2&&onBranch(r,'main',r.commits.find(c=>c.message==='Skip the name check')?.id??'')}
+  ]
+ },
+ {
+  id:'wrong-branch',
+  title:['Work committed on main by mistake','误把改动提交到 main','誤把改動提交到 main'],
+  brief:['Your formatter commit landed on main, but it needs review on its own branch. Move it to a branch without losing the work.','你的格式化提交落在了 main 上，但它需要在自己的分支上被审查。请把这次提交移到分支上，且不要丢失工作。','你的格式化提交落在了 main 上，但它需要在自己的分支上被審查。請把這次提交移到分支上，且不要遺失工作。'],
+  setup:['git init','git add .','git commit -m "Initial version"',
+   r=>writeFile(r,'src/format.js','export const formatName = value => value.trim();'),
+   'git add .','git commit -m "Add the name formatter"'],
+  solution:['git branch feature/format','git reset --hard HEAD~1','git switch feature/format','git log --oneline'],
+  goals:[
+   {id:'moved',label:['The commit is on its own branch','提交已在独立分支上','提交已在獨立分支上'],hint:['create a branch at that commit before moving main back','先把分支指向该提交，再把 main 移回','先把分支指向該提交，再把 main 移回'],done:r=>Object.entries(r.branches).some(([name,tip])=>name!=='main'&&tip===r.commits.find(c=>c.message==='Add the name formatter')?.id)},
+   {id:'clean',label:['main no longer contains it','main 不再包含这次提交','main 不再包含這次提交'],hint:['git reset --hard HEAD~1 while on main','在 main 上运行 git reset --hard HEAD~1','在 main 上執行 git reset --hard HEAD~1'],done:r=>!onBranch(r,'main',r.commits.find(c=>c.message==='Add the name formatter')?.id??'')}
+  ]
+ },
+ {
+  id:'rebase-review',
+  title:['Rebase a feature branch before review','审查前先变基','審查前先變基'],
+  brief:['main moved on while your feature branch was open. Reviewers ask for a linear history, so replay your work on top of main.','你的功能分支开放期间 main 前进了。审查者要求线性历史，请把你的工作重放到 main 之上。','你的功能分支開放期間 main 前進了。審查者要求線性歷史，請把你的工作重放到 main 之上。'],
+  setup:['git clone https://example.edu/team/project.git','git switch -c feature/form',
+   r=>writeFile(r,'docs/form.md','# Form notes\nForm notes for the sign-up review.'),
+   'git add .','git commit -m "Document the form"','git switch main',
+   r=>writeFile(r,'README.md',r.files['README.md']+'\nReviewed by the team.'),
+   'git add .','git commit -m "Note the review"','git switch feature/form'],
+  solution:['git rebase main','git log --oneline --graph'],
+  goals:[
+   {id:'based',label:['Your branch sits on top of main','你的分支位于 main 之上','你的分支位於 main 之上'],hint:['git rebase main','git rebase main','git rebase main'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])},
+   {id:'linear',label:['No merge commit was added','没有引入合并提交','沒有引入合併提交'],hint:['rebase replays commits instead of merging','rebase 会重放提交而不是合并','rebase 會重放提交而不是合併'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])&&![...reachable(r,[r.branches['feature/form']])].some(id=>commitOf(r,id).parents.length>1)},
+   {id:'kept',label:['Your documentation is still there','你的文档仍然存在','你的文件仍然存在'],hint:['rebase keeps your commits, with new ids','rebase 保留你的提交，只是换了新编号','rebase 保留你的提交，只是換了新編號'],done:r=>!!r.branches.main&&isAncestor(r,r.branches.main,r.branches['feature/form'])&&String(commitOf(r,r.branches['feature/form'])?.tree['docs/form.md']||'').includes('Form notes')}
+  ]
+ },
+];
+
+/**
+ * Starts a scenario: the repository is put into the situation it describes by
+ * running the setup commands, so the terminal shows how the problem arose.
+ * The counters are reset afterwards so the lab goals count what the learner
+ * does, not what the setup did.
+ * @param {string} id
+ */
+export function startScenario(id){
+ const scenario=GIT_SCENARIOS.find(s=>s.id===id)??GIT_SCENARIOS[0];
+ const repo=build(scenario.setup);
+ repo.scenario={id:scenario.id};
+ repo.scenarioPick=scenario.id;
+ repo.stats={...createRepo().stats};
+ return repo;
+}
+/** @param {string} id */
+export const scenarioById=id=>GIT_SCENARIOS.find(s=>s.id===id)??null;
+/**
+ * Live state of the active scenario's goals, for the checklist in the view.
+ * @param {any} repo
+ */
+export function scenarioGoals(repo){
+ const scenario=scenarioById(repo?.scenario?.id);
+ if(!scenario)return [];
+ return scenario.goals.map(goal=>({id:goal.id,label:goal.label,hint:goal.hint,done:!!goal.done(repo)}));
+}
+/** True once every goal of the active scenario is met. @param {any} repo */
+export function scenarioComplete(repo){
+ const goals=scenarioGoals(repo);
+ return goals.length>0&&goals.every(g=>g.done);
+}
+

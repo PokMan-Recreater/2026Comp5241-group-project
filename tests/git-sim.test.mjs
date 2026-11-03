@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRepo,runGit,writeFile,gitMilestones,gitComplete,GIT_SEED_FILES} from '../public/git-sim.js';
+import {createRepo,runGit,writeFile,gitMilestones,gitComplete,GIT_SEED_FILES,GIT_SCENARIOS,startScenario,scenarioGoals,scenarioComplete,scenarioById} from '../public/git-sim.js';
+const APP_RESOLVED='export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}';
 
 /** Runs a list of commands and returns the final repository plus every output. */
 function play(...commands){
@@ -78,6 +79,8 @@ test('a divergent merge records two parents and combines both changes',()=>{
  assert.equal(merged.repo.conflict,null);
  const merge=merged.repo.commits.at(-1);
  assert.equal(merge.parents.length,2);
+ for(const parent of merge.parents)assert.ok(merged.repo.commits.some(c=>c.id===parent),'every parent must be a real commit');
+ assert.ok(merged.repo.commits.some(c=>c.id===merged.repo.branches.main),'the branch tip must be a commit id');
  assert.equal(merge.tree['src/app.js'],'export function validateSignup(form) {\n  return form.name.trim().length > 2;\n}');
  assert.match(merge.tree['notes.txt'],/run the checks before review/);
 });
@@ -111,6 +114,8 @@ test('a conflicting merge writes markers, blocks the commit and finishes after s
  const done=runGit(staged.repo,'git commit -m "Merge the validation rules"');
  assert.equal(done.repo.conflict,null);
  assert.equal(done.repo.commits.at(-1).parents.length,2);
+ for(const parent of done.repo.commits.at(-1).parents)assert.ok(done.repo.commits.some(c=>c.id===parent),'a resolved merge must point at real commits');
+ assert.ok(done.repo.commits.some(c=>c.id===done.repo.branches.main));
 });
 
 test('merge --abort restores the branch, index and files from before the merge',()=>{
@@ -281,4 +286,35 @@ test('git help lists what this sandbox really runs',()=>{
  assert.match(runGit(createRepo(),'git help frobnicate').output.join('\n'),/No manual entry for frobnicate/);
  assert.match(runGit(createRepo(),'git version').output.join('\n'),/teaching sandbox/);
  assert.match(runGit(createRepo(),'git rm notes.txt').output.join('\n'),/not a git repository/);
+});
+
+/** The documented fix for each scenario, which proves the scenarios are solvable. */
+const SCENARIO_FIXES={
+ divergent:['git merge feature/validation',r=>writeFile(r,'src/app.js',APP_RESOLVED),'git add src/app.js','git commit -m "Merge the validation rules"'],
+ 'teammate-pushed':['git add .','git commit -m "Add a local note"','git pull origin main','git push origin main'],
+ 'conflict-and-push':['git add .','git commit -m "Reject blank names only"','git pull origin main',r=>writeFile(r,'src/app.js',APP_RESOLVED),'git add src/app.js','git commit -m "Merge the teammate change"','git push origin main'],
+ 'stash-hotfix':['git stash','git switch main',r=>writeFile(r,'README.md',r.files['README.md']+'\nUrgent: sign-up is broken'),'git add README.md','git commit -m "Urgent: note the sign-up outage"','git switch feature/form','git stash pop'],
+ 'revert-bad':['git log --oneline','git revert HEAD'],
+ 'wrong-branch':['git branch feature/format','git reset --hard HEAD~1','git switch feature/format'],
+ 'rebase-review':['git rebase main']
+};
+
+test('every production scenario starts unsolved and its documented fix solves it',()=>{
+ assert.equal(GIT_SCENARIOS.length,7);
+ assert.deepEqual(Object.keys(SCENARIO_FIXES).sort(),GIT_SCENARIOS.map(s=>s.id).sort());
+ for(const scenario of GIT_SCENARIOS){
+  let repo=startScenario(scenario.id);
+  assert.deepEqual(scenarioGoals(repo).filter(g=>g.done),[],scenario.id+' must start unsolved');
+  assert.equal(scenarioComplete(repo),false,scenario.id);
+  assert.equal(repo.stats.commits,0,scenario.id+' resets the counters so only the learner\'s work counts');
+  assert.ok(repo.transcript.some(line=>line.startsWith('$ git ')),scenario.id+' writes its setup into the terminal');
+  assert.ok(scenario.goals.every(g=>g.label.length===3&&g.hint.length===3),scenario.id+' localizes every goal and hint');
+  for(const step of SCENARIO_FIXES[scenario.id])repo=typeof step==='function'?step(repo):runGit(repo,step).repo;
+  assert.equal(scenarioComplete(repo),true,scenario.id+' is solved by its documented fix');
+  assert.deepEqual(repo.mistakes,[],scenario.id+' should not need a mistake to be solved');
+ }
+ assert.equal(scenarioComplete(createRepo()),false);
+ assert.deepEqual(scenarioGoals(createRepo()),[]);
+ assert.equal(scenarioById('nope'),null);
+ assert.equal(startScenario('nope').scenario.id,GIT_SCENARIOS[0].id);
 });
