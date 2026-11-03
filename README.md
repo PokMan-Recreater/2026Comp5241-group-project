@@ -135,7 +135,7 @@ Keep credentials out of the repository. The application does not ask learners to
 
 - **Storage and accounts:** records are saved in the current browser's `localStorage`. Shared storage, cross-device synchronization, production authentication and server-side authorization are pending. Role switching previews workflows; it is not account authentication.
 - **Classrooms:** roster import and engagement views operate on local records. Importing names does not send invitations or create genuine student activity.
-- **Code execution:** JavaScript challenges use isolated execution with a timeout. HTML page previews use an opaque-origin sandbox with restricted resources; they do not have the same execution-time guarantees. C/C++ and Python examples provide limited output traces, not full language runtimes.
+- **Code execution:** Free coding defaults to real browser execution (Clang/WASI for C/C++, Pyodide for Python); first load downloads the runtime, later runs reuse it. Includes loading/elapsed status, stop and timeouts. Remote Wandbox is an explicit backup that uploads source/input, never an automatic fallback. JS challenges and HTML previews keep their isolated execution. See [execution details](docs/code-execution.md). Code quest remains a separate bounded teaching model.
 - **AI and content:** live AI requires server-side configuration and end-to-end validation. New-topic study templates guide source-led learning; they do not establish verified facts about arbitrary subjects. Local interview cues are practice aids, not hiring or mastery assessments.
 - **Teaching tools:** media uploads, fully configurable activity parameters, shared analytics and generative audio/animations need further development. Current narration uses device text-to-speech.
 
