@@ -7,14 +7,12 @@ import {studyTimeHTML,resolveStudyTime} from './study-time.js';
 import {rewritePrompt} from './prompt-rewrite.js';
 import {interactivePageExample,domPageExample,mountInteractivePage} from './academy-runner.js';
 import {renderLabBody} from './lab-views.js';
-import {gitGraph,gitState,gitFileEditor,gitMistakeReview} from './git-lab.js';
-import {newSandboxRepo,sandboxStep,sandboxTranscript,gitSandboxExamples} from './git-sandbox.js';
 import {diagnosePipeline} from './academy-models.js';
 import {interviewContext,reviewInterview,interviewFeedbackHTML} from './interview-review.js';
 import {syntaxCards} from './syntax-reference.js';
 import {knowledgeQuestions,saveKnowledgeAttempt} from './knowledge-checks.js';
 import {tri,local} from './i18n.js';
-import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,createGit,gitStep,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult,createRepo,runGit,writeFile,removeFile,gitComplete,startScenario,scenarioComplete,scenarioById,resolveConflictFile} from './academy-core.js';
+import {ensureAcademy,buildPlan,planProgress,planStepDone,planStepRoute,learningStats,recordActivity,lessonKey,evaluateInterview,promptReview,retrieve,initialDocker,dockerStep,gradientStep,pipelineResult} from './academy-core.js';
 import {challenges,interviews,labs,retrievalDocs,referenceTopics} from './academy-content.js';
 import {runSandbox} from './academy-runner.js';
 import {runNativeProgram} from './native-runner.js';
@@ -32,8 +30,8 @@ export function createAcademy(ctx){
  const browserRunner=createBrowserRunner();let runAbort;
  const {esc:e,ico}=ctx,s=()=>ctx.state(),a=()=>ensureAcademy(s()),lang=()=>s().lang,contentLang=()=>s().profile.learningLanguage||lang();
  const L=(en,cn,tw)=>local(tri(en,cn,tw),lang()),T=v=>local(v,contentLang());
- const labels={'ai-result':tri('AI result','生成结果','產生結果'),'courseware-example':tri('Courseware example','课件样板','課件樣板'),assigned:tri('Assigned courses','老师布置的课程','老師指派的課程'),'teacher-course':tri('Course studio','课程工作台','課程工作台'),'interview-records':tri('My interviews','我的面试记录','我的面試紀錄'),games:tri('Games','游戏','遊戲'),markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('','',''),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Short answers','简答题','簡答題'),tutorial:tri('Programming guide','编程指南','程式指南'),codequest:tri('Code quest','编程闯关','程式闖關')};
- const view={preview:null,interviewId:null,question:0,questionReview:null,feedback:null,loadedAttempt:null,lab:null,output:'',outputFailed:false,running:false,runToken:0,aiPlanSource:false,aiPlanData:null};
+ const labels={'ai-result':tri('AI result','生成结果','產生結果'),'courseware-example':tri('Courseware example','课件样板','課件樣板'),assigned:tri('Assigned courses','老师布置的课程','老師指派的課程'),'teacher-course':tri('Course studio','课程工作台','課程工作台'),git:tri('Git simulator','Git 模拟练习','Git 模擬練習'),'interview-records':tri('My interviews','我的面试记录','我的面試紀錄'),games:tri('Games','游戏','遊戲'),markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('','',''),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Short answers','简答题','簡答題'),tutorial:tri('Programming guide','编程指南','程式指南'),codequest:tri('Code quest','编程闯关','程式闖關')};
+ const view={preview:null,setupStep:0,setupDraft:null,interviewId:null,question:0,questionReview:null,feedback:null,loadedAttempt:null,lab:null,output:'',outputFailed:false,running:false,runToken:0,aiPlanSource:false,aiPlanData:null};
  let speech={running:false,paused:false,index:0,sentences:[],utterance:null},lastReset=null;
  let knownBadges=learningStats(s()).badges;
  const save=()=>{ctx.save();const now=learningStats(s()).badges,newBadge=now.findIndex((earned,i)=>earned&&!knownBadges[i]);knownBadges=now;if(newBadge>=0)queueMicrotask(()=>ctx.toast(L('Badge earned: ','获得徽章：','獲得徽章：')+badges()[newBadge]));},render=()=>ctx.render(),go=hash=>ctx.go(hash),uid=prefix=>`${prefix}-${crypto.randomUUID()}`;
@@ -89,6 +87,7 @@ export function createAcademy(ctx){
   const prose=v=>e(T(v)).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>');
   return `<div class="lesson-top"><a href="#plan/${e(p.id)}">${ico('back',13)}${L('Back to plan','返回计划','返回計畫')}</a><div class="row"><span class="pill">${e(T(c.title))}</span><span class="small muted">${e(T(p.title))}</span></div></div><article class="lesson-paper academy-plan-lesson" lang="${e(contentLang())}"><span class="eyebrow muted">${String(i+1).padStart(2,'0')} / ${String(steps.length).padStart(2,'0')} · ${step.minutes} ${L('min','分钟','分鐘')}</span><h1>${e(T(lesson.title))}</h1><div class="lesson-text"><p>${prose(lesson.body)}</p></div>${lesson.advanced?`<details class="study-reference"><summary>${L('Extension','进阶延伸','進階延伸')}</summary><div class="lesson-text"><p>${prose(lesson.advanced)}</p></div></details>`:''}<p class="small muted" data-plan-lesson-status role="status"></p><div class="lesson-actions">${prev?link('plan/'+p.id+'/'+prev.lessonId,L('Previous lesson','上一节','上一節')):''}${button('expand-plan-lesson',`${ico('spark',14)}${L('Expand with AI','AI 扩充这一节','AI 擴充這一節')}`,`data-plan="${e(p.id)}" data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`,false)}${done?button('reopen',L('Mark as not complete','撤销完成','撤銷完成'),`data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`):button('complete-plan',L('Mark done','标为完成','標為完成'),`data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`,false)}${next?link('plan/'+p.id+'/'+next.lessonId,L('Next lesson','下一节','下一節'),false):''}</div></article>`;
  }
+ function setupPage(){const d=view.setupDraft||{...s().profile,topic:''};view.setupDraft=d;return heading(L('Your starting point. Your pace.','按你的起点和节奏学习。','依你的起點和步調學習。'))+`<div class="academy-setup-steps">${[0,1,2].map(i=>`<span class="${i===view.setupStep?'current':''}">${i+1}</span>`).join('')}</div><form id="academy-setup-form" class="form-card"><div class="form-grid">${view.setupStep===0?`<div class="field full-field"><label for="setup-name">${L('Name','名字','名字')}</label><input id="setup-name" name="name" value="${e(d.name)}" maxlength="50" required></div><div class="field"><label for="setup-background">${L('Experience','目前经验','目前經驗')}</label><select id="setup-background" name="background">${['noCoding','someCoding','experienced'].map(x=>option(x,ctx.label(x),d.background)).join('')}</select></div><div class="field"><label for="setup-level">${L('Level','难度','難度')}</label><select id="setup-level" name="skillLevel">${levelOptions(d.skillLevel)}</select></div>`:view.setupStep===1?`<div class="field"><label for="setup-goal">${L('Goal','学习目标','學習目標')}</label><select id="setup-goal" name="goal">${['understand','build','career'].map(x=>option(x,ctx.label(x),d.goal)).join('')}</select></div>${studyTimeHTML('setup-minutes',d,lang())}<fieldset class="field full-field academy-interests"><legend>${L('Interests','兴趣','興趣')}</legend>${['development','requirements','architecture','ai-coding','testing-release','product-decisions','career'].map(x=>`<label><input type="checkbox" name="interests" value="${x}" ${(d.interests||[]).includes(x)?'checked':''}>${e(T(ctx.course(x)?.title||x))}</label>`).join('')}</fieldset>`:`<div class="field full-field"><label for="setup-topic">${L('Topic','学习主题','學習主題')}</label><input id="setup-topic" name="topic" required maxlength="180" value="${e(d.topic||'')}" placeholder="${L('What would you like to learn?','你想学什么？','你想學甚麼？')}"></div><p class="small muted">${L('We match published lessons first. For a new subject, you can preview a source-led study template.','优先匹配已有课节；新学科可以先预览资料导向的学习模板。','優先配對已有課節；新學科可以先預覽資料導向的學習範本。')}</p>`}</div><div class="form-actions">${view.setupStep?button('setup-back',L('Back','上一步','上一步')):''}<button class="btn" type="submit">${view.setupStep===2?L('Preview plan','预览计划','預覽計畫'):L('Continue','继续','繼續')}</button></div></form>`;}
  function planDetail(id,lessonId){const p=a().plans.find(p=>p.id===id);if(!p)return heading(L('Plan not found','未找到计划','找不到計畫'))+link('path',L('All plans','全部计划','全部計畫'));if(lessonId)return planLesson(p,lessonId);const r=planProgress(p,s());const planCourse=[...new Set([...(p.matchedCourses||[]),...p.steps.map(x=>x.courseId)])].map(x=>ctx.course(x)).find(x=>x?.lessons?.length);return heading(e(T(p.title)),`${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')} · ${r.percent}%`)+`<div class="row mb">${link('path',L('All plans','全部计划','全部計畫'))}${r.next?link(planHref(p,r.next),L('Continue learning','继续学习','繼續學習'),false):''}${!p.modules?button('refresh-plan',L('Update this plan','更新这份计划','更新這份計畫'),`data-id="${e(id)}"`):''}${planCourse&&!needsCourseware(p)?button('create-course',planCourseFor(ctx.user?.()?.id,id)?L('Continue designing','继续设计课程','繼續設計課程'):L('Create a course','制作课程','製作課程'),`data-id="${e(id)}"`):''}${needsCourseware(p)&&planCourseFor(ctx.user?.()?.id,id)?link('personal-course/'+planCourseFor(ctx.user?.()?.id,id),L('Edit in My courses','到我的课程修改','到我的課程修改')):''}${button('active-plan',L('Make active','设为当前','設為目前'),`data-id="${e(id)}"`)}</div><p>${L('Lessons are scheduled within your weekly time budget. Longer lessons may span more than one session.','课节按每周时间安排，较长课节会拆分到多个学习时段。','課節依每週時間安排，較長課節會拆分為多個學習時段。')}</p>${p.source==='ai'||p.source==='template'?`<p class="callout">${L('Generation may take about 5 minutes. Browse other site pages while keeping this tab open. Saved lessons can be resumed or edited in My courses.','这是学习路径大纲。生成可能需要约 5 分钟，可切换站内页面（请保持标签页打开）。完整内容会保存，也可到「我的课程」自行修改。','這是學習路徑大綱。產生可能需要約 5 分鐘，可切換站內頁面（請保持分頁開啟）。完整內容會儲存，也可到「我的課程」自行修改。')}</p>`:''}${p.rationale?`<details class="plan-overview"><summary>${L('How this plan fits your goal','计划如何对应目标','計畫如何對應目標')}</summary><p>${e(T(p.rationale))}</p></details>`:''}${stepsHTML(p)}`;}
  function catalogResults(){
   const q=(document.querySelector('#course-search')?.value||'').trim().toLowerCase(),topic=document.querySelector('#topic-filter')?.value||'allTopics',level=document.querySelector('#academy-level')?.value||'all',audience=document.querySelector('#academy-audience')?.value||'all';
@@ -107,9 +106,7 @@ export function createAcademy(ctx){
  if(view.feedback)return heading(e(T(scenario.title)))+selection+`<section class="panel"><h2>${L('Review your answers','复盘你的回答','回顧你的回答')}</h2>${view.feedback.map((r,j)=>`<section class="academy-answer"><h3>${j+1}. ${e(T(scenario.questions[j]))}</h3><p class="academy-answer-text">${e(r.answer)}</p>${interviewFeedbackHTML(r,{...h,disclosure:false})}</section>`).join('')}<p class="lab-disclosure">${L('Local writing cues support revision; they do not measure hiring suitability or mastery.','本地写作线索供修改参考，不衡量录用或掌握程度。','本機寫作線索供修改參考，不衡量錄用或掌握程度。')}</p><div class="row mt">${button('interview-retry',L('Revise my answers','修改回答','修改回答'))}${button('interview-coach',L('Get coaching','获取辅导','取得輔導'))}</div><div id="academy-coach" role="status"></div></section>`;
  return heading(e(T(scenario.title)))+selection+`<form id="academy-interview-form" class="form-card"><span class="pill">${i+1} / ${scenario.questions.length}</span><h2>${e(T(scenario.questions[i]))}</h2><label for="academy-interview-answer">${L('Your answer','你的回答','你的回答')}</label><textarea id="academy-interview-answer" data-scenario="${scenario.id}" data-question="${i}" rows="7" required maxlength="6000">${e(draft[i]||'')}</textarea><div id="academy-interview-feedback" class="academy-live-review" role="status"></div><div class="form-actions">${i?button('interview-back',L('Previous question','上一题','上一題')):''}<button class="btn" type="submit">${L('Review this answer','检查这一题','檢查這一題')}</button></div></form>${view.questionReview?interviewFeedbackHTML(view.questionReview,h)+`<div class="row mt">${button('interview-next',i+1===scenario.questions.length?L('Finish and save review','完成并保存复盘','完成並儲存回顧'):L('Next question','下一题','下一題'),'',false)}</div>`:''}`;
  }
- function labState(id){const defaults={git:createGit(),'git-cli':createRepo(),prompt:{text:'',result:null},rag:{query:'classroom roster',k:2,hybrid:false,result:null},ci:{fixes:[],result:null},docker:initialDocker(),gradient:{m:0,b:0,rate:.05,history:[],loss:33}};a().labStates??={};if(a().labStates[id]===undefined){const drill=drillForLab(id);a().labStates[id]=drill?startScenario(drill.id):defaults[id];save();}return a().labStates[id];}
- /** The small practice a lab page stands for, when the page is one of them. */
- function drillForLab(id){if(!/^git-/.test(id))return null;const drill=scenarioById(id.slice(4));return drill&&drill.kind==='drill'?drill:null;}
+ function labState(id){const defaults={prompt:{text:'',result:null},rag:{query:'classroom roster',k:2,hybrid:false,result:null},ci:{fixes:[],result:null},docker:initialDocker(),gradient:{m:0,b:0,rate:.05,history:[],loss:33}};a().labStates??={};if(a().labStates[id]===undefined){a().labStates[id]=defaults[id];save();}return a().labStates[id];}
  function labPage(id){const meta=labs.find(x=>x[0]===id);if(!meta)return empty();const z=labState(id);
   const body=renderLabBody(id,z,{e,L,T,button,option});
   return heading(e(T(meta[1])),e(T(meta[2])))+`<div class="row mb">${link('practice',L('All practice','全部练习','全部練習'))}${button('reset-lab',L('Reset lab','重置实验','重設實驗'),`data-id="${id}"`)}</div><section class="panel academy-lab-panel">${body}<div id="academy-lab-feedback" role="status"></div></section>`;
@@ -154,30 +151,11 @@ export function createAcademy(ctx){
  function afterModal(){const f=document.querySelector('#new-course-form');if(f&&!f.querySelector('[value="template"]'))f.querySelector('.form-actions')?.insertAdjacentHTML('beforeend',`<button class="btn secondary" type="submit" name="mode" value="template">${L('Start from a study template','从学习模板开始','從學習範本開始')}</button>`);}
  function localExplanation(c,l){const body=T(l.body),first=body.split(/\n+/).find(x=>x.trim()&&!x.trim().startsWith('#'))||body;return `<p>${e(first)}</p><h3>${L('Make it concrete','用具体例子理解','用具體例子理解')}</h3><p>${e(T(l.checks?l.hint:l.workshop?.brief||l.hint||c.description))}</p><ol><li>${L('Name the input, decision and expected result.','写清输入、决定和预期结果。','寫清輸入、決定和預期結果。')}</li><li>${L('Try the smallest example, then one boundary case.','先试一个最小例子，再试一个边界情况。','先試一個最小例子，再試一個邊界情況。')}</li><li>${L('Explain what the evidence does and does not show.','说明证据能证明什么、不能证明什么。','說明證據能證明甚麼、不能證明甚麼。')}</li></ol><p class="small muted">${L('Study guide assembled from this lesson; not a new AI answer.','根据当前课文整理的学习提示，不是新的 AI 回答。','依目前課文整理的學習提示，不是新的 AI 回答。')}</p>`;}
  function completeLab(id,result){a().labResults[id]={...a().labResults[id],...result,at:new Date().toISOString()};touch('lab',id);}
- /** Runs one typed Git command in the sandbox and keeps the whole repository state. */
- function runGitLabCommand(input,labId){const id=labId??'git-cli',z=labState(id),{repo}=runGit(z,String(input??''));repo.selectedFile=z.selectedFile&&repo.files[z.selectedFile]!==undefined?z.selectedFile:Object.keys(repo.files)[0];a().labStates[id]=repo;if(gitComplete(repo)||scenarioComplete(repo))completeLab(id,{completed:true});save();render();}
- /** Starts a production scenario, or restarts the active one. */
- function startGitScenario(id,labId){const chosen=id??document.querySelector('#git-scenario')?.value;if(!chosen)return;const next=startScenario(chosen);next.selectedFile=Object.keys(next.files)[0];a().labStates[labId??'git-cli']=next;save();render();}
- /** Free practice: the same repository engine as the labs, with no task and no goal. */
- function sandboxState(){a().labStates??={};if(!a().labStates['git-sandbox'])a().labStates['git-sandbox']=newSandboxRepo();return a().labStates['git-sandbox'];}
- function gitSandboxPage(){
-  const z=sandboxState(),h={e,L,T,button,option};
-  const examples=gitSandboxExamples.map(([,label,command])=>option(command,L(...label),''));
-  return heading(L('Free Git practice','自由 Git 练习','自由 Git 練習'),L('Type any Git command and watch the repository change. Nothing real is touched.','输入任意 Git 命令，观察仓库如何变化。不会接触真实文件。','輸入任意 Git 指令，觀察倉庫如何變化。不會接觸真實檔案。'))
-   +views.practiceTabs('git-sandbox')+views.practiceSections('git-sandbox')
-   +`<div class="academy-playground"><section class="panel"><div class="field"><label for="git-sandbox-example">${L('Load an example command','加载示例命令','載入範例指令')}</label><select id="git-sandbox-example"><option value="">${L('Choose an example','选择一个示例','選擇一個範例')}</option>${examples.join('')}</select></div><form id="academy-git-sandbox-form" class="row mt"><label class="grow" for="git-sandbox-command">${L('Command','命令','指令')}<input id="git-sandbox-command" required maxlength="200" autocomplete="off" placeholder="git status"></label><button class="btn small-btn" type="submit">${L('Run','执行','執行')}</button>${button('gitcli-clear',L('Clear terminal','清空终端','清空終端'))}${button('git-sandbox-reset',L('Reset repository','重置仓库','重設倉庫'))}</form><h2>${L('Terminal','终端','終端')}</h2><pre id="git-sandbox-output" class="academy-output docker-terminal" aria-live="polite">${e(sandboxTranscript(z)||L('Type git help to list the commands this sandbox runs.','输入 git help 查看沙盒支持的命令。','輸入 git help 查看沙盒支援的指令。'))}</pre>${gitState(z,h)}${gitFileEditor(z,h)}${gitGraph(z,h)}${gitMistakeReview(z,h)}<p class="lab-disclosure">${L('No real repository, files or network are touched. Commands, conflicts and history are simulated so mistakes are safe, and rebase, cherry-pick or revert stop instead of guessing when they would conflict.','不会接触真实的仓库、文件或网络。命令、冲突和历史都是模拟的，所以出错是安全的；rebase、cherry-pick 或 revert 遇到冲突时会停下，不会替你猜测。','不會接觸真實的倉庫、檔案或網路。指令、衝突和歷史都是模擬的，所以出錯是安全的；rebase、cherry-pick 或 revert 遇到衝突時會停下，不會替你猜測。')}</p></section></div>`;
- }
- /** Runs one sandbox command, keeps the whole repository state and leaves the prompt ready for the next one. */
- function runGitSandboxCommand(input){
-  const text=String(input??'').trim();if(!text)return;
-  const current=sandboxState(),{repo}=sandboxStep(current,text);
-  repo.selectedFile=current.selectedFile&&repo.files[current.selectedFile]!==undefined?current.selectedFile:Object.keys(repo.files)[0];
-  a().labStates['git-sandbox']=repo;
-  a().pageExercises??={};
-  if(!a().pageExercises['git-sandbox']){a().pageExercises['git-sandbox']={completed:true,at:new Date().toISOString()};touch('page','git-sandbox');}
-  save();render();
-  const field=document.querySelector('#git-sandbox-command');if(field)field.focus();
-  const out=document.querySelector('#git-sandbox-output');if(out)out.scrollTop=out.scrollHeight;
+ /** The Git simulator: one lesson per command and a team project, opened from the sidebar. */
+ function gitCoursePage(lessonId){
+  const id=/^[a-z-]+$/.test(lessonId||'')?lessonId:'';
+  return heading(L('Git simulator','Git 模拟练习','Git 模擬練習'),L('One lesson for each everyday Git command, typed in a real-looking terminal against a simulated computer and GitHub, then a team project that uses them all.','每条常用 Git 命令一节课：在逼真的终端里对模拟的电脑和 GitHub 输入命令，最后用一个团队项目把它们全部串起来。','每條常用 Git 指令一節課：在逼真的終端裡對模擬的電腦和 GitHub 輸入指令，最後用一個團隊專案把它們全部串起來。'))
+   +`<div class="git-course-frame"><p class="small muted" style="margin:0 0 10px">${L('Progress is saved in this browser.','学习进度保存在当前浏览器中。','學習進度保存在目前瀏覽器中。')} <a href="git-course.html${id?'#'+id:''}" target="_blank" rel="noopener" style="text-decoration:underline">${L('Open full screen ↗','全屏打开 ↗','全螢幕開啟 ↗')}</a></p><iframe src="git-course.html${id?'#'+id:''}" title="${L('Git simulator','Git 模拟练习','Git 模擬練習')}" style="width:100%;height:calc(100vh - 200px);min-height:620px;border:1px solid var(--line);border-radius:12px;background:#1e1e1e;display:block"></iframe></div>`;
  }
  function previewPlan(data){view.aiPlanSource=false;const draft={...data};data=resolveStudyTime(data,lang());const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,requirements:data.requirements||'',weeklyMinutes:draft.weeklyMinutes,customWeeklyMinutes:draft.customWeeklyMinutes,skillLevel:profile.skillLevel};save();}
  async function aiPlan(data){
@@ -335,6 +313,7 @@ export function createAcademy(ctx){
   }
   if(action==='reset-playground'){a().playground.sources??={};a().playground.sources[a().playground.language]=playgroundDefaults[a().playground.language];a().playground.code=null;view.output='';view.outputFailed=false;save();render();return;}
   if(action==='clear-output'){view.pageCleanup?.();view.pageCleanup=null;view.output='';view.outputFailed=false;document.querySelector('#academy-play-output').classList.remove('failed');document.querySelector('#academy-play-output').textContent='';document.querySelector('#academy-html-preview').srcdoc='';return;}
+  if(action==='setup-back'){view.setupDraft={...view.setupDraft,...Object.fromEntries(new FormData(document.querySelector('#academy-setup-form')))};view.setupStep=Math.max(0,view.setupStep-1);render();return;}
   if(action==='interview-back'){view.questionReview=null;view.question=Math.max(0,view.question-1);render();return;}
   if(action==='interview-retry'){const attempt=a().interviews.find(x=>x.id===view.loadedAttempt);if(attempt){a().interviewDrafts??={};a().interviewDrafts[attempt.scenarioId]=[...attempt.answers];save();}view.feedback=null;view.questionReview=null;view.question=0;view.loadedAttempt=null;if(ctx.route()[2])go('interview/'+view.interviewId);else render();return;}
   if(action==='interview-next'){if(!view.questionReview)return;const scenario=interviews.find(x=>x.id===view.interviewId),answers=a().interviewDrafts?.[scenario.id]||[];if(view.question+1<scenario.questions.length){view.question++;view.questionReview=null;}else{view.feedback=reviewInterview(scenario,answers,contentLang());const coverage=Math.round(view.feedback.reduce((n,x)=>n+x.dimensions.filter(Boolean).length,0)/view.feedback.reduce((n,x)=>n+x.dimensions.length,0)*100);a().interviews.push({id:uid('attempt'),scenarioId:scenario.id,answers:[...answers],coverage,reviewVersion:3,at:new Date().toISOString()});touch('interview',scenario.id);view.questionReview=null;}save();render();return;}
@@ -353,40 +332,7 @@ export function createAcademy(ctx){
   if(action==='undo-reset'){if(lastReset){Object.assign(s(),lastReset);lastReset=null;save();render();}return;}
   if(action==='reset-lab'){delete a().labStates?.[id];save();render();return;}
   const lab=route[1];if(page!=='lab')return;
-  const z=lab==='git-sandbox'?sandboxState():labState(lab);
-  if(action.startsWith('git-')){const which=action.slice(4);const value=which==='commit'?document.querySelector('#git-message').value:which==='branch'?document.querySelector('#git-branch').value:which==='merge'?document.querySelector('#git-merge').value:el.dataset.choice;a().labStates.git=gitStep(z,which,value);if(which==='merge'&&!a().labStates.git.conflict||which==='resolve')completeLab('git',{completed:true});save();render();return;}
-  if(action==='git-sandbox-reset'){a().labStates['git-sandbox']=newSandboxRepo();save();render();return;}
-  if(action.startsWith('gitcli-')){
-   const which=action.slice(7);
-   if(which==='run'){runGitLabCommand(el.dataset.command,lab);return;}
-   if(which==='clear'){z.transcript=[];save();render();return;}
-   if(which==='hint'){z.hintFor=el.dataset.task;save();render();return;}
-   if(which==='mistakes'){z.showAllMistakes=!z.showAllMistakes;save();render();return;}
-   if(which==='resolve-file'){
-    const path=document.querySelector('#git-file')?.value;
-    if(path){a().labStates[lab]=resolveConflictFile(z,path,el.dataset.choice);save();render();}
-    return;
-   }
-   if(which==='start-scenario'){startGitScenario(undefined,lab);return;}
-   if(which==='restart-scenario'){startGitScenario(z.scenario?.id,lab);return;}
-   if(which==='save-file'){
-    const path=document.querySelector('#git-file')?.value,content=document.querySelector('#git-file-content').value;
-    if(path){const next=writeFile(z,path,content);next.selectedFile=path;a().labStates[lab]=next;save();render();}
-    return;
-   }
-   if(which==='create-file'){
-    const path=(document.querySelector('#git-new-file')?.value||'').trim();
-    if(!/^[\w][\w./-]{0,79}$/.test(path)){ctx.toast(L('Use a path like src/format.js.','请使用类似 src/format.js 的路径。','請使用類似 src/format.js 的路徑。'));return;}
-    const next=writeFile(z,path,'');next.selectedFile=path;a().labStates[lab]=next;save();render();
-    return;
-   }
-   if(which==='delete-file'){
-    const path=document.querySelector('#git-file')?.value;
-    if(path){const next=removeFile(z,path);next.selectedFile=Object.keys(next.files)[0];a().labStates[lab]=next;save();render();}
-    return;
-   }
-   return;
-  }
+  const z=labState(lab);
   if(action==='prompt-check'){z.text=document.querySelector('#prompt-text').value;z.result=promptReview(z.text);if(z.result.every(Boolean))completeLab('prompt',{completed:true});save();render();return;}
   if(action==='prompt-rewrite'){z.previousText=z.text;z.text=rewritePrompt(z.text,z.preset,contentLang());z.result=null;save();render();return;}
   if(action==='prompt-undo'){z.text=z.previousText;delete z.previousText;z.result=null;save();render();return;}
@@ -425,13 +371,9 @@ export function createAcademy(ctx){
   if(el.id==='knowledge-group'){const q=knowledgeQuestions(ctx.courses()).find(x=>el.value==='all'||x.group===el.value);if(q)go('practice/checks/'+q.key);}
   if(el.id==='knowledge-question')go('practice/checks/'+el.value);
   if(el.id==='academy-interview-scenario'){go('interview/'+el.value);}
-  if(el.id==='git-sandbox-example'&&el.value){const input=document.querySelector('#git-sandbox-command');if(input){input.value=el.value;input.focus();}el.value='';return;}
   if(el.id==='academy-play-language'){a().playground.language=el.value;a().playground.code=null;view.output='';save();if(ctx.route()[0]==='playground')go('playground/'+el.value);else render();}
   if(el.id==='academy-template'&&el.value){const t=referenceTopics.find(x=>x.id===el.value);if(t){a().playground.sources??={};a().playground.sources[t.language]=runnableExample(t);view.output='';save();render();}}
   if(el.id==='academy-rate'||el.id==='academy-voice'){a().narration.rate=Number(document.querySelector('#academy-rate').value);a().narration.voice=document.querySelector('#academy-voice').value;stopSpeech();updateSpeechButtons();save();}
-  if(el.id==='git-checkout'){a().labStates.git=gitStep(labState('git'),'checkout',el.value);save();render();}
-  if(el.id==='git-file'){a().labStates[ctx.route()[1]].selectedFile=el.value;save();render();}
-  if(el.id==='git-scenario'){a().labStates[ctx.route()[1]].scenarioPick=el.value;save();render();}
   if(el.id==='academy-edit-level'&&ctx.editor()){ctx.editor().level=el.value;}
   if(el.name==='knowledge-answer')document.querySelector('.knowledge-card .mini-feedback')?.remove();
   if(el.name==='tutorial-answer'){a().tutorialChecks??={};a().tutorialChecks[el.dataset.topic]={selected:Number(el.value)};el.closest('.mini-check')?.querySelector('.mini-feedback')?.remove();save();}
@@ -440,20 +382,19 @@ export function createAcademy(ctx){
  document.addEventListener('keydown',event=>quest.key(event));
  document.addEventListener('keydown',event=>{const el=event.target;if(event.key==='Tab'&&el.matches('textarea.code-editor')){event.preventDefault();const start=el.selectionStart,end=el.selectionEnd;el.value=el.value.slice(0,start)+'  '+el.value.slice(end);el.selectionStart=el.selectionEnd=start+2;el.dispatchEvent(new Event('input',{bubbles:true}));}});
  document.addEventListener('submit',event=>{
-  const f=event.target;if(!['academy-plan-form','academy-interview-form','academy-docker-form','academy-git-form','academy-git-sandbox-form'].includes(f.id))return;event.preventDefault();
+  const f=event.target;if(!['academy-plan-form','academy-setup-form','academy-interview-form','academy-docker-form'].includes(f.id))return;event.preventDefault();
   try{
    if(f.id==='academy-plan-form'){previewPlan(Object.fromEntries(new FormData(f)));render();}
+   if(f.id==='academy-setup-form'){const d=Object.fromEntries(new FormData(f));view.setupDraft={...view.setupDraft,...d};if(view.setupStep===1)view.setupDraft.interests=new FormData(f).getAll('interests');if(view.setupStep<2){view.setupStep++;render();}else{previewPlan(view.setupDraft);view.setupStep=0;go('path');}}
    if(f.id==='academy-interview-form'){const scenario=interviews.find(x=>x.id===view.interviewId);a().interviewDrafts??={};a().interviewDrafts[scenario.id]??=[];a().interviewDrafts[scenario.id][view.question]=document.querySelector('#academy-interview-answer').value;view.questionReview=reviewInterview(scenario,a().interviewDrafts[scenario.id],contentLang())[view.question];save();render();}
    if(f.id==='academy-docker-form'){a().labStates.docker=dockerStep(labState('docker'),document.querySelector('#docker-command').value);if(a().labStates.docker.status==='stopped')completeLab('docker',{completed:true});save();render();}
-   if(f.id==='academy-git-form'){runGitLabCommand(document.querySelector('#git-command').value,ctx.route()[1]);}
-   if(f.id==='academy-git-sandbox-form'){runGitSandboxCommand(document.querySelector('#git-sandbox-command').value);}
   }catch(error){ctx.toast(error.message);}
  });
  if('speechSynthesis' in window)window.speechSynthesis.addEventListener('voiceschanged',voiceOptions);
  ensureAcademy(s());
  return {
   label:key=>key==='mock-interview'?L('AI mock interview','AI 模拟面试','AI 模擬面試'):key==='profile'?L(s().role==='learner'?'Learning profile':'Personal settings',s().role==='learner'?'学习档案':'个人设置',s().role==='learner'?'學習檔案':'個人設定'):labels[key]?local(labels[key],lang()):null,
-  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:()=>quest.page(),explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id,index),records:()=>views.records(id),practice:()=>id==='playground'?playground():id==='git-sandbox'?gitSandboxPage():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
+  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:()=>quest.page(),explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id,index),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():views.practice(id,index),challenge:()=>challengePage(id),git:()=>gitCoursePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
   afterRender,afterModal,activePlan,template:buildTemplate,
   beforeRender(){browserRunner.cancelActive();runAbort?.abort();voiceInterview.cleanup();view.pageCleanup?.();view.pageCleanup=null;stopSpeech();view.runToken++;view.running=false;},
   recordEvent(type,cid,detail){const key=lessonKey(cid,detail.lessonId||ctx.course(cid)?.lessons[Number(ctx.route()[2])||0]?.id||'');if(type==='checkpoint'){const prior=a().quizzes[key]||{};a().quizzes[key]={...prior,correct:!!prior.correct||!!detail.passed,lastCorrect:!!detail.passed,selected:s().checks?.[key]?.checked,attempts:(prior.attempts||0)+1,at:new Date().toISOString()};}if(type==='code'){const prior=a().challenges['course/'+key]||{};a().challenges['course/'+key]={...prior,passed:!!prior.passed||!!detail.passed,attempts:(prior.attempts||0)+1};}if(['lesson','checkpoint','code','game','scope-lab','access-lab'].includes(type)){recordActivity(s(),type,key,{passed:detail.passed});save();}},

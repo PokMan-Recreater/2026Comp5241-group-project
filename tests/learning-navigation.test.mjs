@@ -5,23 +5,28 @@ import {ensureAcademy} from '../public/academy-core.js';
 import {practiceForLesson} from '../public/course-practices.js';
 import {isHiddenLab,isHiddenLabRoute,labs} from '../public/academy-content.js';
 import {courses} from '../public/data.js';
+import {gitActivity,gitLessonIds} from '../public/git-course/catalog.js';
 const state={profile:{},progress:{},events:[],lang:'zh-CN'};
 const views=createLearningViews({courses:()=>[],course:()=>null},{
  e:String,L:(en,cn)=>cn,T:x=>typeof x==='object'?x['zh-CN']:x,s:()=>state,a:()=>ensureAcademy(state),
  link:(url,title)=>`<a href="#${url}">${title}</a>`,button:()=>'',heading:title=>`<h1>${title}</h1>`,ico:()=>'',cards:items=>items.join(''),codeLanguage:x=>x,empty:()=>'',
 });
-test('practice keeps four categories and drops the labs and written tabs',()=>{
- const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,4);
- assert.match(nav,/#practice\/git/);assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
+test('practice keeps three categories and drops the labs and written tabs',()=>{
+ const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,3);
+ assert.doesNotMatch(nav,/#practice\/git/);assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
  assert.match(nav,/#practice\/coding" aria-current="page"/);assert.doesNotMatch(nav,/#practice\/playground/);
  assert.match(views.practiceSections('playground'),/#practice\/playground" aria-current="page"/);
 });
-test('the Git practice category lists every Git page and no other lab',()=>{
- assert.match(views.practiceTabs('git'),/#practice\/git" aria-current="page"/);
- const git=views.practice('git');
- assert.match(git,/#lab\/git"/);assert.match(git,/#lab\/git-cli/);assert.match(git,/#lab\/git-read-status/);
- assert.doesNotMatch(git,/#lab\/docker/);assert.doesNotMatch(git,/#lab\/prompt/);assert.doesNotMatch(git,/#lab\/rag/);
- assert.equal((git.match(/#lab\/[a-z0-9-]+/g)||[]).length,23);
+test('Git practice lives in the Git simulator, not in the practice tabs',()=>{
+ assert.doesNotMatch(views.practiceTabs('checks'),/#practice\/git/);
+ assert.equal(labs.some(([id])=>id==='git'||/^git-/.test(id)),false,'the old Git lab pages are gone');
+ assert.deepEqual(practiceForLesson('git-essentials',0),['git/commit'],'the Git reading course opens the matching simulator lesson');
+ for(const route of ['development','requirements','product-decisions'].flatMap(c=>[0,1,2,3,4,5].flatMap(i=>practiceForLesson(c,i))).filter(r=>r.startsWith('git')))
+  assert.ok(gitLessonIds.includes(route.split('/')[1]),route+' must name a simulator lesson');
+ const L=(en,cn)=>cn,T=x=>x['zh-CN'];
+ assert.equal(gitActivity('commit',{L,T}).title,'git commit · 提交快照');
+ assert.equal(gitActivity('',{L,T}).title,'Git 模拟练习');
+ assert.equal(gitActivity('nope',{L,T}),null);
 });
 test('Knowledge practice asks Git questions and links no practice page',()=>{
  assert.match(views.practice('checks'),/#practice\/checks\/topic-git/);
