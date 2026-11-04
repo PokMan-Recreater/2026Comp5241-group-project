@@ -51,7 +51,8 @@ export const nativeChallenges=[...moreNativeChallenges,...Object.entries(solutio
 }))];
 export async function checkNativeChallenge(runner,challenge,code,onProgress=()=>{}){
  const results=[];
- for(const test of challenge.tests){
+ for(const [index,test] of challenge.tests.entries()){
+  onProgress('case',index,challenge.tests.length);
   const result=await runner.run(challenge.language,code,test.stdin,{onProgress});
   const actual=(result.logs||[]).join('\n').replace(/\r\n/g,'\n').trim();
   results.push({pass:!result.error&&actual===test.expected,actual,expected:test.expected,error:result.error});

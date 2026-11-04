@@ -115,3 +115,15 @@ test('same-origin relay authenticates only upstream, gates consent and sanitizes
  assert.equal(JSON.parse(String((await audio)[0])).type,'response.output_audio.delta');assert.ok(!Object.hasOwn(upstreamAudio,'secret'));assert.ok(forwarded.some(e=>e.type==='speech_text_buffer.commit'));
  const closed=once(client,'close');client.send(JSON.stringify({type:'session.update',session:{instructions:'override'}}));await closed;assert.ok(!forwarded.some(e=>e.type==='session.update'));
 });
+
+ test('production authorization denies before upgrade and supports asynchronous checks',async t=>{
+ const server=http.createServer();let permitted=false,checked=0;
+ const relay=attachDoubaoRealtime(server,{env:{DOUBAO_REALTIME_API_KEY:'fixture'},authorize:async()=>{checked++;await Promise.resolve();return permitted;}});
+ server.listen(0,'127.0.0.1');await once(server,'listening');
+ const port=/** @type {import('node:net').AddressInfo} */(server.address()).port;
+ t.after(async()=>{for(const c of relay.clients)c.terminate();relay.close();await new Promise(resolve=>server.close(resolve));});
+ const denied=new WebSocket(`ws://127.0.0.1:${port}/api/realtime`);denied.on('error',()=>{});
+ const [,response]=await once(denied,'unexpected-response');assert.equal(response.statusCode,403);response.resume();denied.terminate();
+ permitted=true;const client=new WebSocket(`ws://127.0.0.1:${port}/api/realtime`);await once(client,'open');
+ const message=once(client,'message');client.send(JSON.stringify({type:'forma.start',consent:false,settings:{}}));assert.equal(JSON.parse(String((await message)[0])).reason,'consent_required');await once(client,'close');assert.equal(checked,2);
+});

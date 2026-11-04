@@ -31,8 +31,13 @@
     "api/admin.js": {
       "maxDuration": 60
     },
-    "api/course-narration.js": {"maxDuration": 120},
+    "api/course-narration.js": {
+      "maxDuration": 120
+    },
     "api/course-ai.js": {
+      "maxDuration": 300
+    },
+    "api/realtime.js": {
       "maxDuration": 300
     }
   },
@@ -59,6 +64,12 @@
     {
       "path": "/api/interview-review-worker",
       "schedule": "0 0 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/realtime-status",
+      "destination": "/api/realtime"
     }
   ]
 }

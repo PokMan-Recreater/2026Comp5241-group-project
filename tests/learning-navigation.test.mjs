@@ -13,12 +13,16 @@ const views=createLearningViews({courses:()=>[],course:()=>null},{
 });
 test('practice keeps three categories and drops the labs and written tabs',()=>{
  const nav=views.practiceTabs('playground');assert.equal((nav.match(/<a /g)||[]).length,3);
- assert.doesNotMatch(nav,/#practice\/git/);assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
+ assert.match(nav,/#practice\/git/);assert.doesNotMatch(nav,/#practice\/labs/);assert.doesNotMatch(nav,/#practice\/written/);
  assert.match(nav,/#practice\/coding" aria-current="page"/);assert.doesNotMatch(nav,/#practice\/playground/);
  assert.match(views.practiceSections('playground'),/#practice\/playground" aria-current="page"/);
 });
-test('Git practice lives in the Git simulator, not in the practice tabs',()=>{
- assert.doesNotMatch(views.practiceTabs('checks'),/#practice\/git/);
+test('Git simulator is the third practice category and highlights its active tab',()=>{
+ const nav=views.practiceTabs('git');
+ assert.equal((nav.match(/<a /g)||[]).length,3);
+ assert.match(nav,/#practice\/git" aria-current="page"/);
+ assert.match(nav,/#practice\/checks/);
+ assert.match(nav,/#practice\/coding/);
  assert.equal(labs.some(([id])=>id==='git'||/^git-/.test(id)),false,'the old Git lab pages are gone');
  assert.deepEqual(practiceForLesson('git-essentials',0),['git/commit'],'the Git reading course opens the matching simulator lesson');
  for(const route of ['development','requirements','product-decisions'].flatMap(c=>[0,1,2,3,4,5].flatMap(i=>practiceForLesson(c,i))).filter(r=>r.startsWith('git')))

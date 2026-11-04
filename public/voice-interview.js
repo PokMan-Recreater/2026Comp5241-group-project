@@ -27,8 +27,7 @@ export function createVoiceInterview({locale,onSave,getHistory=()=>[]}){
   const configured=state.config?.configured,hasQuestion=!!state.messages.length,last=state.messages.at(-1),canRecord=hasQuestion&&state.phase==='waiting'&&!state.review;
   const browserRecognition=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
   const speechReady=state.config?.speechConfigured?!!(navigator.mediaDevices?.getUserMedia&&window.MediaRecorder):browserRecognition;
-  root.innerHTML=`<a class="activity-back" href="#practice/interviews">← ${L('Interview practice','面试练习','面試練習')}</a>
-   <div class="vi-statusbar"><span class="vi-status" role="status"><i class="${['speaking','recording'].includes(state.phase)?'live':''}"></i>${phaseText()}</span><span>${hasQuestion?`${Math.min(answers()+1,state.settings.rounds)} / ${state.settings.rounds} ${L('rounds','轮','輪')}`:L('Voice conversation · camera optional','语音对话 · 摄像头可选','語音對話 · 攝影機選用')}</span></div>
+  root.innerHTML=`   <div class="vi-statusbar"><span class="vi-status" role="status"><i class="${['speaking','recording'].includes(state.phase)?'live':''}"></i>${phaseText()}</span><span>${hasQuestion?`${Math.min(answers()+1,state.settings.rounds)} / ${state.settings.rounds} ${L('rounds','轮','輪')}`:L('Voice conversation · camera optional','语音对话 · 摄像头可选','語音對話 · 攝影機選用')}</span></div>
    ${!state.config?`<p class="vi-notice">${L('Checking AI connection…','正在检查 AI 连接…','正在檢查 AI 連線…')}</p>`:!configured?`<p class="vi-notice">${errorText('ai_not_configured')} ${button('check',L('Check again','重新检查','重新檢查'))}</p>`:''}
    <div class="vi-stage"><section class="vi-person vi-interviewer ${state.phase==='speaking'?'is-speaking':''}"><span class="vi-person-tag">${L('AI interviewer','AI 面试官','AI 面試官')}</span><div class="vi-avatar" aria-hidden="true">F<span>·</span></div><div class="vi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><h2>${L('Forma Interview','Forma 面试室','Forma 面試室')}</h2><p>${labelRole()}</p></section><section class="vi-person vi-self"><video id="vi-camera" autoplay playsinline muted aria-label="${L('Your camera preview','你的摄像头预览','你的攝影機預覽')}"></video><div class="vi-camera-placeholder" ${videoStream?'hidden':''}><span aria-hidden="true">◉</span><p>${L('Your camera is off','摄像头未开启','攝影機未開啟')}</p><small>${L('Video stays on this device','画面只在本机显示','畫面只在本機顯示')}</small></div><span class="vi-person-tag">${L('You','你')}</span><button type="button" class="vi-camera-button" data-vi="camera">${videoStream?L('Turn camera off','关闭摄像头','關閉攝影機'):L('Enable camera','开启摄像头','開啟攝影機')}</button></section></div>
    ${state.error?`<p class="vi-error" role="alert">${esc(state.error)}</p>`:''}
@@ -120,7 +119,10 @@ export function createVoiceInterview({locale,onSave,getHistory=()=>[]}){
  function change(event){input(event);if(event.target.id==='vi-consent'){state.consent=event.target.checked;const start=root.querySelector('[data-vi="start"]');if(start)start.disabled=!state.consent||!state.config?.configured||busy();}}
  function cleanup(){realtime.cleanup();disposed=true;epoch++;controller?.abort();stopVoice();releaseAudio();releaseCamera();if(busy()||state.phase==='recording')state.phase=active()?'waiting':'setup';if(root){root.removeEventListener('click',click);root.removeEventListener('input',input);root.removeEventListener('change',change);}root=null;}
  async function mount(){root=document.querySelector('#voice-interview');if(!root)return;disposed=false;const token=epoch;
-  try{const response=await fetch('/api/realtime-status',{signal:AbortSignal.timeout(3000)});if(response.ok){const options=await response.json();if(disposed||epoch!==token)return;if(options.available){realtime.mount(root,{...options,locale:locale()});return;}}}catch{/* Static hosting retains the existing text interview mode. */}
-  if(disposed||epoch!==token)return;state.settings.language=state.messages.length?state.settings.language:locale();root.addEventListener('click',click);root.addEventListener('input',input);root.addEventListener('change',change);draw();check();}
+  let options={available:false,configured:false,maxMinutes:10};
+  try{const response=await fetch('/api/realtime-status',{signal:AbortSignal.timeout(3000)});if(response.ok)options=await response.json();}catch{/* Keep the prepare page visible when the voice service is unavailable. */}
+  if(disposed||epoch!==token)return;
+  realtime.mount(root,{...options,configured:options.available===true&&options.configured===true,locale:locale()});}
+
  return {page,mount,cleanup};
 }

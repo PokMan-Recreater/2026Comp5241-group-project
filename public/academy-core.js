@@ -9,7 +9,7 @@ import {topicKeywords,hasTopicKeyword} from './topic-matching.js';
 
 export const lessonKey=(c,l)=>`${c}:${l}`;
 export function ensureAcademy(s){
- const defaults={version:1,plans:[],activePlan:null,bookmarks:[],challenges:{},interviews:[],quizzes:{},tutorials:[],labResults:{},activities:[],playground:{language:'javascript',code:null},narration:{rate:1,voice:''}};
+ const defaults={version:1,checkins:[],plans:[],activePlan:null,bookmarks:[],challenges:{},interviews:[],quizzes:{},tutorials:[],labResults:{},activities:[],playground:{language:'javascript',code:null},narration:{rate:1,voice:''}};
  s.academy??={};
  for(const [key,value] of Object.entries(defaults))if(s.academy[key]===undefined)s.academy[key]=value;
  s.profile??={};
@@ -118,7 +118,7 @@ export function learningStats(s,now=new Date()){
  const interviews=new Set(a.interviews.map(x=>x.scenarioId)).size;
  const xp=completed*40+challenges*60+quizzes*15+labs*25+tutorials*15+interviews*50;
  const localDay=date=>{const d=new Date(date);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
- const days=new Set([...a.activities.map(x=>localDay(x.at)),...(s.events||[]).filter(x=>['lesson','checkpoint','code','game'].includes(x.type)).map(x=>localDay(x.time))]);
+ const days=new Set([...(Array.isArray(a.checkins)?a.checkins:[]),...a.activities.map(x=>localDay(x.at)),...(s.events||[]).filter(x=>['lesson','checkpoint','code','game'].includes(x.type)).map(x=>localDay(x.time))]);
  let d=new Date(now),streak=0;if(!days.has(localDay(d)))d.setDate(d.getDate()-1);while(days.has(localDay(d))){streak++;d.setDate(d.getDate()-1);}
  return {completed,challenges,quizzes,labs,tutorials,interviews,xp,level:Math.floor(xp/250)+1,levelPercent:Math.round(xp%250/2.5),streak,badges:[completed+tutorials>0,completed+tutorials>=5,quizzes>0,challenges>0,streak>=3,interviews>0,labs>=3]};
 }
