@@ -13,14 +13,14 @@ Register a username and password, or use an existing account. Public registratio
 | Learning profile | Set your development experience, learning goal, and content language. |
 | Courses | Choose an engineering, AI-agent, or product-skills course. Play the narrated illustrations, change speed, read the document view, or annotate a step. |
 | Study plan | Enter a topic, difficulty, weekly time, and optional requirements. Preview a matched plan or ask AI to plan. Save it, then open its lessons or generate personal courseware. |
-| My courses | Create a personal course or adapt an official course. Edit, generate, preview, and study its lessons. Personal courses save to your account. |
+| Courses → My custom courses | Create a personal course or adapt an official course. Edit, generate, preview, and study its lessons. Personal courses save to your account. |
 | Assigned courses | Open a teacher-assigned course, answer its questions, and mark lessons complete. This activity is available to that teacher. |
 | Practice → Knowledge practice | Choose a topic, answer questions, and review feedback. |
 | Practice → Coding practice | Try coding challenges or open free coding. JavaScript and HTML run locally; C/C++/Python use browser runtimes by default. Select remote backup explicitly if needed. |
 | Practice → Git simulator | Complete the command lessons and team project. Use the terminal, file editor, graph, hints, and simulated GitHub. The full-screen option opens the same simulator in another tab. |
 | Coding game | Complete Code Quest's five chapters. The game supports a bounded teaching subset of Python, C++, and Java, with hints and execution traces. |
 | AI mock interview | Select a role, difficulty, language, and interviewer style, give consent, and start. Allow microphone access. Camera preview is optional. End the session to view feedback and save/download the transcript. |
-| My records | Review bookmarks, learning history, achievements, check-ins, and interview records. |
+| My learning / My records | Check in on My learning; review bookmarks, learning history, achievements, and interview records in My records. |
 
 Realtime interviews currently allow **4 minutes online** and **10 minutes locally**. Moving the interview tab to the background ends the call. Refreshing the room requires starting again from preparation. If saving fails, download the transcript or retry before leaving.
 

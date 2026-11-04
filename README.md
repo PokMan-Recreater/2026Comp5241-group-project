@@ -26,7 +26,7 @@ An AI-assisted learning platform for software engineering, AI coding agents, and
 2. Set your background and goal in **Learning profile**.
 3. Open **Courses** to learn, or **Study plan** to choose a topic and generate a personal path.
 4. Use **Practice**, **AI mock interview**, and the coding game to apply what you learn.
-5. Open **My records** for bookmarks, progress, achievements, and interview history.
+5. Use **My learning** for daily check-ins and **My records** for bookmarks, progress, achievements, and interview history.
 
 ### Instructors
 
