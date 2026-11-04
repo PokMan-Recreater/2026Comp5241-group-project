@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 
 const env = Object.fromEntries(
-  readFileSync(process.argv[2] || '/Users/crr/Desktop/软件工程/2026Comp5241-group-project-forma/.env.local', 'utf8')
+  readFileSync(process.argv[2] || new URL('../../.env.local', import.meta.url), 'utf8')
     .split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'))
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).replace(/^["']|["']$/g, '')]; })
 );

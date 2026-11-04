@@ -66,13 +66,14 @@ export function buildTemplateCourse(topic,id,profile={}){
  return {id,title,description:tri('A source-led study project with checks and an explanation rehearsal.','以资料为依据，包含检查与讲解练习的学习项目。','以資料為依據，包含檢查與講解練習的學習專案。'),topic:'foundations',theme:'lavender',duration:lessons.reduce((n,l)=>n+l.minutes,0),status:'published',personal:true,origin:'template',level,audience:profile.audience&&profile.audience!=='all'?[profile.audience]:['cs','non-cs'],lessons};
 }
 
-/** @param {{courses: any[], topic: string, profile?: LearningProfile, id: string, courseId: string}} options */
-export function buildPlan({courses,topic,profile={},id,courseId}){
+/** @param {{courses: any[], topic: string, profile?: LearningProfile, id: string, courseId: string, aiCourse?: any}} options */
+export function buildPlan({courses,topic,profile={},id,courseId,aiCourse=null}){
  profile={...profile,audience:experienceFraming(profile)};
  /** @type {[string, RegExp][]} */
  const languageRules=[['cpp',/c\+\+|\bcpp\b/i],['javascript',/javascript|\bjs\b/i],['python',/python|派森/i],['html',/html|css/i],['c',/\bc\b(?!\s*\+)|c语言|c語言/i]];
- const languageMatches=languageRules.filter(([,pattern])=>pattern.test(topic)).filter(([language])=>!(language==='python'&&/script|file|csv|automation|文件|檔案/i.test(topic)));
- let selected=matchCourses(courses,topic,profile.interests||[]),course=null;
+ // A learner-designed path already covers the topic; do not bolt on unrelated language stages.
+ const languageMatches=aiCourse?[]:languageRules.filter(([,pattern])=>pattern.test(topic)).filter(([language])=>!(language==='python'&&/script|file|csv|automation|文件|檔案/i.test(topic)));
+ let selected=aiCourse?[aiCourse]:matchCourses(courses,topic,profile.interests||[]),course=aiCourse||null;
  // A language course can coexist with another requested subject; do not let it swallow that subject.
  if(languageMatches.some(([x])=>x==='python'))selected=selected.filter(c=>c.id!=='python-first-steps');
  const beginner=(profile.skillLevel||'beginner')==='beginner';
@@ -81,7 +82,7 @@ export function buildPlan({courses,topic,profile={},id,courseId}){
  for(const [language] of languageMatches){const name={c:'C',cpp:'C++',python:'Python',javascript:'JavaScript',html:'HTML/CSS'}[language],list=referenceTopics.filter(t=>t.language===language),included=beginner?list.slice(0,3):list;addStage('language-'+language,tri(`${name} foundations`,`${name} 基础`,`${name} 基礎`),included.map((t,index)=>({kind:'tutorial',tutorialId:t.id,courseId:'programming-'+language,lessonId:t.id,index,title:t.title,courseTitle:tri(`${name} foundations`,`${name} 基础`,`${name} 基礎`),minutes:8,rationale:tri('Read an example, change it and check your prediction.','先读例子，再修改并检查预测。','先讀範例，再修改並檢查預測。')})));}
  if(!selected.length&&!languageMatches.length){course=buildTemplateCourse(topic,courseId,profile);selected=[course];}
  const practiceRoutes=[];
- for(const c of selected){const included=c.collection==='tools'||c.origin==='template'||!beginner||/\btdd\b/i.test(topic)?c.lessons:c.lessons.slice(0,2);addStage('course-'+c.id,c.title,included.map(l=>({courseId:c.id,lessonId:l.id,index:c.lessons.indexOf(l),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Work through this case before the connected practice.','先学这一案例，再完成关联练习。','先學這一案例，再完成關聯練習。')})));
+ for(const c of selected){const included=c.collection==='tools'||c.origin==='template'||c.origin==='ai'||!beginner||/\btdd\b/i.test(topic)?c.lessons:c.lessons.slice(0,2);addStage('course-'+c.id,c.title,included.map(l=>({courseId:c.id,lessonId:l.id,index:c.lessons.indexOf(l),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Work through this case before the connected practice.','先学这一案例，再完成关联练习。','先學這一案例，再完成關聯練習。')})));
   for(const l of included){for(const route of practiceForLesson(c.id,c.lessons.indexOf(l)))practiceRoutes.push({route,from:c.id});}
  }
  const toPractice=({route,from=undefined})=>{const [kind,pid,index]=route.split('/');if(kind==='learn'){const c=courses.find(x=>x.id===pid),l=c?.lessons[Number(index)];return l&&{courseId:c.id,lessonId:l.id,index:Number(index),title:l.title,courseTitle:c.title,minutes:l.minutes||8,rationale:tri('Use this connected case to apply the idea.','用关联案例应用所学。','用關聯案例應用所學。')};}if(kind==='tutorial'){const t=referenceTopics.find(x=>x.id===pid);return t&&{kind:'tutorial',tutorialId:t.id,lessonId:t.id,title:t.title,minutes:8,courseTitle:t.title,rationale:tri('Apply the idea in a programming exercise.','通过编程练习应用概念。','透過程式練習應用概念。')};}const title=kind==='practice'&&pid==='checks'?tri('Knowledge check','知识检查','知識檢查'):kind==='lab'?labs.find(x=>x[0]===pid)?.[1]:kind==='challenge'?challenges.find(x=>x.id===pid)?.title:kind==='interview'?interviews.find(x=>x.id===pid)?.title:kind==='game'?tri('Launch challenge','上线挑战','上線挑戰'):kind==='playground'?tri('Trace a small program','跟踪一个小程序','追蹤一個小程式'):null;return title&&{kind:'practice',route,from,title,courseTitle:tri('Practice','实践','實作'),minutes:15,rationale:tri('Use observable results to check your understanding.','用可观察的结果检验理解。','用可觀察的結果檢驗理解。')};};
@@ -92,8 +93,10 @@ export function buildPlan({courses,topic,profile={},id,courseId}){
  const schedule=scheduleLessons(stages.flatMap(x=>x.steps),profile.weeklyMinutes);
  const modules=stages.map(({id,title})=>({id,title,steps:schedule.steps.filter(x=>x.stageId===id)}));
  const titles=lang=>[...languageMatches.map(([x])=>({cpp:'C++',javascript:'JavaScript',python:'Python',html:'HTML/CSS',c:'C'}[x])),...selected.map(c=>local(c.title,lang))];
- const rationale=tri(`Your topic matched ${titles('en').join(', ')}. Study the examples, try the connected exercises, then explain what you checked.`, `根据你的主题安排了 ${titles('zh-CN').join('、')}。先学案例，再做关联练习，最后说明验证结果。`,`依你的主題安排了 ${titles('zh-TW').join('、')}。先學案例，再做關聯練習，最後說明驗證結果。`);
- return {course,plan:{id,topic,title:tri(`${topic} · learning plan`,`${topic} · 学习计划`,`${topic} · 學習計畫`),...schedule,modules,rationale,matchedCourses:selected.map(c=>c.id),level:profile.skillLevel||'beginner',source:course?'template':languageMatches.length&&!selected.length?'programming':'catalog',createdAt:new Date().toISOString()}};
+ const rationale=aiCourse
+  ?tri(`AI proposed ${aiCourse.lessons.length} lessons for "${topic}". Review the sequence before starting; this is a planning draft, not verified source material.`,`AI 为「${topic}」规划了 ${aiCourse.lessons.length} 节课。开始前请检查顺序；这是学习规划草稿，不是已核实的资料。`,`AI 為「${topic}」規劃了 ${aiCourse.lessons.length} 節課。開始前請檢查順序；這是學習規劃草稿，不是已核實的資料。`)
+  :tri(`Your topic matched ${titles('en').join(', ')}. Study the examples, try the connected exercises, then explain what you checked.`, `根据你的主题安排了 ${titles('zh-CN').join('、')}。先学案例，再做关联练习，最后说明验证结果。`,`依你的主題安排了 ${titles('zh-TW').join('、')}。先學案例，再做關聯練習，最後說明驗證結果。`);
+ return {course,plan:{id,topic,title:tri(`${topic} · learning plan`,`${topic} · 学习计划`,`${topic} · 學習計畫`),...schedule,modules,rationale,matchedCourses:selected.map(c=>c.id),level:profile.skillLevel||'beginner',source:aiCourse?'ai':course?'template':languageMatches.length&&!selected.length?'programming':'catalog',createdAt:new Date().toISOString()}};
 }
 
 export function planStepDone(step,state){if(step.kind==='tutorial')return !!state.academy?.tutorials?.includes(step.tutorialId);if(step.kind==='practice'){const [kind,id,key]=step.route.split('/');return kind==='practice'&&id==='checks'?!!state.academy?.quizzes?.[key]?.correct:kind==='lab'?!!state.academy?.labResults?.[id]:kind==='challenge'?!!state.academy?.challenges?.[id]?.passed:kind==='interview'?state.academy?.interviews?.some(x=>x.scenarioId===id):kind==='game'?!!state.game?.result:kind==='playground'?!!state.academy?.pageExercises?.[id]?.completed:false;}return !!state.progress?.[step.courseId]?.includes(step.lessonId);}

@@ -152,5 +152,18 @@ html[lang="zh-TW"],.lesson-paper[lang="zh-TW"]{--font:'Plus Jakarta Sans','Sourc
  .main:has(>.content>.page-heading)>.content{padding-top:34px}
  .content>.page-heading{min-height:44px}
  .content>.page-heading h1{padding-right:320px;min-height:44px}
+ .main:has(>.content>#teaching-workspace){position:relative}
+ .main:has(>.content>#teaching-workspace)>.topbar{position:absolute;top:24px;left:0;right:0;max-width:1320px;margin-inline:auto;height:64px;justify-content:flex-end;background:transparent;pointer-events:none}
+ .main:has(>.content>#teaching-workspace)>.topbar .top-tools{pointer-events:auto}
+ .main:has(>.content>#teaching-workspace)>.content{padding-top:34px}
+ /* The shared Courses section tabs start every page at the same top offset. */
+ .main:has(>.content>.learning-tabs){position:relative}
+ .main:has(>.content>.learning-tabs)>.topbar{position:absolute;top:24px;left:0;right:0;max-width:1320px;margin-inline:auto;height:64px;justify-content:flex-end;background:transparent;pointer-events:none}
+ .main:has(>.content>.learning-tabs)>.topbar .top-tools{pointer-events:auto}
+ .main:has(>.content>.learning-tabs)>.content{padding-top:34px}
+ #teaching-workspace>.page-heading{min-height:44px}
+ #teaching-workspace>.page-heading h1{padding-right:320px;min-height:44px}
 }
-@media(min-width:701px) and (max-width:1000px){.content>.page-heading h1{font-size:28px;padding-right:260px}}
+@media(min-width:701px) and (max-width:1000px){.content>.page-heading h1,#teaching-workspace>.page-heading h1{font-size:28px;padding-right:260px}}
+
+.ai-task-center{position:relative;z-index:1100;font-size:14px;flex:none}.ai-task-center>.btn{font-size:12px;padding:9px 14px}.ai-task-center.is-floating{position:fixed;top:18px;right:18px}.ai-task-panel{position:absolute;top:calc(100% + 10px);right:0;width:min(460px,calc(100vw - 36px));max-height:75dvh;overflow:auto;background:#fffdf7;color:#292535;border:1px solid #b9afc7;border-radius:16px;padding:20px;box-shadow:0 12px 45px #29253533}.sidebar-bottom .ai-task-center{margin:0 0 12px}.sidebar-bottom .ai-task-center>.btn{width:100%}.sidebar-bottom .ai-task-panel{top:auto;bottom:calc(100% + 10px);left:0;right:auto}.ai-task-panel h2{font-size:21px}.ai-task-panel p{overflow-wrap:anywhere}.ai-task-row{padding:16px 0;border-bottom:1px solid #e4ddf0}.ai-task-row strong{overflow-wrap:anywhere}.ai-task-row .row{flex-wrap:wrap}.ai-task-panel section{padding:10px 0;border-bottom:1px solid #eee7f7}

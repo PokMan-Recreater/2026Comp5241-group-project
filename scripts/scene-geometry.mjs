@@ -29,7 +29,7 @@ for(const scene of SCENE_IDS){
  }
 }
 for(const [set,items] of Object.entries(labels)){
- cases.push({name:'legacy/'+set,size:[720,210],svg:sceneHTML({title:'DApps vs Traditional Applications',scene:'flow',sceneItems:items})});
+ cases.push({name:'lesson-preview/'+set,size:[360,240],svg:sceneHTML({title:'DApps vs Traditional Applications',scene:'flow',sceneItems:items})});
 }
 const page=`<!doctype html><meta charset="utf-8"><body style="margin:0"><pre id="result"></pre><script>
 const cases=${JSON.stringify(cases)};

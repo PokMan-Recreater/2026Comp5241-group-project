@@ -34,9 +34,9 @@ function affectedArt(step,p,lang){
   ${face(610,104,'#e9c58b')}${speech(420,180,214,'换课当天才知道','I learn on the day it changes')}
   ${doc(300,240,'#e7f2e7',80,74)}${text(340,338,'走访与数据','Interviews and data',10,'#34734b','middle')}
   ${group(.36,path('M170 150Q230 230 292 262','#7967ac',true))}
-  ${group(.56,path('M560 216Q470 250 392 262','#7967ac',true))}
-  ${group(.74,lens(200,270)+text(226,275,'先确认，再设计','Confirm before designing',11,'#7967ac'))}
-  ${group(.86,ok(520,262)+text(474,310,'想象被证据替换','Imagination replaced by evidence',11,'#34734b'))}
+  ${group(.56,path('M584 248Q484 280 392 262','#7967ac',true))}
+  ${group(.74,lens(150,256)+text(150,306,'先确认，再设计','Confirm before designing',10,'#7967ac','middle'))}
+  ${group(.86,ok(520,298)+text(520,328,'想象被证据替换','Imagination replaced by evidence',10,'#34734b','middle'))}
  `;
  return frame(body,['谁在使用，谁在受影响','Who uses it, who is affected'],lang);
 }
@@ -57,8 +57,8 @@ function constraintsArt(step,p,lang){
   ${speech(58,180,190,'提醒别太多','Not too many reminders')}
   ${path('M254 204H320')}
   ${speech(368,180,220,'每天最多 1 条','At most one per day')}
-  ${group(.5,`<path d="M214 148l48 20" fill="none" stroke="#d4a735" stroke-width="2.5" stroke-linecap="round"/>`+text(238,168,'换成数字','Turn it into a number',10,'#8a6a25','middle'))}
-  ${group(.78,ok(500,282)+text(524,287,'可测量，才能验收','Measurable, therefore acceptable',11,'#34734b'))}
+  ${group(.5,`<path d="M194 172h88" fill="none" stroke="#d4a735" stroke-width="2.5" stroke-linecap="round"/>`+text(238,160,'换成数字','Turn it into a number',10,'#8a6a25','middle'))}
+  ${group(.78,ok(450,282)+text(474,287,'可测量，才能验收','Measurable and testable',11,'#34734b'))}
   ${text(360,330,'形容词变阈值，规则才能写进测试','Adjectives become thresholds that tests can check',13,'#665e72','middle')}
  `;
  if(step===2)body=`
@@ -115,7 +115,7 @@ function compareArt(step,p,lang){
   ${text(120,214,'风险：提醒可能被忽略','Risk: reminders may be ignored',11,'#24553a')}
   ${group(.4,face(520,110,'#bad7c2')+text(520,186,'负责人签字','Owner signs',10,'#665e72','middle'))}
   ${group(.6,clock(520,236)+text(520,282,'2026 · 11','2026 · 11',10,'#665e72','middle'))}
-  ${group(.8,speech(360,278,300,'下次改规则，先看这张记录','Before changing rules, read this record'))}
+  ${group(.8,speech(80,270,340,'下次改规则，先看这张记录','Before changing rules, read this record'))}
   ${text(360,344,'记录让决定可追溯，也让复盘有依据','Records make decisions traceable and reviews possible',11,'#665e72','middle')}
  `;
  return frame(body,['问题陈述与方案比较','Problem statements and comparing solutions'],lang);

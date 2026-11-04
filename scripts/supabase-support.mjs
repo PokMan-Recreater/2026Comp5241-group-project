@@ -7,11 +7,17 @@ export function supabaseConfig(env=process.env){
  const key=env.SUPABASE_PUBLISHABLE_KEY,secret=env.SUPABASE_SECRET_KEY;
  return key&&secret?{url:url.origin,key,secret}:null;
 }
-/** @param {any} config @param {string} path @param {{method?:string,body?:any,token?:string,admin?:boolean,headers?:Record<string,string>}} [options] */
-export async function cloudRequest(config,path,{method='GET',body,token,admin=false,headers={}}={}){
+/** @param {any} config @param {string} path @param {{method?:string,body?:any,token?:string,admin?:boolean,headers?:Record<string,string>,raw?:boolean}} [options] */
+export async function cloudRequest(config,path,{method='GET',body,token,admin=false,headers={},raw=false}={}){
  const response=await fetch(config.url+path,{method,headers:{apikey:admin?config.secret:config.key,...(token?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...headers},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
- if(!response.ok)throw new CloudError(response.status===401||response.status===403?'login_required':response.status===429?'rate_limited':'database_unavailable',response.status===401||response.status===403?401:response.status===429?429:502);
- if(response.status===204)return null;const text=await response.text();return text?JSON.parse(text):null;
+ if(!response.ok){
+  console.error('[forma] upstream',method,response.status,path.slice(0,180),(await response.text().catch(()=>'' )).slice(0,220));
+  throw new CloudError(response.status===401||response.status===403?'login_required':response.status===429?'rate_limited':'database_unavailable',response.status===401||response.status===403?401:response.status===429?429:502);
+ }
+ if(response.status===204)return raw?{data:null,headers:Object.fromEntries(response.headers)}:null;const text=await response.text(),data=text?JSON.parse(text):null;
+ // raw exposes headers for PostgREST's Prefer: count=exact content-range while
+ // every existing caller keeps receiving the parsed body only.
+ return raw?{data,headers:Object.fromEntries(response.headers)}:data;
 }
 const cookies=req=>Object.fromEntries(String(req.headers.cookie||'').split(';').map(x=>{const i=x.indexOf('=');return [x.slice(0,i).trim(),x.slice(i+1)];}));
 export function setAuthCookies(req,res,session){
@@ -21,13 +27,23 @@ export function setAuthCookies(req,res,session){
 }
 export async function authenticatedUser(req,res,config){
  const jar=cookies(req);let token;try{token=decodeURIComponent(jar.forma_access||'');}catch{throw new CloudError('login_required',401);}
- if(token){try{return {user:await cloudRequest(config,'/auth/v1/user',{token}),token};}catch(error){if(error.status!==401)throw error;}}
+ if(token){try{return {user:await cloudRequest(config,'/auth/v1/user',{token}),token};}catch(error){if(![400,401,403].includes(error.status))throw error;}}
  let refresh;try{refresh=decodeURIComponent(jar.forma_refresh||'');}catch{throw new CloudError('login_required',401);}
  if(!refresh)throw new CloudError('login_required',401);
- const session=await cloudRequest(config,'/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:refresh}});
+ let session;
+ try{session=await cloudRequest(config,'/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:refresh}});}
+ // A rejected refresh token means the browser session is no longer usable;
+ // only provider rate limiting deserves its own code, everything else is a login.
+ catch(error){if(error instanceof CloudError&&error.message!=='rate_limited')throw new CloudError('login_required',401);throw error;}
  setAuthCookies(req,res,session);return {user:session.user,token:session.access_token};
 }
-export function cloudFailure(res,error){return res.status(error.status||502).json({error:error instanceof CloudError?error.message:'database_unavailable'});}
+export function cloudFailure(res,error){
+ const code=error instanceof CloudError?error.message:'database_unavailable',status=error.status||502;
+ // Unexpected errors would otherwise surface as an opaque database error.
+ if(!(error instanceof CloudError))console.error('[forma] unhandled request error:',error?.name,error?.message,String(error?.stack||'').split('\n').slice(0,4).join(' | '));
+ else console.error('[forma] request failed:',code,status);
+ return res.status(status).json({error:code});
+}
 export const validUUID=value=>typeof value==='string'&&/^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(value);
 export function validateSessionPayload(body){
  const {settings={},messages=[],clientId,startedAt,endedAt,reason='',uiLocale='zh-CN'}=body||{};

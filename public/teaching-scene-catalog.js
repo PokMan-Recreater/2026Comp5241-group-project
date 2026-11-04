@@ -15,7 +15,19 @@ export const sceneCatalog=[
  {id:'phone',zh:'手机操作',tw:'手機操作',en:'Mobile app',description:'在手机上完成的步骤'},
  {id:'document',zh:'文档流转',tw:'文檔流轉',en:'Documents',description:'合同、报告与文件传递'},
  {id:'database',zh:'数据存取',tw:'資料存取',en:'Data storage',description:'客户端访问服务器与数据库'},
- {id:'robot',zh:'自动化助手',tw:'自動化助手',en:'Automation',description:'助手自动完成的任务'}
+ {id:'robot',zh:'自动化助手',tw:'自動化助手',en:'Automation',description:'助手自动完成的任务'},
+ {id:'venn',zh:'交集关系',tw:'交集關係',en:'Overlap',description:'共同点与共享边界'},
+ {id:'quadrant',zh:'四象限',tw:'四象限',en:'Quadrant',description:'按两个维度分类定位'},
+ {id:'stairs',zh:'成长阶梯',tw:'成長階梯',en:'Growth steps',description:'逐级提升的阶段'},
+ {id:'funnel',zh:'筛选漏斗',tw:'篩選漏斗',en:'Funnel',description:'逐层筛选与转化'},
+ {id:'pyramid',zh:'层级金字塔',tw:'層級金字塔',en:'Pyramid',description:'从基础到核心的层级'},
+ {id:'tree',zh:'分类树',tw:'分類樹',en:'Tree',description:'从上到下的分类归属'},
+ {id:'target',zh:'目标靶心',tw:'目標靶心',en:'Target',description:'聚焦核心目标'},
+ {id:'shield',zh:'安全防护',tw:'安全防護',en:'Protection',description:'风险与防护措施'},
+ {id:'chart',zh:'数据图表',tw:'數據圖表',en:'Chart',description:'数量、指标与变化'},
+ {id:'puzzle',zh:'部件拼合',tw:'部件拼合',en:'Components',description:'多个部件组成整体'},
+ {id:'iceberg',zh:'冰山模型',tw:'冰山模型',en:'Iceberg',description:'表面现象与深层原因'},
+ {id:'bridge',zh:'连接过渡',tw:'連接過渡',en:'Bridge',description:'两个阶段或系统之间的过渡'}
 ];
 export const sceneIds=sceneCatalog.map(s=>s.id);
 export function selectScene(lesson){
@@ -29,6 +41,18 @@ export function selectScene(lesson){
  if(/对话|對話|沟通|溝通|交流|讨论|討論|conversation|dialogue|interview/.test(text))return 'conversation';
  if(/取舍|取捨|权衡|權衡|trade.off|balance|成本.*质量|cost.*quality/.test(text))return 'balance';
  if(/分层|分層|架构|架構|architecture|layer|界面.*服务.*存储/.test(text))return 'layers';
+ if(/交集|共同点|共同點|重叠|重疊|共有|overlap|intersection|shared/.test(text))return 'venn';
+ if(/象限|矩阵|矩陣|优先级|優先級|quadrant|matrix|impact.*effort/.test(text))return 'quadrant';
+ if(/阶梯|階梯|进阶|進階|成熟|成长|成長|maturity|progression/.test(text))return 'stairs';
+ if(/漏斗|筛选|篩選|转化|轉化|funnel|conversion/.test(text))return 'funnel';
+ if(/金字塔|层级|層級|从基础到|從基礎到|pyramid|hierarchy/.test(text))return 'pyramid';
+ if(/分类|分類|目录|目錄|树状|樹狀|taxonomy|category|categor/.test(text))return 'tree';
+ if(/冰山|iceberg|隐藏|隱藏|深层原因|深層原因|underlying/.test(text))return 'iceberg';
+ if(/桥梁|橋樑|过渡|過渡|连接两|連接兩|bridge|transition/.test(text))return 'bridge';
+ if(/目标|目標|靶心|聚焦|focus|goal|objective/.test(text))return 'target';
+ if(/安全|风险|風險|防护|防護|威胁|威脅|security|threat|protect/.test(text))return 'shield';
+ if(/指标|指標|数量|數量|统计|統計|数据量|數據量|chart|metric|quantity/.test(text))return 'chart';
+ if(/组件|組件|部件|拼合|组合|組合|component|puzzle|assemble/.test(text))return 'puzzle';
  if(/循环|循環|迭代|iteration|feedback loop|sprint|反馈|回饋/.test(text))return 'cycle';
  if(/条件|條件|分支|如果|decision|branch|if\b/.test(text))return 'decision';
  if(/对比|比較|比较|對比|versus|\bvs\b|compare|comparison/.test(text))return 'compare';

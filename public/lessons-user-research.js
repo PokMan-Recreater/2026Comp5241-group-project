@@ -104,8 +104,8 @@ function observeArt(step,p,lang){
   ${k.clock(478,136)}${k.text(502,141,'每天 9:00 与 15:00','9:00 and 15:00 daily',11,'#34734b')}
   ${k.text(446,184,'真实需求可能是安心','The real need may be reassurance',10,'#5c7a63')}
   ${k.text(446,212,'去问，不要假设','Ask rather than assume',10,'#5c7a63')}
-  ${k.text(360,282,'行为往往比说法更诚实','Behaviour is often more honest than words',12,'#665e72','middle')}
-  ${k.group(.78,k.chip(230,280,260,'把差异写进发现','Write the gap into findings','#fff4d4'))}
+  ${k.text(360,266,'行为往往比说法更诚实','Behaviour is often more honest than words',12,'#665e72','middle')}
+  ${k.group(.78,k.chip(230,286,260,'把差异写进发现','Write the gap into findings','#fff4d4'))}
   ${k.text(360,344,'不一致的地方最值得研究','Divergence is where research pays off',10,'#665e72','middle')}
  `;
  return frame(body,['观察行为，而不是意见','Observe behaviour, not opinions'],lang);
@@ -248,8 +248,8 @@ function dataArt(step,p,lang){
   ${k.group(.44,k.ok(446,130)+k.text(470,135,'考试周时间少','Less time in exam week',11,'#34734b'))}
   ${k.group(.6,k.ok(446,166)+k.text(470,171,'网络质量下降','Network quality fell',11,'#34734b'))}
   ${k.text(446,206,'多个因素一起看','Look at factors together',10,'#5c7a63')}
-  ${k.text(360,284,'脱离情境的数字会误导','Numbers without context mislead',12,'#665e72','middle')}
-  ${k.group(.82,k.chip(230,280,260,'把时间线与事件对齐','Align timeline with events','#fff4d4'))}
+  ${k.text(360,266,'脱离情境的数字会误导','Numbers without context mislead',12,'#665e72','middle')}
+  ${k.group(.82,k.chip(230,286,260,'把时间线与事件对齐','Align timeline with events','#fff4d4'))}
   ${k.text(360,346,'再决定是否干预','Then decide whether to intervene',10,'#665e72','middle')}
  `;
  return frame(body,['用数据支撑判断','Use data as evidence'],lang);
@@ -272,8 +272,8 @@ function synthesisArt(step,p,lang){
   ${k.group(.5,k.ok(446,130)+k.text(470,135,'移动网络下','On mobile networks',11,'#34734b'))}
   ${k.group(.64,k.text(470,166,'验证步骤成为瓶颈','verification is the bottleneck',11,'#34734b'))}
   ${k.group(.78,k.text(446,204,'因此有人放弃或重试','So people give up or retry',10,'#5c7a63'))}
-  ${k.text(360,288,'洞察解释多个发现','An insight explains several findings',12,'#665e72','middle')}
-  ${k.group(.84,k.chip(240,282,240,'从事实到解释','From facts to explanation','#f3eef9'))}
+  ${k.text(360,282,'洞察解释多个发现','An insight explains several findings',12,'#665e72','middle')}
+  ${k.group(.84,k.chip(240,302,240,'从事实到解释','From facts to explanation','#f3eef9'))}
  `;
  if(step===1)body=`
   ${k.text(360,44,'先归组，再解释','Group first, then explain',14,'#242032','middle')}
