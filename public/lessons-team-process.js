@@ -93,13 +93,13 @@ function codeReviewArt(step,p,lang){
   ${k.box(48,66,286,194,'#f9e8e2')}
   ${k.text(70,94,'一次改动 800 行','One change, 800 lines',12,'#a64e44')}
   ${Array.from({length:6},(_,i)=>`<rect x="${76}" y="${108+i*22}" width="${200-i*12}" height="10" rx="4" fill="#e6b4ab"/>`).join('')}
-  ${k.group(.5,k.warn(292,82)+k.text(222,300,'看不过来','Too much to review',10,'#a64e44','middle'))}
+  ${k.group(.5,`<g transform="translate(300 90) scale(.65)">${k.warn(0,0)}</g>`+k.text(191,282,'看不过来','Too much to review',10,'#a64e44','middle'))}
   ${k.path('M344 160H402')}
   ${k.box(414,66,262,194,'#e7f2e7')}
   ${k.text(436,94,'一次改动 80 行','One change, 80 lines',12,'#34734b')}
   ${Array.from({length:6},(_,i)=>`<rect x="${442}" y="${108+i*22}" width="${64+i*8}" height="10" rx="4" fill="#a9cdb6"/>`).join('')}
   ${k.ok(630,86)}
-  ${k.text(436,266,'细节看得清，问题问得出','Details visible, questions possible',10,'#34734b')}
+  ${k.text(545,282,'细节看得清，问题问得出','Details visible, questions possible',10,'#34734b','middle')}
   ${k.text(360,312,'小改动才评得动','Small changes are the ones that actually get reviewed',12,'#665e72','middle')}
  `;
  if(step===3)body=`
@@ -236,10 +236,10 @@ function handoffArt(step,p,lang){
  if(step===0)body=`
   ${k.box(48,64,268,190,'#f9e8e2')}
   ${k.text(70,92,'丢一堆文件','Dump a pile of files',12,'#a64e44')}
-  ${k.no(88,126,'#b96559')}${k.doc(86,112,'#fffefb',54,66)}
-  ${k.doc(146,126,'#fffefb',54,66)}
-  ${k.doc(96,186,'#fffefb',54,66)}
-  ${k.text(70,252,'接手的人不知道从哪看','No one knows where to start',10,'#665e72')}
+  ${k.doc(86,118,'#fffefb',46,52)}
+  ${k.doc(146,132,'#fffefb',46,52)}
+  ${k.doc(98,180,'#fffefb',46,50)}
+  ${k.no(278,126,'#b96559')}${k.text(70,244,'接手的人不知道从哪看','No one knows where to start',10,'#665e72')}
   ${k.path('M338 160H396')}
   ${k.box(408,64,264,190,'#e7f2e7')}
   ${k.text(430,92,'一次交接','A handoff',12,'#34734b')}

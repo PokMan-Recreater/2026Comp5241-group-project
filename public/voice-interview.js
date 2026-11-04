@@ -1,3 +1,4 @@
+import {backgroundRequest} from './background-ai.js';
 import {createRealtimeInterview} from './doubao-interview.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const interviewRoles=[['developer','Software developer','软件开发','軟體開發'],['frontend','Frontend developer','前端开发','前端開發'],['data','Data analyst','数据分析','資料分析'],['product','Product & teamwork','产品与团队协作','產品與團隊協作']];
@@ -48,6 +49,7 @@ export function createVoiceInterview({locale,onSave,getHistory=()=>[]}){
   state.phase='speaking';draw();u.onend=()=>{if(utterance!==u||disposed)return;utterance=null;state.phase='waiting';draw();};u.onerror=()=>{if(utterance!==u||disposed)return;utterance=null;state.phase='waiting';state.error=L('Voice playback failed. Read the question and continue.','朗读未能播放，可阅读问题继续回答。','朗讀未能播放，可閱讀問題繼續回答。');draw();};window.speechSynthesis.speak(u);
  }
  async function request(action,messages){
+  if(action==='review')return backgroundRequest('/api/interview',{action,settings:{...state.settings,role:labelRole()},language:state.settings.language,messages});
   controller=new AbortController();const response=await fetch('/api/interview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,settings:{...state.settings,role:labelRole()},language:state.settings.language,messages}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(50000)])});
   const data=await response.json();if(!response.ok)throw new Error(data.error||'provider_unavailable');return data;
  }

@@ -1,3 +1,6 @@
+import {generationNotice,backgroundAI,taskInput} from './background-ai.js';
+import {cloudAPI} from './cloud-records.js';
+import {hasCompleteCourseware} from './courseware-contract.js';
 import {nativeChallenges,checkNativeChallenge} from './native-challenges.js';
 import {challengeSolutions} from './challenge-solutions.js';
 import {studyTimeHTML,resolveStudyTime} from './study-time.js';
@@ -19,6 +22,8 @@ import {createBrowserRunner,browserErrorText} from './browser-runner.js';
 import {runnableExample,repairBuiltinDraft} from './runnable-examples.js';
 import {createVoiceInterview} from './voice-interview.js';
 import {createLearningViews} from './academy-views.js';
+import {saveCourseHandoff} from './personal-course-handoff.js';
+import {planCourseFor,clearPlanCourse,linkPlanCourse} from './plan-course-link.js';
 import {createQuestViews} from './codequest-views.js';
 import {programmingLessonById} from './programming-lessons.js';
 
@@ -27,8 +32,8 @@ export function createAcademy(ctx){
  const browserRunner=createBrowserRunner();let runAbort;
  const {esc:e,ico}=ctx,s=()=>ctx.state(),a=()=>ensureAcademy(s()),lang=()=>s().lang,contentLang=()=>s().profile.learningLanguage||lang();
  const L=(en,cn,tw)=>local(tri(en,cn,tw),lang()),T=v=>local(v,contentLang());
- const labels={assigned:tri('Assigned courses','老师布置的课程','老師指派的課程'),'teacher-course':tri('Course studio','课程工作台','課程工作台'),'interview-records':tri('My interviews','我的面试记录','我的面試紀錄'),games:tri('Games','游戏','遊戲'),markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('','',''),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Short answers','简答题','簡答題'),tutorial:tri('Programming guide','编程指南','程式指南'),codequest:tri('Code quest','编程闯关','程式闖關')};
- const view={preview:null,setupStep:0,setupDraft:null,interviewId:null,question:0,questionReview:null,feedback:null,loadedAttempt:null,lab:null,output:'',outputFailed:false,running:false,runToken:0};
+ const labels={'ai-result':tri('AI result','生成结果','產生結果'),'courseware-example':tri('Courseware example','课件样板','課件樣板'),assigned:tri('Assigned courses','老师布置的课程','老師指派的課程'),'teacher-course':tri('Course studio','课程工作台','課程工作台'),'interview-records':tri('My interviews','我的面试记录','我的面試紀錄'),games:tri('Games','游戏','遊戲'),markComplete:tri('Complete lesson','完成课节','完成課節'),selfStudy:tri('Create a course','创建课程','建立課程'),explore:tri('Courses','课程','課程'),exploreTitle:tri('Courses','课程','課程'),exploreSub:tri('','',''),path:tri('Study plan','学习计划','學習計畫'),records:tri('My records','我的记录','我的紀錄'),next:tri('Next step','下一步','下一步'),practice:tri('Practice','练习中心','練習中心'),playground:tri('Playground','代码试验区','程式試驗區'),reference:tri('Reference','编程速查','程式速查'),setup:tri('Build a plan','制定计划','制定計畫'),plan:tri('Study plan','学习计划','學習計畫'),challenge:tri('Coding practice','编程练习','程式練習'),lab:tri('Interactive lab','交互实验','互動實驗'),interview:tri('Short answers','简答题','簡答題'),tutorial:tri('Programming guide','编程指南','程式指南'),codequest:tri('Code quest','编程闯关','程式闖關')};
+ const view={preview:null,interviewId:null,question:0,questionReview:null,feedback:null,loadedAttempt:null,lab:null,output:'',outputFailed:false,running:false,runToken:0,aiPlanSource:false,aiPlanData:null};
  let speech={running:false,paused:false,index:0,sentences:[],utterance:null},lastReset=null;
  let knownBadges=learningStats(s()).badges;
  const save=()=>{ctx.save();const now=learningStats(s()).badges,newBadge=now.findIndex((earned,i)=>earned&&!knownBadges[i]);knownBadges=now;if(newBadge>=0)queueMicrotask(()=>ctx.toast(L('Badge earned: ','获得徽章：','獲得徽章：')+badges()[newBadge]));},render=()=>ctx.render(),go=hash=>ctx.go(hash),uid=prefix=>`${prefix}-${crypto.randomUUID()}`;
@@ -54,14 +59,37 @@ export function createAcademy(ctx){
  function savePlan(){
   if(!view.preview)return;const {plan,course}=view.preview;
   if(course&&!ctx.courses().some(c=>c.id===course.id))s().courses.push(course);
-  a().plans.unshift(plan);a().activePlan=plan.id;s().path=null;save();view.preview=null;go('plan/'+plan.id);
+  a().plans.unshift(plan);backgroundAI.linkPlan(plan.id,'#plan/'+plan.id);a().activePlan=plan.id;s().path=null;save();view.preview=null;go('plan/'+plan.id);
  }
- function planForm(){const d=a().planDraft||{topic:'',weeklyMinutes:s().profile.weeklyMinutes,skillLevel:s().profile.skillLevel};return `<form id="academy-plan-form" class="form-card"><div class="form-grid"><div class="field full-field"><label for="plan-topic">${L('What do you want to learn?','你想学习什么？','你想學習甚麼？')}</label><input id="plan-topic" name="topic" required maxlength="180" value="${e(d.topic)}" aria-describedby="plan-topic-hint" placeholder="${L('e.g. testing, AI coding, web architecture','例如：测试、AI 编程、网页架构','例如：測試、AI 程式設計、網頁架構')}"><p class="field-hint" id="plan-topic-hint">${L('Type any topic, or combine topics such as Python + Git.','可自由输入主题，也可组合多个主题，例如 Python + Git。','可自由輸入主題，也可組合多個主題，例如 Python + Git。')}</p></div><div class="field"><label for="plan-level">${L('Level','难度','難度')}</label><select id="plan-level" name="skillLevel">${levelOptions(d.skillLevel)}</select></div>${studyTimeHTML('plan-minutes',d,lang())}</div><div class="form-actions"><button class="btn" type="submit">${L('Preview my plan','预览计划','預覽計畫')}</button>${link('setup',L('Guided setup','分步制定','分步制定'))}</div></form>`;}
- function previewHTML(){const p=view.preview?.plan;if(!p)return '';return `<section class="panel academy-preview" id="plan-preview"><h2>${e(T(p.title))}</h2><p>${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')} · ${p.totalMinutes} ${L('min total','分钟合计','分鐘合計')}</p><p class="small muted">${p.source==='template'?L('Study template: add reliable subject sources before using this as teaching material.','学习模板：作为教学材料前，请补充可靠的学科资料。','學習範本：作為教學材料前，請補充可靠的學科資料。'):L('Matched from the published course catalog.','从已发布课程中匹配。','從已發布課程中配對。')}</p>${p.rationale?`<details class="plan-overview"><summary>${L('How this plan fits your goal','计划如何对应目标','計畫如何對應目標')}</summary><p>${e(T(p.rationale))}</p></details>`:''}${stepsHTML(p,false)}<div class="row mt">${button('save-plan',L('Save and start','保存并开始','儲存並開始'),'',false)}${button('regenerate',L('Regenerate preview','重新生成预览','重新產生預覽'))}</div></section>`;}
- function stepsHTML(p,interactive=true){if(p.modules?.length)return `<div class="plan-stages">${p.modules.map((m,i)=>`<section class="plan-stage"><h3>${i+1}. ${e(T(m.title))}</h3>${stepsHTML({...p,modules:null,steps:m.steps},interactive)}</section>`).join('')}</div>`;return `<ol class="academy-steps">${p.steps.map(x=>{const c=ctx.course(x.courseId),done=planStepDone(x,s());return `<li><span class="academy-week">${L('Week','第','第')} ${x.week}${lang()==='en'?'':' '+L('','周','週')}</span><div class="grow">${interactive&&(c||x.kind==='tutorial'||x.kind==='practice')?`<a href="#${e(planStepRoute(x))}">${e(T(x.title))}</a>`:`<strong>${e(T(x.title))}</strong>`}<div class="small muted">${e(T(x.courseTitle))} · ${x.minutes} ${L('min','分钟','分鐘')}${x.parts>1?` · ${x.part}/${x.parts}`:''}</div></div>${x.rationale?`<details class="plan-rationale"><summary>${L('Why this step?','为什么学这一步？','為甚麼學這一步？')}</summary><p>${e(T(x.rationale))}</p></details>`:''}${interactive&&x.kind==='practice'?link(planStepRoute(x),done?L('Revisit','复习','複習'):L('Open practice','进入练习','進入練習')):interactive?button(x.kind==='tutorial'?'complete-tutorial':done?'reopen':'complete-plan',done?L('Reopen','撤销完成','撤銷完成'):L('Mark done','标为完成','標為完成'),x.kind==='tutorial'?`data-id="${e(x.tutorialId)}"`:`data-course="${e(x.courseId)}" data-lesson="${e(x.lessonId)}"`):''}</li>`;}).join('')}</ol>`;}
- function pathsPage(){return heading(L('Make time for learning.','为学习安排时间。','為學習安排時間。'),L('Choose a topic, difficulty and weekly time for this plan. Your profile stays unchanged.','为本次计划选择主题、难度和每周时间，不会修改学习档案。','為本次計畫選擇主題、難度與每週時間，不會修改學習檔案。'))+planForm()+previewHTML()+`<section class="mt-lg"><div class="section-head"><h2>${L('Your plans','你的计划','你的計畫')}</h2></div>${a().plans.length?cards(a().plans.map(p=>{const r=planProgress(p,s());return `<article class="panel"><div class="row between"><h3>${e(T(p.title))}</h3>${a().activePlan===p.id?`<span class="pill">${L('Active','当前','目前')}</span>`:''}</div><p>${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')}</p><div class="progress-track"><div class="progress-fill" style="width:${r.percent}%"></div></div><p class="small">${r.percent}% · ${L(r.remainingWeeks===1?'1 week remaining':r.remainingWeeks+' weeks remaining',r.remainingWeeks+' 周待完成',r.remainingWeeks+' 週待完成')}</p><div class="row">${link('plan/'+p.id,L('View plan','查看计划','查看計畫'))}${a().activePlan!==p.id?button('active-plan',L('Make active','设为当前','設為目前'),`data-id="${e(p.id)}"`):''}${button('delete-plan',L('Delete','删除','刪除'),`data-id="${e(p.id)}"`)}</div></article>`;})):empty()}</section><details class="academy-legacy mt"><summary>${L('Reorder the full course list','调整全部课程顺序','調整全部課程順序')}</summary>${ctx.basePath()}</details>`;}
- function planDetail(id){const p=a().plans.find(p=>p.id===id);if(!p)return heading(L('Plan not found','未找到计划','找不到計畫'))+link('path',L('All plans','全部计划','全部計畫'));const r=planProgress(p,s());return heading(e(T(p.title)),`${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')} · ${r.percent}%`)+`<div class="row mb">${link('path',L('All plans','全部计划','全部計畫'))}${r.next?link(planStepRoute(r.next),L('Continue learning','继续学习','繼續學習'),false):''}${!p.modules?button('refresh-plan',L('Update this plan','更新这份计划','更新這份計畫'),`data-id="${e(id)}"`):''}${button('active-plan',L('Make active','设为当前','設為目前'),`data-id="${e(id)}"`)}</div><p>${L('Lessons are scheduled within your weekly time budget. Longer lessons may span more than one session.','课节按每周时间安排，较长课节会拆分到多个学习时段。','課節依每週時間安排，較長課節會拆分為多個學習時段。')}</p>${p.rationale?`<details class="plan-overview"><summary>${L('How this plan fits your goal','计划如何对应目标','計畫如何對應目標')}</summary><p>${e(T(p.rationale))}</p></details>`:''}${stepsHTML(p)}`;}
- function setupPage(){const d=view.setupDraft||{...s().profile,topic:''};view.setupDraft=d;return heading(L('Your starting point. Your pace.','按你的起点和节奏学习。','依你的起點和步調學習。'))+`<div class="academy-setup-steps">${[0,1,2].map(i=>`<span class="${i===view.setupStep?'current':''}">${i+1}</span>`).join('')}</div><form id="academy-setup-form" class="form-card"><div class="form-grid">${view.setupStep===0?`<div class="field full-field"><label for="setup-name">${L('Name','名字','名字')}</label><input id="setup-name" name="name" value="${e(d.name)}" maxlength="50" required></div><div class="field"><label for="setup-background">${L('Experience','目前经验','目前經驗')}</label><select id="setup-background" name="background">${['noCoding','someCoding','experienced'].map(x=>option(x,ctx.label(x),d.background)).join('')}</select></div><div class="field"><label for="setup-level">${L('Level','难度','難度')}</label><select id="setup-level" name="skillLevel">${levelOptions(d.skillLevel)}</select></div>`:view.setupStep===1?`<div class="field"><label for="setup-goal">${L('Goal','学习目标','學習目標')}</label><select id="setup-goal" name="goal">${['understand','build','career'].map(x=>option(x,ctx.label(x),d.goal)).join('')}</select></div>${studyTimeHTML('setup-minutes',d,lang())}<fieldset class="field full-field academy-interests"><legend>${L('Interests','兴趣','興趣')}</legend>${['development','requirements','architecture','ai-coding','testing-release','product-decisions','career'].map(x=>`<label><input type="checkbox" name="interests" value="${x}" ${(d.interests||[]).includes(x)?'checked':''}>${e(T(ctx.course(x)?.title||x))}</label>`).join('')}</fieldset>`:`<div class="field full-field"><label for="setup-topic">${L('Topic','学习主题','學習主題')}</label><input id="setup-topic" name="topic" required maxlength="180" value="${e(d.topic||'')}" placeholder="${L('What would you like to learn?','你想学什么？','你想學甚麼？')}"></div><p class="small muted">${L('We match published lessons first. For a new subject, you can preview a source-led study template.','优先匹配已有课节；新学科可以先预览资料导向的学习模板。','優先配對已有課節；新學科可以先預覽資料導向的學習範本。')}</p>`}</div><div class="form-actions">${view.setupStep?button('setup-back',L('Back','上一步','上一步')):''}<button class="btn" type="submit">${view.setupStep===2?L('Preview plan','预览计划','預覽計畫'):L('Continue','继续','繼續')}</button></div></form>`;}
+ function restorePlanResult(){
+  const task=backgroundAI.requested('plan');if(!task?.result?.course)return;
+  if(task.planPreview)view.preview=structuredClone(task.planPreview);
+  else{
+   const input=taskInput(task),language=input.language||contentLang(),profile={...s().profile,...input.profile},raw=task.result.course,id='study-task-'+task.id;
+   const lessons=(raw.lessons||[]).filter(l=>typeof l.title==='string'&&typeof l.body==='string').map((l,i)=>({id:id+'-l'+(i+1),title:{[language]:l.title},body:{[language]:l.body},...(l.advanced?{advanced:{[language]:l.advanced}}:{}),type:'read',minutes:10}));
+   if(!lessons.length){backgroundAI.clearRequest();return;}
+   const course={id,title:{[language]:raw.title},description:{[language]:raw.description||''},topic:'foundations',theme:'lavender',duration:lessons.length*10,status:'published',personal:true,origin:'ai',level:profile.skillLevel||'beginner',audience:['cs','non-cs'],lessons};
+   view.preview=buildPlan({courses:ctx.courses(),topic:input.topic||raw.title,profile,id:'plan-task-'+task.id,courseId:id,aiCourse:course});
+   backgroundAI.linkResult(task.result,{planPreview:structuredClone(view.preview)});
+  }
+  view.aiPlanSource=true;const input=taskInput(task);view.aiPlanData={...input.profile,topic:input.topic||'',requirements:input.requirements||''};backgroundAI.clearRequest();
+ }
+ const needsCourseware=p=>['ai','template'].includes(p.source);
+ const studyButton=(p,x)=>button('learn-plan-section',p.generatedLessons?.[x.lessonId]?L('Continue learning','继续学习','繼續學習'):L('Generate and learn','生成并学习','產生並學習'),`data-plan="${e(p.id)}" data-lesson="${e(x.lessonId)}"`,false);
+ const planHref=(p,x)=>x.kind||!x.courseId?planStepRoute(x):`plan/${p.id}/${x.lessonId}`;
+ function planForm(){const d=a().planDraft||{topic:'',requirements:'',weeklyMinutes:s().profile.weeklyMinutes,skillLevel:s().profile.skillLevel};return `<form id="academy-plan-form" class="form-card"><div class="form-grid"><div class="field full-field"><label for="plan-topic">${L('What do you want to learn?','你想学习什么？','你想學習甚麼？')}</label><input id="plan-topic" name="topic" required maxlength="180" value="${e(d.topic)}" aria-describedby="plan-topic-hint" placeholder="${L('e.g. testing, AI coding, web architecture','例如：测试、AI 编程、网页架构','例如：測試、AI 程式設計、網頁架構')}"><p class="field-hint" id="plan-topic-hint">${L('Type any topic, or combine topics such as Python + Git.','可自由输入主题，也可组合多个主题，例如 Python + Git。','可自由輸入主題，也可組合多個主題，例如 Python + Git。')}</p></div><div class="field"><label for="plan-level">${L('Level','难度','難度')}</label><select id="plan-level" name="skillLevel">${levelOptions(d.skillLevel)}</select></div>${studyTimeHTML('plan-minutes',d,lang())}<div class="field full-field"><label for="plan-requirements">${L('Goal or notes for AI (optional)','给 AI 的目标或说明（可选）','給 AI 的目標或說明（可選）')}</label><textarea id="plan-requirements" name="requirements" maxlength="5000" rows="3" placeholder="${L('e.g. choose and order the lessons myself; focus on one practical example','例如：请 AI 帮我确定主题并安排课节顺序，多用一个实际例子','例如：請 AI 幫我確定主題並安排課節順序，多用一個實際例子')}">${e(d.requirements||'')}</textarea></div></div><div class="form-actions"><button class="btn" type="submit">${L('Preview my plan','预览计划','預覽計畫')}</button>${button('ai-plan',`${ico('spark',14)}${L('Let AI plan for me','让 AI 为我规划','讓 AI 為我規劃')}`,'',false)}</div><p class="small muted">${generationNotice()}</p><p class="small muted" data-plan-ai-status role="status">${L('Preview matches your topic to published courses. AI planning proposes its own theme and lesson sequence for a brand-new subject.','预览会把主题匹配到已发布课程；AI 规划会为新学科自行提出课程主题和课节顺序。','預覽會把主題配對到已發布課程；AI 規劃會為新學科自行提出課程主題與課節順序。')}</p></form>`;}
+ function previewHTML(){const p=view.preview?.plan;if(!p)return '';const aiCourse=p.source==='ai'?view.preview?.course:null;return `<section class="panel academy-preview" id="plan-preview"><h2>${e(T(p.title))}</h2>${aiCourse?`<p><strong>${e(T(aiCourse.title))}</strong>${aiCourse.description?` · ${e(T(aiCourse.description))}`:''}</p>`:''}<p>${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')} · ${p.totalMinutes} ${L('min total','分钟合计','分鐘合計')}</p><p class="small muted">${p.source==='ai'?L('AI-generated theme and lesson sequence. Review everything before saving; this is a planning draft, not verified teaching material.','AI 生成的主题与课节顺序。保存前请逐项检查；这是规划草稿，不是已核实的教学材料。','AI 生成的主題與課節順序。儲存前請逐項檢查；這是規劃草稿，不是已核實的教學材料。'):p.source==='template'?L('Study template: add reliable subject sources before using this as teaching material.','学习模板：作为教学材料前，请补充可靠的学科资料。','學習範本：作為教學材料前，請補充可靠的學科資料。'):L('Matched from the published course catalog.','从已发布课程中匹配。','從已發布課程中配對。')}</p>${p.rationale?`<details class="plan-overview"><summary>${L('How this plan fits your goal','计划如何对应目标','計畫如何對應目標')}</summary><p>${e(T(p.rationale))}</p></details>`:''}${stepsHTML(p,false)}<div class="row mt">${button('save-plan',L('Save and start','保存并开始','儲存並開始'),'',false)}${button('regenerate',L('Regenerate preview','重新生成预览','重新產生預覽'))}</div></section>`;}
+ function stepsHTML(p,interactive=true){if(p.modules?.length)return `<div class="plan-stages">${p.modules.map((m,i)=>`<section class="plan-stage"><h3>${i+1}. ${e(T(m.title))}</h3>${stepsHTML({...p,modules:null,steps:m.steps},interactive)}</section>`).join('')}</div>`;return `<ol class="academy-steps">${p.steps.map(x=>{const c=ctx.course(x.courseId),done=planStepDone(x,s());return `<li><span class="academy-week">${L('Week','第','第')} ${x.week}${lang()==='en'?'':' '+L('','周','週')}</span><div class="grow">${interactive&&(c||x.kind==='tutorial'||x.kind==='practice')?`<a href="#${e(planHref(p,x))}">${e(T(x.title))}</a>`:`<strong>${e(T(x.title))}</strong>`}<div class="small muted">${needsCourseware(p)&&!x.kind?(p.generatedLessons?.[x.lessonId]?L('Content saved','内容已保存','內容已儲存'):L('Not generated','待生成','待產生'))+' · ':''}${e(T(x.courseTitle))} · ${x.minutes} ${L('min','分钟','分鐘')}${x.parts>1?` · ${x.part}/${x.parts}`:''}</div></div>${x.rationale?`<details class="plan-rationale"><summary>${L('Why this step?','为什么学这一步？','為甚麼學這一步？')}</summary><p>${e(T(x.rationale))}</p></details>`:''}${interactive&&needsCourseware(p)&&!x.kind?studyButton(p,x):interactive&&x.kind==='practice'?link(planHref(p,x),done?L('Revisit','复习','複習'):L('Open practice','进入练习','進入練習')):interactive?button(x.kind==='tutorial'?'complete-tutorial':done?'reopen':'complete-plan',done?L('Reopen','撤销完成','撤銷完成'):L('Mark done','标为完成','標為完成'),x.kind==='tutorial'?`data-id="${e(x.tutorialId)}"`:`data-course="${e(x.courseId)}" data-lesson="${e(x.lessonId)}"`):''}</li>`;}).join('')}</ol>`;}
+ function pathsPage(){restorePlanResult();return heading(L('Make time for learning.','为学习安排时间。','為學習安排時間。'),L('Choose a topic, difficulty and weekly time for this plan. Your profile stays unchanged.','为本次计划选择主题、难度和每周时间，不会修改学习档案。','為本次計畫選擇主題、難度與每週時間，不會修改學習檔案。'))+planForm()+previewHTML()+`<section class="mt-lg"><div class="section-head"><h2>${L('Your plans','你的计划','你的計畫')}</h2></div>${a().plans.length?cards(a().plans.map(p=>{const r=planProgress(p,s());return `<article class="panel"><div class="row between"><h3>${e(T(p.title))}</h3>${a().activePlan===p.id?`<span class="pill">${L('Active','当前','目前')}</span>`:''}</div><p>${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')}</p><div class="progress-track"><div class="progress-fill" style="width:${r.percent}%"></div></div><p class="small">${r.percent}% · ${L(r.remainingWeeks===1?'1 week remaining':r.remainingWeeks+' weeks remaining',r.remainingWeeks+' 周待完成',r.remainingWeeks+' 週待完成')}</p><div class="row">${link('plan/'+p.id,L('View plan','查看计划','查看計畫'))}${a().activePlan!==p.id?button('active-plan',L('Make active','设为当前','設為目前'),`data-id="${e(p.id)}"`):''}${button('delete-plan',L('Delete','删除','刪除'),`data-id="${e(p.id)}"`)}</div></article>`;})):empty()}</section><details class="academy-legacy mt"><summary>${L('Reorder the full course list','调整全部课程顺序','調整全部課程順序')}</summary>${ctx.basePath()}</details>`;}
+ function planLesson(p,lessonId){
+  const steps=p.modules?.flatMap(m=>m.steps)||p.steps,i=steps.findIndex(x=>!x.kind&&x.lessonId===lessonId),step=steps[i],c=step&&ctx.course(step.courseId),lesson=c?.lessons.find(l=>l.id===lessonId)||c?.lessons[step.index];
+  if(!lesson)return heading(L('Lesson not found','未找到课节','找不到課節'))+link('plan/'+p.id,L('Back to plan','返回计划','返回計畫'));
+  if(needsCourseware(p))return heading(e(T(lesson.title)))+`<section class="panel"><p>${p.generatedLessons?.[lessonId]?L('Your saved lesson is ready.','这一节已有保存的学习内容。','這一節已有儲存的學習內容。'):L('This is a planning outline. Generate the full lesson before studying.','当前是学习大纲。生成完整讲解、示例和练习后再开始学习。','目前是學習大綱。產生完整講解、範例與練習後再開始學習。')}</p><details><summary>${L('View outline','查看大纲','查看大綱')}</summary><p>${e(T(lesson.body))}</p></details><div class="row mt">${studyButton(p,step)}${link('plan/'+p.id,L('Back to plan','返回计划','返回計畫'))}${p.generatedLessons?.[lessonId]?button('complete-plan',L('Mark done','标为完成','標為完成'),`data-course="${e(step.courseId)}" data-lesson="${e(lessonId)}"`):''}</div><p data-plan-lesson-status role="status"></p></section>`;
+  const done=planStepDone(step,s()),prev=steps.slice(0,i).reverse().find(x=>!x.kind&&x.lessonId),next=steps.slice(i+1).find(x=>!x.kind&&x.lessonId);
+  const prose=v=>e(T(v)).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>');
+  return `<div class="lesson-top"><a href="#plan/${e(p.id)}">${ico('back',13)}${L('Back to plan','返回计划','返回計畫')}</a><div class="row"><span class="pill">${e(T(c.title))}</span><span class="small muted">${e(T(p.title))}</span></div></div><article class="lesson-paper academy-plan-lesson" lang="${e(contentLang())}"><span class="eyebrow muted">${String(i+1).padStart(2,'0')} / ${String(steps.length).padStart(2,'0')} · ${step.minutes} ${L('min','分钟','分鐘')}</span><h1>${e(T(lesson.title))}</h1><div class="lesson-text"><p>${prose(lesson.body)}</p></div>${lesson.advanced?`<details class="study-reference"><summary>${L('Extension','进阶延伸','進階延伸')}</summary><div class="lesson-text"><p>${prose(lesson.advanced)}</p></div></details>`:''}<p class="small muted" data-plan-lesson-status role="status"></p><div class="lesson-actions">${prev?link('plan/'+p.id+'/'+prev.lessonId,L('Previous lesson','上一节','上一節')):''}${button('expand-plan-lesson',`${ico('spark',14)}${L('Expand with AI','AI 扩充这一节','AI 擴充這一節')}`,`data-plan="${e(p.id)}" data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`,false)}${done?button('reopen',L('Mark as not complete','撤销完成','撤銷完成'),`data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`):button('complete-plan',L('Mark done','标为完成','標為完成'),`data-course="${e(step.courseId)}" data-lesson="${e(lesson.id)}"`,false)}${next?link('plan/'+p.id+'/'+next.lessonId,L('Next lesson','下一节','下一節'),false):''}</div></article>`;
+ }
+ function planDetail(id,lessonId){const p=a().plans.find(p=>p.id===id);if(!p)return heading(L('Plan not found','未找到计划','找不到計畫'))+link('path',L('All plans','全部计划','全部計畫'));if(lessonId)return planLesson(p,lessonId);const r=planProgress(p,s());const planCourse=[...new Set([...(p.matchedCourses||[]),...p.steps.map(x=>x.courseId)])].map(x=>ctx.course(x)).find(x=>x?.lessons?.length);return heading(e(T(p.title)),`${weekText(p.weeks)} · ${p.weeklyMinutes} ${L('min / week','分钟 / 周','分鐘 / 週')} · ${r.percent}%`)+`<div class="row mb">${link('path',L('All plans','全部计划','全部計畫'))}${r.next?link(planHref(p,r.next),L('Continue learning','继续学习','繼續學習'),false):''}${!p.modules?button('refresh-plan',L('Update this plan','更新这份计划','更新這份計畫'),`data-id="${e(id)}"`):''}${planCourse&&!needsCourseware(p)?button('create-course',planCourseFor(ctx.user?.()?.id,id)?L('Continue designing','继续设计课程','繼續設計課程'):L('Create a course','制作课程','製作課程'),`data-id="${e(id)}"`):''}${needsCourseware(p)&&planCourseFor(ctx.user?.()?.id,id)?link('personal-course/'+planCourseFor(ctx.user?.()?.id,id),L('Edit in My courses','到我的课程修改','到我的課程修改')):''}${button('active-plan',L('Make active','设为当前','設為目前'),`data-id="${e(id)}"`)}</div><p>${L('Lessons are scheduled within your weekly time budget. Longer lessons may span more than one session.','课节按每周时间安排，较长课节会拆分到多个学习时段。','課節依每週時間安排，較長課節會拆分為多個學習時段。')}</p>${p.source==='ai'||p.source==='template'?`<p class="callout">${L('Generation may take about 5 minutes. Browse other site pages while keeping this tab open. Saved lessons can be resumed or edited in My courses.','这是学习路径大纲。生成可能需要约 5 分钟，可切换站内页面（请保持标签页打开）。完整内容会保存，也可到「我的课程」自行修改。','這是學習路徑大綱。產生可能需要約 5 分鐘，可切換站內頁面（請保持分頁開啟）。完整內容會儲存，也可到「我的課程」自行修改。')}</p>`:''}${p.rationale?`<details class="plan-overview"><summary>${L('How this plan fits your goal','计划如何对应目标','計畫如何對應目標')}</summary><p>${e(T(p.rationale))}</p></details>`:''}${stepsHTML(p)}`;}
  function catalogResults(){
   const q=(document.querySelector('#course-search')?.value||'').trim().toLowerCase(),topic=document.querySelector('#topic-filter')?.value||'allTopics',level=document.querySelector('#academy-level')?.value||'all',audience=document.querySelector('#academy-audience')?.value||'all';
   const cs=ctx.courses().filter(c=>c.status==='published'&&(topic==='allTopics'||c.topic===topic)&&(level==='all'||(c.level||'beginner')===level)&&(audience==='all'||(c.audience||['cs','non-cs']).includes(audience))&&((ctx.route()[1]==='tools')?c.collection==='tools':c.collection!=='tools'));
@@ -151,16 +179,131 @@ export function createAcademy(ctx){
   const field=document.querySelector('#git-sandbox-command');if(field)field.focus();
   const out=document.querySelector('#git-sandbox-output');if(out)out.scrollTop=out.scrollHeight;
  }
- function previewPlan(data){const draft={...data};data=resolveStudyTime(data,lang());const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,weeklyMinutes:draft.weeklyMinutes,customWeeklyMinutes:draft.customWeeklyMinutes,skillLevel:profile.skillLevel};save();}
+ function previewPlan(data){view.aiPlanSource=false;const draft={...data};data=resolveStudyTime(data,lang());const profile={...s().profile,...data,weeklyMinutes:Number(data.weeklyMinutes)||120};view.preview=buildPlan({courses:ctx.courses(),topic:String(data.topic||'').trim(),profile,id:uid('plan'),courseId:uid('study')});a().planDraft={topic:data.topic,requirements:data.requirements||'',weeklyMinutes:draft.weeklyMinutes,customWeeklyMinutes:draft.customWeeklyMinutes,skillLevel:profile.skillLevel};save();}
+ async function aiPlan(data){
+  const generationUser=ctx.user?.()?.id;
+  const status=document.querySelector('[data-plan-ai-status]'),trigger=document.querySelector('[data-ac="ai-plan"]');
+  const topic=String(data.topic||'').trim();
+  if(!topic){ctx.toast(L('Enter a topic first.','请先填写学习主题。','請先填寫學習主題。'));return;}
+  if(!ctx.aiReady()){ctx.toast(L('AI is not configured. You can still preview a study template.','AI 尚未配置，仍可预览学习模板。','AI 尚未設定，仍可預覽學習範本。'));return;}
+  const resolved=resolveStudyTime(data,lang()),profile={...s().profile,...resolved,weeklyMinutes:Number(resolved.weeklyMinutes)||120};
+  view.aiPlanData={...data};
+  if(trigger)trigger.disabled=true;
+  if(status)status.textContent=L('Generating in background…','正在后台生成…','正在背景產生…');
+  try{
+   const language=contentLang();
+   const requirements=[String(data.requirements||'').trim(),`Level: ${resolved.skillLevel||'beginner'}`,`Weekly study time: ${profile.weeklyMinutes} minutes`].filter(Boolean).join('\n');
+   const response=await ctx.ai('generate',{topic,requirements,profile});
+   if(generationUser!==ctx.user?.()?.id)return;
+   const draft=response?.course;
+   const raw=Array.isArray(draft?.lessons)?draft.lessons.filter(l=>l&&typeof l.title==='string'&&l.title.trim()&&typeof l.body==='string'&&l.body.trim()).slice(0,8):[];
+   if(!raw.length)throw Error('invalid_course');
+   const id=uid('study');
+   const lessons=raw.map((l,i)=>({id:`${id}-l${i+1}`,title:{[language]:l.title.slice(0,180)},body:{[language]:l.body.slice(0,18000)},...(typeof l.advanced==='string'&&l.advanced.trim()?{advanced:{[language]:l.advanced.slice(0,18000)}}:{}),type:'read',minutes:10}));
+   const course={id,title:{[language]:String(draft.title||topic).slice(0,180)},description:{[language]:String(draft.description||'').slice(0,3000)},topic:'foundations',theme:'lavender',duration:lessons.length*10,status:'published',personal:true,origin:'ai',level:profile.skillLevel,audience:['cs','non-cs'],lessons};
+   view.preview=buildPlan({courses:ctx.courses(),topic,profile,id:uid('plan'),courseId:id,aiCourse:course});
+   view.aiPlanSource=true;
+   backgroundAI.linkResult(response,{planPreview:structuredClone(view.preview),resultRoute:'#path'});
+   a().planDraft={topic,requirements:data.requirements||'',weeklyMinutes:resolved.weeklyMinutes,customWeeklyMinutes:resolved.customWeeklyMinutes,skillLevel:profile.skillLevel};
+   save();if(ctx.route()[0]==='path')render();else ctx.toast(L('Your plan preview is ready. Open Study plan or AI tasks.','学习计划预览已生成，可到学习计划或 AI 任务查看。','學習計畫預覽已產生，可到學習計畫或 AI 任務查看。'));
+  }catch{
+   if(generationUser!==ctx.user?.()?.id)return;
+   view.aiPlanSource=false;
+   previewPlan(data);if(ctx.route()[0]==='path')render();
+   const next=document.querySelector('[data-plan-ai-status]');
+   if(next)next.textContent=L('AI is unavailable right now, so a simple study template is shown instead. Save it, then generate each lesson from the plan.','AI 暂时不可用，已为你生成一份简单学习模板。保存后可逐节生成学习内容。','AI 暫時無法使用，已為你產生一份簡單學習範本。儲存後可逐節產生學習內容。');
+  }finally{if(trigger?.isConnected)trigger.disabled=false;}
+ }
+ async function learnPlanSection(el){
+  if(view.generatingSection&&view.generatingSection===ctx.user?.()?.id){ctx.toast(L('A lesson is already generating. You can browse other pages.','已有课件正在后台生成，可以先浏览其他页面。','已有課件正在背景產生，可以先瀏覽其他頁面。'));return;}
+  const p=a().plans.find(p=>p.id===el.dataset.plan),step=p?.steps.find(x=>x.lessonId===el.dataset.lesson);
+  if(!step)return;
+  view.generatingSection=ctx.user?.()?.id||'local';el.disabled=true;
+  const original=el.textContent;el.textContent=L('Generating in background…','后台生成中…','背景產生中…');
+  const generationUser=ctx.user?.()?.id,originRoute=ctx.route().join('/');ctx.toast(generationNotice());
+  try{
+   const userId=ctx.user?.()?.id;
+   if(!userId)throw Error('login_required');
+   let courseId=planCourseFor(userId,p.id),record;
+   if(courseId){try{record=(await cloudAPI('/api/teaching?resource=personal-courses&id='+encodeURIComponent(courseId))).course;}catch(error){if(error.message!=='not_found'&&error.message!=='course_not_found')throw error;clearPlanCourse(userId,p.id);courseId=null;p.generatedLessons={};}}
+   const source=ctx.course(step.courseId),sourceLesson=source?.lessons.find(l=>l.id===step.lessonId);
+   if(!sourceLesson)throw Error('lesson_not_found');
+   const unique=[...new Map(p.steps.filter(x=>!x.kind).map(x=>[x.lessonId,x])).values()];
+   const sectionIndex=unique.findIndex(x=>x.lessonId===step.lessonId);
+   if(sectionIndex<0||sectionIndex>=10)throw Error('lesson_not_found');
+   if(!record){
+    const course={title:T(p.title).slice(0,180),description:T(p.topic).slice(0,3000),language:contentLang(),lessons:unique.slice(0,10).map((x,i)=>{const l=ctx.course(x.courseId)?.lessons.find(l=>l.id===x.lessonId);return {id:'lesson-'+(i+1),title:T(x.title),body:T(l?.body)||'',scene:'flow',sceneItems:['Start','Learn'],questions:[]};})};
+    record=(await cloudAPI('/api/teaching?resource=personal-courses',{action:'save',course})).course;
+    courseId=record.id;linkPlanCourse(userId,p.id,courseId);
+   }
+   const lesson=record.draft.lessons[sectionIndex];
+   if(!lesson)throw Error('lesson_not_found');
+   if(!hasCompleteCourseware(lesson)){
+    const cached=p.pendingCourseware?.[step.lessonId];
+    const result=cached?.courseId===courseId&&cached.revision===record.revision?{lesson:cached.lesson}:await cloudAPI('/api/course-ai',{action:'lesson',language:record.draft.language,topic:record.draft.title,requirements:(T(p.topic)+'\n'+T(sourceLesson.body)).slice(0,16000),instruction:L('Create a complete self-study lesson with concrete examples and explained practice questions.','生成完整自主学习课件，包含具体示例和带解析的练习。','產生完整自主學習課件，包含具體範例和附解析的練習。'),courseId,lesson,production:'storyboard-v1'});
+    if(generationUser!==ctx.user?.()?.id)return;
+    if(!hasCompleteCourseware(result.lesson))throw Error('invalid_ai_result');
+    p.pendingCourseware??={};p.pendingCourseware[step.lessonId]={courseId,revision:record.revision,lesson:result.lesson};save();
+    const course=structuredClone(record.draft);
+    course.lessons[sectionIndex]={...result.lesson,id:lesson.id,questions:(result.lesson.questions||[]).map((q,i)=>({...q,id:lesson.id+'-q-'+(i+1)}))};
+    record=(await cloudAPI('/api/teaching?resource=personal-courses',{action:'save',id:courseId,revision:record.revision,course})).course;
+   }
+   if(p.pendingCourseware)delete p.pendingCourseware[step.lessonId];
+   p.generatedLessons??={};p.generatedLessons[step.lessonId]={courseId,index:sectionIndex};backgroundAI.linkCourse(courseId,lesson.id,'#personal-course/'+courseId+'/study-'+sectionIndex);save();
+   if(generationUser!==ctx.user?.()?.id)return;
+   if(ctx.route().join('/')===originRoute)go('personal-course/'+courseId+'/study-'+sectionIndex);else ctx.toast(L('Lesson saved. Continue from Study plan, or edit it in My courses.','课件已保存，可从学习计划继续学习，也可到我的课程修改。','課件已儲存，可從學習計畫繼續學習，也可到我的課程修改。'));
+  }catch(error){if(generationUser!==ctx.user?.()?.id)return;ctx.toast(error.message==='login_required'?L('Sign in to save your lessons.','请先登录，以保存生成的课程。','請先登入，以儲存產生的課程。'):L('Lesson preparation failed. Your plan is kept; retry to continue.','课件准备或保存未成功，学习计划和已生成的候选内容已保留，请重试。','課件準備未成功，學習計畫已保留，請重試。'));}
+  finally{if(view.generatingSection===generationUser)view.generatingSection=false;if(el.isConnected){el.disabled=false;el.textContent=original;}}
+ }
+ async function expandPlanLesson(el){
+  const generationUser=ctx.user?.()?.id;
+  const plan=a().plans.find(x=>x.id===el.dataset.plan),courseId=el.dataset.course,lessonId=el.dataset.lesson,source=ctx.course(courseId),lesson=source?.lessons.find(l=>l.id===lessonId);
+  if(!plan||!lesson)return;
+  if(!ctx.aiReady()){ctx.toast(L('AI is not configured. Open the course studio to write this lesson yourself.','AI 尚未配置，可进入课程工作室手动补写。','AI 尚未設定，可進入課程工作室手動補寫。'));return;}
+  const language=contentLang(),status=document.querySelector('[data-plan-lesson-status]');
+  el.disabled=true;
+  if(status)status.textContent=L('AI is expanding this lesson…','AI 正在扩充这一节…','AI 正在擴充這一節…');
+  try{
+   const response=await ctx.ai('expand',{topic:T(plan.topic),title:T(lesson.title),body:T(lesson.body),level:plan.level||s().profile.skillLevel||'beginner',profile:s().profile});
+   if(generationUser!==ctx.user?.()?.id)return;
+   const body=String(response?.lesson?.body||'').trim();
+   if(!body)throw Error('invalid_lesson');
+   let course=s().courses.find(c=>c.id===courseId);
+   if(!course){course={...source,lessons:source.lessons.map(l=>({...l}))};s().courses.push(course);}
+   const target=course.lessons.find(l=>l.id===lessonId)||lesson;
+   target.body={...(target.body||{}),[language]:body.slice(0,18000)};
+   const advanced=String(response?.lesson?.advanced||'').trim();
+   if(advanced)target.advanced={...(target.advanced||{}),[language]:advanced.slice(0,18000)};
+   save();if(ctx.route()[0]==='plan'&&ctx.route()[1]===plan.id)render();
+  }catch{
+   if(status?.isConnected)status.textContent=L('AI could not expand this lesson right now. Try again, or open the course studio to write it yourself.','AI 暂时无法扩充这一节。请稍后重试，或进入课程工作室手动补写。','AI 暫時無法擴充這一節。請稍後重試，或進入課程工作室手動補寫。');
+  }finally{if(el.isConnected)el.disabled=false;}
+ }
  async function click(action,el){
   if(await quest.click(action,el))return;
   const id=el.dataset.id,route=ctx.route(),page=route[0];
   if(action==='refresh-plan'){const old=a().plans.find(x=>x.id===id);if(old){const updated=buildPlan({courses:ctx.courses(),topic:old.topic,profile:{...s().profile,weeklyMinutes:old.weeklyMinutes,skillLevel:old.level},id:old.id,courseId:uid('study')});if(updated.course)s().courses.push(updated.course);a().plans=a().plans.map(x=>x.id===id?updated.plan:x);save();render();}return;}
   if(action==='save-plan'){savePlan();return;}
-  if(action==='regenerate'){const f=document.querySelector('#academy-plan-form');if(f)previewPlan(Object.fromEntries(new FormData(f)));render();return;}
+  if(action==='learn-plan-section'){await learnPlanSection(el);return;}
+  if(action==='expand-plan-lesson'){await expandPlanLesson(el);return;}
+  if(action==='ai-plan'){const f=document.querySelector('#academy-plan-form');if(f)await aiPlan(Object.fromEntries(new FormData(f)));return;}
+  if(action==='regenerate'){const f=document.querySelector('#academy-plan-form');if(view.aiPlanSource&&view.aiPlanData){await aiPlan(view.aiPlanData);return;}if(f)previewPlan(Object.fromEntries(new FormData(f)));render();return;}
   if(action==='active-plan'){a().activePlan=id;s().path=null;save();render();return;}
   if(action==='delete-plan'){a().plans=a().plans.filter(p=>p.id!==id);if(a().activePlan===id)a().activePlan=a().plans[0]?.id||null;save();render();return;}
-  if(action==='setup-back'){view.setupDraft={...view.setupDraft,...Object.fromEntries(new FormData(document.querySelector('#academy-setup-form')))};view.setupStep=Math.max(0,view.setupStep-1);render();return;}
+  if(action==='create-course'){
+   const p=a().plans.find(x=>x.id===id),course=p&&[...new Set([...(p.matchedCourses||[]),...p.steps.map(x=>x.courseId)])].map(x=>ctx.course(x)).find(x=>x?.lessons?.length);
+   if(!course){ctx.toast(L('This plan has no lessons to turn into a course.','这个计划没有可制作成课程的课节。','這個計畫沒有可製作成課程的課節。'));return;}
+   const userId=ctx.user?.()?.id,linked=planCourseFor(userId,p.id);
+   if(linked){
+    let missing=false;
+    try{const response=await fetch('/api/teaching?resource=personal-courses&id='+encodeURIComponent(linked),{cache:'no-store',credentials:'same-origin'});missing=response.status===404;}catch{/* Open the linked course if the check itself is unavailable. */}
+    if(!missing){go('personal-course/'+linked);return;}
+    clearPlanCourse(userId,p.id);
+   }
+   const handed=saveCourseHandoff(ctx.user?.()?.id,{planId:p.id,title:T(course.title),description:T(course.description)||'',language:contentLang(),lessons:course.lessons.map(l=>({title:T(l.title),body:T(l.body)}))});
+   if(!handed){ctx.toast(L('The course draft could not be saved on this device.','无法在本机保存课程草稿。','無法在本機儲存課程草稿。'));return;}
+   go('personal-course/new');return;
+  }
   if(action==='bookmark'){const key=el.dataset.key;a().bookmarks=a().bookmarks.includes(key)?a().bookmarks.filter(x=>x!==key):[...a().bookmarks,key];save();renderInPlace();return;}
   if(action==='reopen'||action==='complete-plan'){const cid=el.dataset.course,lid=el.dataset.lesson;s().progress[cid]??=[];if(action==='reopen')s().progress[cid]=s().progress[cid].filter(x=>x!==lid);else if(!s().progress[cid].includes(lid)){s().progress[cid].push(lid);touch('lesson',lessonKey(cid,lid));}save();render();return;}
   if(action==='complete-tutorial'){a().tutorials=a().tutorials.includes(id)?a().tutorials.filter(x=>x!==id):[...a().tutorials,id];touch('tutorial',id);renderInPlace();return;}
@@ -297,10 +440,9 @@ export function createAcademy(ctx){
  document.addEventListener('keydown',event=>quest.key(event));
  document.addEventListener('keydown',event=>{const el=event.target;if(event.key==='Tab'&&el.matches('textarea.code-editor')){event.preventDefault();const start=el.selectionStart,end=el.selectionEnd;el.value=el.value.slice(0,start)+'  '+el.value.slice(end);el.selectionStart=el.selectionEnd=start+2;el.dispatchEvent(new Event('input',{bubbles:true}));}});
  document.addEventListener('submit',event=>{
-  const f=event.target;if(!['academy-plan-form','academy-setup-form','academy-interview-form','academy-docker-form','academy-git-form','academy-git-sandbox-form'].includes(f.id))return;event.preventDefault();
+  const f=event.target;if(!['academy-plan-form','academy-interview-form','academy-docker-form','academy-git-form','academy-git-sandbox-form'].includes(f.id))return;event.preventDefault();
   try{
    if(f.id==='academy-plan-form'){previewPlan(Object.fromEntries(new FormData(f)));render();}
-   if(f.id==='academy-setup-form'){const d=Object.fromEntries(new FormData(f));view.setupDraft={...view.setupDraft,...d};if(view.setupStep===1)view.setupDraft.interests=new FormData(f).getAll('interests');if(view.setupStep<2){view.setupStep++;render();}else{previewPlan(view.setupDraft);view.setupStep=0;go('path');}}
    if(f.id==='academy-interview-form'){const scenario=interviews.find(x=>x.id===view.interviewId);a().interviewDrafts??={};a().interviewDrafts[scenario.id]??=[];a().interviewDrafts[scenario.id][view.question]=document.querySelector('#academy-interview-answer').value;view.questionReview=reviewInterview(scenario,a().interviewDrafts[scenario.id],contentLang())[view.question];save();render();}
    if(f.id==='academy-docker-form'){a().labStates.docker=dockerStep(labState('docker'),document.querySelector('#docker-command').value);if(a().labStates.docker.status==='stopped')completeLab('docker',{completed:true});save();render();}
    if(f.id==='academy-git-form'){runGitLabCommand(document.querySelector('#git-command').value,ctx.route()[1]);}
@@ -311,7 +453,7 @@ export function createAcademy(ctx){
  ensureAcademy(s());
  return {
   label:key=>key==='mock-interview'?L('AI mock interview','AI 模拟面试','AI 模擬面試'):key==='profile'?L(s().role==='learner'?'Learning profile':'Personal settings',s().role==='learner'?'学习档案':'个人设置',s().role==='learner'?'學習檔案':'個人設定'):labels[key]?local(labels[key],lang()):null,
-  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:views.games,explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id),setup:setupPage,records:()=>views.records(id),practice:()=>id==='playground'?playground():id==='git-sandbox'?gitSandboxPage():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
+  page:(page,id,index)=>{const playground=()=>heading(L('Practice','练习中心','練習中心'))+views.practiceTabs('playground')+views.practiceSections('playground')+playgroundPage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,'');return ({'mock-interview':voiceInterview.page,learning:views.home,games:()=>quest.page(),explore:()=>id==='programming'?views.programming(index||'all'):null,path:pathsPage,plan:()=>planDetail(id,index),records:()=>views.records(id),practice:()=>id==='playground'?playground():id==='git-sandbox'?gitSandboxPage():views.practice(id,index),challenge:()=>challengePage(id),playground,reference:()=>heading(L('Syntax reference','语法速查','語法速查'))+views.courseTabs('programming')+referencePage().replace(/<div class="page-heading">[\s\S]*?<\/div>/,''),tutorial:()=>views.tutorial(id),next:()=>views.complete(id,index),interview:()=>interviewPage(id,index),lab:()=>labPage(id),codequest:()=>quest.page(id,index)})[page]?.()??null;},
   afterRender,afterModal,activePlan,template:buildTemplate,
   beforeRender(){browserRunner.cancelActive();runAbort?.abort();voiceInterview.cleanup();view.pageCleanup?.();view.pageCleanup=null;stopSpeech();view.runToken++;view.running=false;},
   recordEvent(type,cid,detail){const key=lessonKey(cid,detail.lessonId||ctx.course(cid)?.lessons[Number(ctx.route()[2])||0]?.id||'');if(type==='checkpoint'){const prior=a().quizzes[key]||{};a().quizzes[key]={...prior,correct:!!prior.correct||!!detail.passed,lastCorrect:!!detail.passed,selected:s().checks?.[key]?.checked,attempts:(prior.attempts||0)+1,at:new Date().toISOString()};}if(type==='code'){const prior=a().challenges['course/'+key]||{};a().challenges['course/'+key]={...prior,passed:!!prior.passed||!!detail.passed,attempts:(prior.attempts||0)+1};}if(['lesson','checkpoint','code','game','scope-lab','access-lab'].includes(type)){recordActivity(s(),type,key,{passed:detail.passed});save();}},

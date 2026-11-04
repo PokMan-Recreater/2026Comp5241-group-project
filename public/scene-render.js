@@ -56,23 +56,33 @@ const caption=title=>{
 };
 
 function flow(title,it,id){
- const n=Math.max(2,Math.min(5,it.length||2)),gap=n>3?14:22,w=(320-gap*(n-1))/n,size=n>3?9:12,y=70,h=96,cy=y+h/2;
- let s='';
+ const n=Math.max(2,Math.min(5,it.length||2)),rows=n>3?2:1,cols=rows===2?Math.ceil(n/2):n,r=rows===2?24:32,size=rows===2?8:9.5;
+ const colW=rows===2?(cols===3?120:140):300/n,maxW=rows===2?colW-12:86,centers=[];
  for(let i=0;i<n;i++){
-  const x=20+i*(w+gap);
-  s+=box(x,y,w,h,FILLS[i%FILLS.length]);
-  s+=block(x+w/2,cy,wrap(it[i]||title,w-12,size,3),size);
-  if(i<n-1)s+=arrow(`M${x+w} ${cy}h${gap-1}`,id);
+  const row=Math.floor(i/cols),col=i%cols,count=row===0?cols:n-cols;
+  const offset=180-count*colW/2;
+  centers.push([offset+col*colW+colW/2,rows===2?(row===0?74:160):106]);
+ }
+ let s='';
+ centers.forEach(([x,y],i)=>{
+  s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`
+   +txt(x,y+4,String(i+1),r>28?13:10);
+  wrap(it[i]||title,maxW,size,rows===2?2:3).forEach((line,j)=>s+=txt(x,y+r+15+j*Math.round(size*1.3),line,size));
+ });
+ for(let i=0;i<n-1;i++){
+  const [x1,y1]=centers[i],[x2,y2]=centers[i+1];
+  s+=y1===y2?arrow(`M${x1+r+2} ${y1}H${x2-r-2}`,id):arrow(`M${x1} ${y1+r+2}C${x1} ${(y1+y2)/2-12} ${x2} ${(y1+y2)/2-12} ${x2} ${y2-r-2}`,id);
  }
  return s+caption(title);
 }
+
 function compare(title,it){
- const size=10,cy=136;
- return box(20,52,150,138,'#e7f2e7')+box(190,52,150,138,'#f9e8e2')
-  +txt(95,88,'✓',22,'#34734b')+txt(265,88,'✕',22,'#a64e44')
-  +block(95,cy,wrap(it[0]||title,130,size,3),size,'#24553a')
-  +block(265,cy,wrap(it[1]||'',130,size,3),size,'#7a3b32')
-  +`<path d="M180 46V198" stroke="${INK}" stroke-width="2" stroke-dasharray="6 5"/>`
+ const size=10,left=wrap(it[0]||title,110,size,3),right=wrap(it[1]||'',110,size,3);
+ return `<circle cx="106" cy="116" r="72" fill="#e7f2e7" stroke="${INK}" stroke-width="1.8"/>`
+  +`<circle cx="254" cy="116" r="72" fill="#f9e8e2" stroke="${INK}" stroke-width="1.8"/>`
+  +txt(106,72,'✓',20,'#34734b')+txt(254,72,'✕',20,'#a64e44')
+  +block(106,126,left,size,'#24553a')+block(254,126,right,size,'#7a3b32')
+  +`<path d="M180 40V196" stroke="${INK}" stroke-width="2" stroke-dasharray="6 5"/>`
   +caption(title);
 }
 function timeline(title,it){
@@ -121,13 +131,20 @@ function hub(title,it){
  return s;
 }
 function decision(title,it){
- const cond=clipLine(it[0]||title,104,10),a=clipLine(it[1]||'',104,10),b=clipLine(it[2]||'',104,10),res=clipLine(it[3]||'',104,10);
- let s=box(120,40,120,44,FILLS[0])+txt(180,67,cond)
-  +`<path d="M180 84V110M180 110H95V134M180 110H265V134" stroke="${MUTED}" stroke-width="2" fill="none"/>`
-  +box(35,134,120,44,FILLS[1])+txt(95,161,a,10)
-  +box(205,134,120,44,FILLS[2])+txt(265,161,b,10);
- if(res)s+=box(120,192,120,32,FILLS[3])+txt(180,213,res,10);
- return s;
+ const cond=wrap(it[0]||title,106,10,2),a=wrap(it[1]||'',68,9,2),b=wrap(it[2]||'',68,9,2),res=it[3]||'';
+ let s=`<path d="M180 22L258 62L180 102L102 62Z" fill="${FILLS[0]}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`
+  +block(180,62,cond,10)
+  +`<path d="M180 102V116H90M180 116H270" stroke="${MUTED}" stroke-width="2" fill="none"/>`
+  +`<circle cx="90" cy="152" r="36" fill="${FILLS[1]}" stroke="${INK}" stroke-width="1.8"/>`
+  +`<circle cx="270" cy="152" r="36" fill="${FILLS[2]}" stroke="${INK}" stroke-width="1.8"/>`
+  +txt(90,131,'✓',14,'#34734b')+txt(270,131,'✕',14,'#a64e44')
+  +block(90,157,a,9)+block(270,157,b,9);
+ if(res){
+  const w=Math.min(236,Math.round(measure(res,10))+28);
+  s+=`<path d="M${180-w/2} 186H${180+w/2}L${180+w/2+9} 197L${180+w/2} 208H${180-w/2}L${180-w/2-9} 197Z" fill="${FILLS[3]}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`
+   +txt(180,200.5,res,10);
+ }
+ return s+caption(title);
 }
 function balance(title,it){
  return `<path d="M120 188L180 96L240 188Z" fill="${FILLS[0]}" stroke="${INK}" stroke-width="2"/>`
@@ -147,13 +164,13 @@ function network(title,it){
  return s+caption(title);
 }
 function chain(title,it){
- const n=Math.max(2,Math.min(4,it.length)),w=84,gap=16,total=n*w+(n-1)*gap;
- let x=(360-total)/2,s='';
+ const n=Math.max(2,Math.min(4,it.length)),step=54,x0=180-(n-1)*step/2,cy=102;
+ let s='';
  for(let i=0;i<n;i++){
-  s+=box(x,78,w,82,FILLS[i%FILLS.length])+block(x+w/2,119,wrap(it[i]||title,70,10,2),10);
-  if(i<n-1)s+=`<path d="M${x+w} 119h${gap}" stroke="${INK}" stroke-width="2.5"/>`+`<circle cx="${x+w+gap/2}" cy="119" r="4" fill="${ACCENT}"/>`;
-  x+=w+gap;
+  const x=x0+i*step;
+  s+=`<g transform="rotate(${i%2?-9:9} ${x} ${cy})"><ellipse cx="${x}" cy="${cy}" rx="38" ry="25" fill="none" stroke="${INK}" stroke-width="6"/></g>`;
  }
+ for(let i=0;i<n;i++)s+=block(x0+i*step,164,wrap(it[i]||title,76,9,3),9);
  return s+caption(title);
 }
 const person=(x,y,color)=>`<circle cx="${x}" cy="${y-24}" r="12" fill="#fff8ef" stroke="${INK}" stroke-width="1.8"/><rect x="${x-13}" y="${y-10}" width="26" height="34" rx="8" fill="${color}" stroke="${INK}" stroke-width="1.8"/>`;
@@ -211,7 +228,119 @@ function robot(title,it){
  }
  return s+caption(title);
 }
-const draw={flow,compare,timeline,cycle,layers,hub,decision,balance,network,chain,conversation,phone,document,database,robot};
+function venn(title,it){
+ const left=wrap(it[0]||title,76,9,3),right=wrap(it[1]||'',76,9,3),shared=it[2]?wrap(it[2],56,8,2):[];
+ return `<circle cx="142" cy="112" r="66" fill="${FILLS[0]}" fill-opacity=".78" stroke="${INK}" stroke-width="1.8"/>`
+  +`<circle cx="218" cy="112" r="66" fill="${FILLS[3]}" fill-opacity=".74" stroke="${INK}" stroke-width="1.8"/>`
+  +block(112,112,left,9)+block(248,112,right,9)+block(180,112,shared,8)
+  +caption(title);
+}
+function quadrant(title,it){
+ const cells=[[28,44],[190,44],[28,138],[190,138]],size=9;
+ let s=`<path d="M180 34V206M20 122H340" stroke="${MUTED}" stroke-width="1.5" stroke-dasharray="5 5"/>`;
+ cells.forEach(([x,y],i)=>{s+=box(x,y,142,70,FILLS[i%FILLS.length])+block(x+71,y+35,wrap(it[i]||'—',122,size,2),size);});
+ return s+caption(title);
+}
+function stairs(title,it){
+ const n=Math.max(2,Math.min(5,it.length)),w=Math.min(56,290/n),x0=(360-n*w)/2,size=8;
+ let s=`<path d="M20 198H340" stroke="${INK}" stroke-width="2"/>`;
+ for(let i=0;i<n;i++){
+  const h=44+i*(104/Math.max(1,n-1)),x=x0+i*w,y=198-h;
+  s+=`<rect x="${x+2}" y="${y}" width="${w-4}" height="${h}" rx="7" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`
+   +block(x+w/2,y+h/2,wrap(it[i]||title,w-10,size,3),size);
+ }
+ return s+caption(title);
+}
+function funnel(title,it){
+ const n=Math.max(2,Math.min(3,it.length)),top=42,h=44,gap=8,size=10;
+ const widths=n===3?[280,196,118]:[280,160];
+ let s='';
+ for(let i=0;i<n;i++){
+  const tw=widths[i],bw=widths[i+1]??widths[i]*0.55,y=top+i*(h+gap);
+  s+=`<path d="M${180-tw/2} ${y}H${180+tw/2}L${180+bw/2} ${y+h}H${180-bw/2}Z" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`
+   +block(180,y+h/2,wrap(it[i]||title,tw-18,size,2),size);
+ }
+ return s+caption(title);
+}
+function pyramid(title,it){
+ const n=Math.max(2,Math.min(3,it.length)),levels=n===3?[[112,46],[178,96],[244,146]]:[[150,58],[230,118]];
+ let s='';
+ levels.forEach(([w,y],i)=>{
+  const h=44,bw=w*0.68;
+  s+=`<path d="M${180-bw/2} ${y}H${180+bw/2}L${180+w/2} ${y+h}H${180-w/2}Z" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`
+   +block(180,y+h/2,wrap(it[i]||title,w-22,9,2),9);
+ });
+ return s+caption(title);
+}
+function tree(title,it){
+ const children=it.slice(1,4),n=Math.max(1,children.length),spots=n===3?[74,180,286]:n===2?[110,250]:[180],busY=112;
+ let s=`<circle cx="180" cy="52" r="33" fill="${FILLS[4]}" stroke="${INK}" stroke-width="2"/>`
+  +block(180,52,wrap(it[0]||title,52,9,3),9)
+  +`<path d="M180 85V${busY}${n>1?`M${spots[0]} ${busY}H${spots[n-1]}`:''}" stroke="${MUTED}" stroke-width="1.8" fill="none"/>`;
+ children.forEach((c,i)=>{const x=spots[i];s+=`<path d="M${x} ${busY}V136" stroke="${MUTED}" stroke-width="1.8"/>`+`<circle cx="${x}" cy="172" r="36" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.8"/>`+block(x,172,wrap(c,56,9,3),9);});
+ return s+caption(title);
+}
+function target(title,it){
+ const cx=180,cy=112,spots=[[180,26],[86,176],[274,176]];
+ let s=`<circle cx="${cx}" cy="${cy}" r="76" fill="${FILLS[3]}" fill-opacity=".35" stroke="${INK}" stroke-width="1.6"/>`
+  +`<circle cx="${cx}" cy="${cy}" r="52" fill="${FILLS[1]}" fill-opacity=".6" stroke="${INK}" stroke-width="1.6"/>`
+  +`<circle cx="${cx}" cy="${cy}" r="28" fill="${FILLS[0]}" stroke="${INK}" stroke-width="1.8"/>`
+  +block(cx,cy,wrap(it[0]||title,46,8,2),8);
+ for(let i=1;i<Math.min(4,it.length);i++){const [x,y]=spots[i-1];s+=txt(x,y,clipLine(it[i],92,8),8);}
+ return s+caption(title);
+}
+function shield(title,it){
+ const n=Math.max(2,Math.min(4,it.length)),step=Math.min(35,140/n),start=64;
+ let s=`<path d="M70 54H150V122C150 158 124 178 110 186C96 178 70 158 70 122Z" fill="${FILLS[3]}" stroke="${INK}" stroke-width="2"/>`
+  +`<path d="M92 118l12 12 24-26" fill="none" stroke="#34734b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
+ for(let i=0;i<n;i++){const y=start+step*i;s+=`<circle cx="172" cy="${y}" r="4" fill="${ACCENT}"/>`+txt(184,y+3,clipLine(it[i]||title,156,9),9,INK,'start');}
+ return s+caption(title);
+}
+function chart(title,it){
+ const n=Math.max(2,Math.min(5,it.length)),barW=Math.min(26,120/n),gap=8,x0=42,baseline=186,heights=[70,104,84,132,112];
+ let s=`<path d="M32 ${baseline}H210M32 ${baseline}V44" stroke="${INK}" stroke-width="2"/>`;
+ for(let i=0;i<n;i++){
+  const h=heights[i%heights.length],x=x0+i*(barW+gap),y=baseline-h,ly=56+i*(130/Math.max(1,n-1));
+  s+=`<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="6" fill="${FILLS[i%FILLS.length]}" stroke="${INK}" stroke-width="1.6"/>`
+   +`<path d="M${x+barW} ${y+4}H218" stroke="${MUTED}" stroke-width="1" stroke-dasharray="3 3"/>`
+   +`<circle cx="218" cy="${ly-3}" r="3.5" fill="${ACCENT}"/>`+txt(228,ly,clipLine(it[i]||title,120,8),8,INK,'start');
+ }
+ return s+caption(title);
+}
+function puzzle(title,it){
+ const n=Math.max(2,Math.min(3,it.length)),w=88,h=88,gap=18,total=n*w+(n-1)*gap,x0=(360-total)/2,y=74;
+ let s='';
+ for(let i=0;i<n;i++){
+  const x=x0+i*(w+gap),f=FILLS[i%FILLS.length];
+  s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${f}" stroke="${INK}" stroke-width="1.8"/>`;
+  if(i<n-1)s+=`<circle cx="${x+w}" cy="${y+h/2}" r="12" fill="${f}" stroke="${INK}" stroke-width="1.8"/>`;
+  s+=block(x+w/2,y+h/2,wrap(it[i]||title,w-18,9,3),9);
+ }
+ return s+caption(title);
+}
+function iceberg(title,it){
+ const n=Math.max(2,Math.min(4,it.length));
+ let s=`<path d="M20 128H240" stroke="#7a9cb8" stroke-width="2.5" stroke-dasharray="7 5"/>`
+  +`<path d="M100 128L136 58L172 128Z" fill="${FILLS[3]}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`
+  +`<path d="M74 128H198L238 206H34Z" fill="${FILLS[1]}" fill-opacity=".72" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`
+  +`<path d="M176 100H242" stroke="${MUTED}" stroke-width="1" stroke-dasharray="3 3"/>`
+  +`<circle cx="246" cy="97" r="3.5" fill="${ACCENT}"/>`+txt(256,100,clipLine(it[0]||title,96,8),8,INK,'start');
+ for(let i=1;i<n;i++){const y=146+(i-1)*20;s+=`<circle cx="246" cy="${y-3}" r="3.5" fill="${ACCENT}"/>`+txt(256,y,clipLine(it[i],96,8),8,INK,'start');}
+ return s+caption(title);
+}
+function bridge(title,it){
+ const n=Math.max(2,Math.min(4,it.length));
+ let s=`<path d="M0 206Q30 198 60 206T120 206T180 206T240 206T300 206T360 206" fill="none" stroke="#9fb9cf" stroke-width="2"/>`
+  +`<path d="M0 198C10 148 46 130 94 140C128 147 150 168 158 198Z" fill="${FILLS[1]}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`
+  +`<path d="M360 198C350 148 314 130 266 140C232 147 210 168 202 198Z" fill="${FILLS[2]}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`
+  +`<path d="M128 152C150 92 210 92 232 152" fill="none" stroke="${INK}" stroke-width="2.5"/>`
+  +`<path d="M124 152H236" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>`
+  +`<path d="M156 120V152M180 106V152M204 120V152" stroke="${INK}" stroke-width="1.6"/>`;
+ s+=block(60,176,wrap(it[0]||title,84,8.5,2),8.5)+block(300,176,wrap(it[1]||'',84,8.5,2),8.5);
+ for(let i=2;i<n;i++)s+=block(180,i===2?62:38,wrap(it[i],200,8,2),8,MUTED,500);
+ return s+caption(title);
+}
+const draw={flow,compare,timeline,cycle,layers,hub,decision,balance,network,chain,conversation,phone,document,database,robot,venn,quadrant,stairs,funnel,pyramid,tree,target,shield,chart,puzzle,iceberg,bridge};
 export const SCENE_IDS=['auto',...Object.keys(draw)];
 export function sceneArt(scene,items,opts={}){
  const list=(Array.isArray(items)?items:[]).map(String).filter(v=>v.trim());
