@@ -1,3 +1,7 @@
+import courseNarration from '../api/course-narration.js';
+import teaching from '../api/teaching.js';
+import admin from '../api/admin.js';
+import courseAI from '../api/course-ai.js';
 import account from '../api/account.js';
 import interviewRecords from '../api/interview-records.js';
 import interviewReviewWorker from '../api/interview-review-worker.js';
@@ -14,7 +18,7 @@ import {attachDoubaoRealtime} from './doubao-realtime.mjs';
 for(const name of ['.env.local','.env']){
  try{for(const [key,value]of Object.entries(parseEnv(await readFile(new URL('../'+name,import.meta.url),'utf8'))))if(process.env[key]===undefined)process.env[key]=value;}catch(error){if(error.code!=='ENOENT')throw error;}
 }
-const handlers={'/api/account':account,'/api/interview-records':interviewRecords,'/api/interview-review-worker':interviewReviewWorker,'/api/ai':ai,'/api/run':run,'/api/interview':interview,'/api/transcribe':transcribe};
+const handlers={'/api/course-narration':courseNarration,'/api/teaching':teaching,'/api/admin':admin,'/api/course-ai':courseAI,'/api/account':account,'/api/interview-records':interviewRecords,'/api/interview-review-worker':interviewReviewWorker,'/api/ai':ai,'/api/run':run,'/api/interview':interview,'/api/transcribe':transcribe};
 const root = fileURLToPath(new URL('../public/', import.meta.url));
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json', '.mp3':'audio/mpeg', '.wav':'audio/wav' };
 const server = http.createServer(async (req, res) => {

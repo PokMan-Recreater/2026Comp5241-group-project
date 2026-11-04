@@ -40,8 +40,8 @@ test('the retired lab and written entries open Knowledge practice instead',()=>{
  assert.match(views.practiceTabs('written'),/#practice\/checks" aria-current="page"/);
  assert.equal(views.practiceSections('written'),'');
 });
-test('games have their own hub and do not appear in the practice lab list',()=>{
- assert.match(views.games(),/#game"/);assert.match(views.games(),/#codequest"/);
+test('games open the challenge course directly and do not appear in the practice lab list',()=>{
+ assert.equal(views.games,undefined);
  assert.doesNotMatch(views.practice('labs'),/#game"/);
 });
 test('the rebuilt catalog no longer repeats the old topic taxonomy',()=>{

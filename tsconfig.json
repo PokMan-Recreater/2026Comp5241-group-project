@@ -30,5 +30,8 @@
     "public/learning-links.js",
     "api/**/*.js",
     "scripts/**/*.mjs"
+  ],
+  "exclude": [
+    "scripts/scene-geometry.mjs"
   ]
 }

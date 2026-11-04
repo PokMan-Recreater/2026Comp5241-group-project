@@ -52,7 +52,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .btn.danger{background:#fff0eb;color:#9b3824}
 /* A single course diagram, set on a quiet paper surface. */
 .section-head h2{font-size:25px;font-weight:600}.section-head .eyebrow,.section-head a{color:var(--muted)}
-.course-grid{gap:20px}.course-card{border-radius:20px;border-color:#d5ceff}.course-card:hover{box-shadow:0 6px 20px #0500380a}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}@keyframes ir-border-spin{to{--a:360deg}}@keyframes ir-border-pulse{0%,100%{opacity:.35}50%{opacity:.75}}
+.course-grid{gap:20px}.course-card{border-radius:20px;border-color:transparent;position:relative;transition:transform .25s,box-shadow .25s}.course-card::before{content:'';position:absolute;inset:-1.5px;border-radius:21px;padding:1.5px;background:conic-gradient(from var(--a,0deg),#d5ceff 0%,#a698da 15%,#b9afe8 30%,#d5ceff 55%,#fff3a3 70%,#f7e1c0 85%,#d5ceff 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;transition:opacity .35s,transform .35s;--a:0deg;animation:ir-border-spin 6s linear infinite;pointer-events:none;z-index:0}.course-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px #05003814}.course-card:hover::before{opacity:1;animation-duration:3s}.course-card>*{position:relative;z-index:1}
 .course-art{height:140px;border-bottom:1px solid #e5dfff}.course-art.mint,.course-art.peach{background:#fff3a3}.course-art.lavender{background:#eeeaff}
 .course-art .eyebrow,.course-art.lavender .eyebrow,.course-art.peach .eyebrow{color:#605a8a}
 .course-art .number{display:none}.course-art svg.art{width:210px;height:110px;right:calc(50% - 105px);bottom:0}
@@ -151,5 +152,18 @@ html[lang="zh-TW"],.lesson-paper[lang="zh-TW"]{--font:'Plus Jakarta Sans','Sourc
  .main:has(>.content>.page-heading)>.content{padding-top:34px}
  .content>.page-heading{min-height:44px}
  .content>.page-heading h1{padding-right:320px;min-height:44px}
+ .main:has(>.content>#teaching-workspace){position:relative}
+ .main:has(>.content>#teaching-workspace)>.topbar{position:absolute;top:24px;left:0;right:0;max-width:1320px;margin-inline:auto;height:64px;justify-content:flex-end;background:transparent;pointer-events:none}
+ .main:has(>.content>#teaching-workspace)>.topbar .top-tools{pointer-events:auto}
+ .main:has(>.content>#teaching-workspace)>.content{padding-top:34px}
+ /* The shared Courses section tabs start every page at the same top offset. */
+ .main:has(>.content>.learning-tabs){position:relative}
+ .main:has(>.content>.learning-tabs)>.topbar{position:absolute;top:24px;left:0;right:0;max-width:1320px;margin-inline:auto;height:64px;justify-content:flex-end;background:transparent;pointer-events:none}
+ .main:has(>.content>.learning-tabs)>.topbar .top-tools{pointer-events:auto}
+ .main:has(>.content>.learning-tabs)>.content{padding-top:34px}
+ #teaching-workspace>.page-heading{min-height:44px}
+ #teaching-workspace>.page-heading h1{padding-right:320px;min-height:44px}
 }
-@media(min-width:701px) and (max-width:1000px){.content>.page-heading h1{font-size:28px;padding-right:260px}}
+@media(min-width:701px) and (max-width:1000px){.content>.page-heading h1,#teaching-workspace>.page-heading h1{font-size:28px;padding-right:260px}}
+
+.ai-task-center{position:relative;z-index:1100;font-size:14px;flex:none}.ai-task-center>.btn{font-size:12px;padding:9px 14px}.ai-task-center.is-floating{position:fixed;top:18px;right:18px}.ai-task-panel{position:absolute;top:calc(100% + 10px);right:0;width:min(460px,calc(100vw - 36px));max-height:75dvh;overflow:auto;background:#fffdf7;color:#292535;border:1px solid #b9afc7;border-radius:16px;padding:20px;box-shadow:0 12px 45px #29253533}.sidebar-bottom .ai-task-center{margin:0 0 12px}.sidebar-bottom .ai-task-center>.btn{width:100%}.sidebar-bottom .ai-task-panel{top:auto;bottom:calc(100% + 10px);left:0;right:auto}.ai-task-panel h2{font-size:21px}.ai-task-panel p{overflow-wrap:anywhere}.ai-task-row{padding:16px 0;border-bottom:1px solid #e4ddf0}.ai-task-row strong{overflow-wrap:anywhere}.ai-task-row .row{flex-wrap:wrap}.ai-task-panel section{padding:10px 0;border-bottom:1px solid #eee7f7}
