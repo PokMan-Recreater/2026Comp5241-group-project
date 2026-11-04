@@ -7,7 +7,7 @@ export const phrases = {
 
   brandline:['LEARN BY BUILDING','在实践中学习','在實踐中學習'],
   learning:['My learning','我的学习','我的學習'], explore:['Explore courses','探索课程','探索課程'], path:['Learning path','学习路径','學習路徑'], profile:['Learning profile','学习档案','學習檔案'],
-  courses:['My courses','我的课程','我的課程'], coursesSection:['Course sections','课程分区','課程分區'], 'personal-courses':['My courses','我的课程','我的課程'], classrooms:['Classrooms','教学班','教學班'], engagement:['Engagement','学习情况','學習情況'], overview:['Overview','平台概览','平台概覽'], users:['People & roles','用户与角色','使用者與角色'], catalog:['Course management','课程管理','課程管理'], 'admin-learning':['Learning overview','学习情况','學習情況'],
+  courses:['My courses','我的课程','我的課程'], coursesSection:['Course sections','课程分区','課程分區'], 'personal-courses':['My custom courses','我的自定义课程','我的自訂課程'], classrooms:['Classrooms','教学班','教學班'], engagement:['Engagement','学习情况','學習情況'], overview:['Overview','平台概览','平台概覽'], users:['People & roles','用户与角色','使用者與角色'], catalog:['Course management','课程管理','課程管理'], 'admin-learning':['Learning overview','学习情况','學習情況'],
   workspace:['WORKSPACE','工作空间','工作空間'], discover:['DISCOVER','发现','探索'], learner:['Learner','学习者','學習者'], instructor:['Instructor','教师','教師'], admin:['Administrator','管理员','管理員'], previewAs:['Preview as','预览身份','預覽身分'], adminShort:['Admin','管理员','管理員'],
   prototype:['Interactive prototype','交互原型','互動原型'], localNotice:['Your changes are saved on this device. Role switching previews workflows; it is not account authentication.','更改保存在当前设备。身份切换用于预览流程，并非账号认证。','變更儲存在目前裝置。身分切換用於預覽流程，並非帳號驗證。'],
   noteUnderstand:['UNDERSTAND','理解','理解'], noteBuild:['BUILD','动手','動手'], noteLearn:['LEARN','改进','改進'],

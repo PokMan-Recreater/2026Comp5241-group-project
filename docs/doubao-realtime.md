@@ -24,7 +24,7 @@
 - 服务端核对引用、原回答、评分维度范围后接受报告；结束页展示评分维度（含引用和理由）、优点与需补足的证据，支持下载。实时模型的工具调用有时只返回 summary、score 和 rewrite，缺失的定性段落不会伪造：优点/改进由已核验的评分维度生成，缺失的改写或下一步练习直接不显示。校验失败或模型未返回时，明确标为本地规则建议，不伪造AI分数。未完成转写不作为完整回答计分。实时通话中“会话更新 + 提交剩余音频”能否稳定触发最终工具调用仍需真实通话继续观察；后台评分已用真实供应商验证。
 - 后台评分（`scripts/interview-cloud-review.mjs`）领取 Supabase 任务后，先用同一豆包密钥合成一句很短的语音指令，作为真实输入音频送入独立实时会话，再等待 `update_interview_review` 工具调用。实测保存 → 领取 → 评分 → 写回报告约 29 秒，任务状态 completed，模型版本 doubao-seeduplex-1.2.6.1；引用不匹配时任务重试，不写入假分数。
 - 评分与保存字段详见 `docs/interview-data-requirements.md`。面试会话、对话轮次、评分与复盘任务现已保存到 Supabase，并可按账号隔离读取与删除。项目背景仍用于具体追问，未提供时才邀请介绍项目。
-- 本地 WebSocket 服务不是 Vercel 普通函数。线上仍保留原面试模式，未上传或部署。生产接入须另备常驻 WSS 后端、用户鉴权及每用户限额；不能把本地后端直接公开。
+- 线上通过 `api/realtime.js` 导出的 HTTP server 使用 Vercel WebSocket 支持（需要 Fluid compute）。生产连接校验 HTTPS 同源和已登录账号；密钥仅用于服务端。线上每场最多4分钟，函数上限300秒；本地仍最多10分钟。每个实例同时只接一场，并限制连接频率；该限制不等于跨实例的全局或每用户配额。前端状态接口 `/api/realtime-status` 重写到同一函数，避免超出 Hobby 方案的12个函数限制。
 - 自动测试只使用本地供应商替身，不消耗真实额度。真实鉴权、模型权限、麦克风和端到端对话需要配置密钥后由用户点击测试。
 
 官方协议：https://docs.volcengine.com/docs/doubao-voice/end-to-end-real-time-voice-full-duplex-version?lang=zh

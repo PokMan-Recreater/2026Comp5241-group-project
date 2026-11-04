@@ -3,6 +3,8 @@ export const speechLanguage=value=>value==='en'?'en':'zh';
 // Interface language and spoken interview language are intentionally independent.
 const copy=[
  ['面试中不显示实时文字。','Live transcripts are hidden during the interview.','面試中不顯示即時文字。'],
+ ['无法连接面试服务，请返回后重试。','Cannot connect to the interview service. Return to setup and retry.','無法連接面試服務，請返回後重試。'],
+ ['连接失败，请检查登录状态和网络后重试。','Connection failed. Check your sign-in status and network, then retry.','連線失敗，請檢查登入狀態和網路後重試。'],
  ['免费额度用尽后可能收费，本页面无法查询余额。10 分钟为时长上限，不代表免费。','Charges may apply after free quota is used. This page cannot check your balance. The 10-minute limit does not mean free usage.','免費額度用盡後可能收費，本頁面無法查詢餘額。10 分鐘為時長上限，不代表免費。'],
  ['我同意将麦克风音频和项目背景发送给 AI 实时语音服务；登录后将保存文字记录与复盘。','I agree to send microphone audio and project context to the AI realtime voice service; transcripts and reviews will be saved when signed in.','我同意將麥克風音訊和專案背景傳送給 AI 即時語音服務；登入後將儲存文字紀錄與回顧。'],
  ['登录后，面试转写、设置与复盘将保存到你的私有面试记录；未登录时仅临时保留，可下载。','When signed in, transcripts, settings and reviews are saved to your private interview records. Otherwise they are temporary and can be downloaded.','登入後，面試轉寫、設定與回顧將儲存至你的私人面試紀錄；未登入時僅暫時保留，可下載。'],

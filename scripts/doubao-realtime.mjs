@@ -32,12 +32,13 @@ export function reviewedSessionConfig(settings={},env=process.env,answers=[]){
 }
 
 // Local preview only: one call at a time, same-origin, fixed upstream, bounded duration.
-export function attachDoubaoRealtime(server,{env=process.env,endpoint=DOUBAO_URL,maxDurationMs=600000,handshakeMs=15000}={}){
+export function attachDoubaoRealtime(server,{env=process.env,endpoint=DOUBAO_URL,maxDurationMs=600000,handshakeMs=15000,authorize=null}={}){
  const wss=new WebSocketServer({noServer:true,maxPayload:8192});let active=false,lastStart=0;
- server.on('upgrade',(req,socket,head)=>{
+ server.on('upgrade',async(req,socket,head)=>{
   const reject=code=>{socket.end(`HTTP/1.1 ${code} Rejected\r\nConnection: close\r\n\r\n`);};
   if(req.url!=='/api/realtime')return reject(404);
-  if(!/^(127\.0\.0\.1|localhost):\d+$/.test(req.headers.host||'')||req.headers.origin!==`http://${req.headers.host}`)return reject(403);
+  if(authorize){try{if(!await authorize(req))return reject(403);}catch{return reject(403);}}
+  else if(!/^(127\.0\.0\.1|localhost):\d+$/.test(req.headers.host||'')||req.headers.origin!==`http://${req.headers.host}`)return reject(403);
   if(!env.DOUBAO_REALTIME_API_KEY)return reject(503);
   if(active||Date.now()-lastStart<3000)return reject(429);
   active=true;lastStart=Date.now();
