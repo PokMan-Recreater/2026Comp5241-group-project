@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {courses} from '../public/data.js';
 import {challenges,interviews} from '../public/academy-content.js';
-import {createGit,gitStep,buildPlan,ensureAcademy,planStepDone,planStepRoute,learningStats} from '../public/academy-core.js';
+import {buildPlan,ensureAcademy,planStepDone,planStepRoute,learningStats} from '../public/academy-core.js';
 import {promptAnalysis,retrieve,rankDocuments,dockerStep,initialDocker,diagnosePipeline,pipelineResult,gradientStep} from '../public/academy-models.js';
 import {promptPresets,promptScaffold} from '../public/lab-views.js';
 import {local} from '../public/i18n.js';
@@ -11,12 +11,6 @@ import {knowledgeQuestions,saveKnowledgeAttempt} from '../public/knowledge-check
 import {syntaxCards} from '../public/syntax-reference.js';
 import {nextStudyTarget} from '../public/learning-links.js';
 
-test('a resolved merge recognises second-parent ancestry and repeated merges add no commits',()=>{
- let s=createGit();for(const [action,value] of [['branch','feature'],['commit','main edit'],['checkout','feature'],['commit','feature edit'],['merge','main']])s=gitStep(s,action,value);
- assert(s.conflict);assert.throws(()=>gitStep(s,'commit','skip resolution'));
- s=gitStep(s,'resolve','combined');const count=s.commits.length;s=gitStep(s,'merge','main');assert.equal(s.conflict,null);assert.equal(s.commits.length,count);
- s=gitStep(s,'checkout','main');s=gitStep(s,'merge','feature');assert.equal(s.branches.main,s.branches.feature);
-});
 test('empty prompt labels and untouched suggested outlines cannot complete a prompt lab',()=>{
  assert(promptAnalysis('Goal:\nInput:\nConstraints:\nOutput format:\nVerification / tests:').signals.every(x=>!x));
  for(const p of promptPresets)for(const lang of ['en','zh-CN','zh-TW'])assert(!promptAnalysis(promptScaffold(p.id,lang,local)).signals.every(Boolean));
@@ -36,7 +30,7 @@ test('all requested subject plans use curated lessons and connected practice wit
  assert.equal(buildPlan({courses,topic:'specific marine history',profile:{interests:['development','architecture']},id:'p',courseId:'x'}).plan.source,'template');
 });
 test('plan practice completion follows actual practice results and the home resume can open it',()=>{
- const s={profile:{},progress:{}};ensureAcademy(s);const step={kind:'practice',route:'lab/git',title:'Git',minutes:15};s.academy.plans=[{id:'p',steps:[step]}];s.academy.activePlan='p';assert.equal(planStepDone(step,s),false);assert.deepEqual(nextStudyTarget(courses,s),{kind:'activity',route:'lab/git',title:'Git'});assert.equal(planStepRoute(step),'lab/git');s.academy.labResults.git={completed:true};assert.equal(planStepDone(step,s),true);
+ const s={profile:{},progress:{}};ensureAcademy(s);const step={kind:'practice',route:'lab/docker',title:'Docker',minutes:15};s.academy.plans=[{id:'p',steps:[step]}];s.academy.activePlan='p';assert.equal(planStepDone(step,s),false);assert.deepEqual(nextStudyTarget(courses,s),{kind:'activity',route:'lab/docker',title:'Docker'});assert.equal(planStepRoute(step),'lab/docker');s.academy.labResults.docker={completed:true};assert.equal(planStepDone(step,s),true);
 });
 test('new subject courses declare level/audience and render distinct teaching/checks in all locales',()=>{
  const ids=new Set();for(const c of courses){assert(['beginner','intermediate','advanced'].includes(c.level));assert(c.audience.length);for(const l of c.lessons){assert(!ids.has(c.id+':'+l.id));ids.add(c.id+':'+l.id);}}

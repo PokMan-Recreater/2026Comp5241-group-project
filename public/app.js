@@ -45,13 +45,15 @@ function learningOrder(){const published=new Set(learnerCourses().map(c=>c.id));
 function coursePct(c){return c.lessons.length?Math.round(c.lessons.filter(l=>state.progress[c.id]?.includes(l.id)).length/c.lessons.length*100):0;}
 function courseStatus(c){return coursePct(c)===100?'completed':coursePct(c)>0?'inProgress':'notStarted';}
 function heroNotes(){return `<div class="sticky-board" aria-hidden="true"><div class="hero-note note-understand"><strong>${t('noteProblem')}</strong></div><div class="hero-note note-build"><strong>${t('noteVersion')}</strong></div><div class="hero-note note-learn"><strong>${t('noteImprove')}</strong></div></div>`;}
-const navs={learner:[['learning','home'],['explore','compass'],['path','path'],['practice','code'],['games','gamepad'],['records','chart']],instructor:[['courses','book'],['classrooms','users'],['engagement','chart']],admin:[['overview','home'],['users','users'],['catalog','layers'],['admin-learning','chart']]};
+const navs={learner:[['learning','home'],['explore','compass'],['path','path'],['practice','code'],['git','git-branch'],['games','gamepad'],['records','chart']],instructor:[['courses','book'],['classrooms','users'],['engagement','chart']],admin:[['overview','home'],['users','users'],['catalog','layers'],['admin-learning','chart']]};
 // The catalog, personal courses and teacher-assigned courses are three tabs of one Courses section.
 const coursesSectionTabs=active=>`<nav class="learning-tabs" aria-label="${esc(t('coursesSection'))}">${[['explore',tr('exploreTitle',state.lang),'explore'],['personal-courses',t('personal-courses'),'personal-courses'],['assigned',t('assigned'),'assigned']].map(([key,label,hash])=>`<a href="#${hash}" ${key===active?'aria-current="page"':''}>${esc(label)}</a>`).join('')}</nav>`;
 function route(){return decodeURIComponent(location.hash.slice(1)||'learning').split('/');}
 function go(hash){location.hash=hash;}
 function render(){
  configureBackgroundAI(accountUser?.id,state.lang,state.role);
+ // The old Git practice pages and sandbox now live in the Git simulator.
+ if(/^(lab\/git(-[a-z-]+)?|practice\/git(-sandbox|-course)?)$/.test(decodeURIComponent(location.hash.slice(1)))){location.replace('#git');return;}
  stopCloudRecords();
  stopTeaching();
  if(!accountChecked){$('#app').innerHTML='<main class="auth-page"><p role="status">正在连接 / Connecting…</p></main>';return;}
