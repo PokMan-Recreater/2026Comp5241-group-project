@@ -19,7 +19,7 @@ This checklist maps the prototype to the teacher's project overview and the desi
 | English by default; English, Simplified Chinese and Traditional Chinese | Available. Custom courses fall back to a language that has actually been authored. |
 | Multiple prototypes, user feedback and iteration | Forma is one member's proposal on `prototype/forma`; SkillForge remains on `main`. The third member's upload, comparisons and user-feedback evidence are team tasks. |
 | Member contributions and public project repository | This branch is in the shared group repository. The team should confirm the course's repository-organization instructions and retain evidence of individual contributions. |
-| Public deployment | [Forma live demo](https://forma-learning-lab.vercel.app/) is available on Vercel. |
+| Public deployment | [Forma live demo](https://2026comp5241-group11-project.vercel.app/) is available on Vercel. |
 | Progress summaries, video, report, slides, AI Fluency 4D reflection and peer review | These are team deliverables to prepare separately from the application. |
 
 ## Next steps
