@@ -1,33 +1,32 @@
-# Requirements and remaining work
+# Project requirement coverage
 
-This checklist maps the prototype to the teacher's project overview and the design decisions made for Forma. The original `project_overivew.pdf` is a course reference and is not included in this branch. Prototype coverage does not imply final acceptance.
+Current code review: **5 November 2026**. This maps the application to the functional requirements in the course project overview; it does not replace user acceptance or the team's submission materials.
 
-| Requirement | Current status |
+| Requirement | Implementation and scope |
 | --- | --- |
-| Software engineering, AI-assisted coding, soft skills and product skills | Seven multilingual courses and 28 lessons are available; see [course design](course-design.md). |
-| Learners from non-CS backgrounds and CS graduates preparing for employment | Profiles, interest tags, three setup levels, weekly plans and introductory/advanced readings are available. Feedback from real learners is pending. |
-| Text and images | Available. Custom image uploads require storage integration. |
-| Interactive simulations and games | The launch game, access/scope exercises and the interactive labs are available. Git has its own **Git simulator** in the sidebar: 31 one-command lessons and a team project in a simulated terminal and GitHub that answer like Git 2.43; it replaces the earlier 23 Git pages and the free Git sandbox, and Knowledge practice asks ten questions about the same ideas. The prompt, retrieval, CI, container and gradient models stay in the code but are hidden in this build: no lesson, plan, card or listing links them, and a lesson that used one falls back to its own knowledge check. |
-| Role-play and mock interviews | Authored stakeholder cases, written exercises and five structured interview scenarios with saved review history are available. Live AI interactions require server-side configuration. |
-| AI-narrated animations and slides | Staged diagrams/slides and device narration are available. Generative narration and full animations are pending. |
-| Online coding | Two course lessons and seven standalone JavaScript challenges include real checks and isolated execution. A JavaScript playground and HTML/CSS preview are also available; C/C++/Python traces are not full runtimes. |
-| AI teaching and personalized content | AI adapters exist; live-provider validation still requires credentials. Rules provide topic matching, weekly planning, template courses and lesson-based study guides without a live model. |
-| Instructor editing of courses and activities, manually and with AI | Manual editing is available. New-course generation uses the AI endpoint when configured. Targeted AI rewriting and activity-parameter editing need further work. |
-| Student import and participation tracking | Browser-local rosters and activity records are available. Shared classrooms and cross-account analytics require a database and authentication. |
-| Other subjects and self-directed learning | Users can create courses on arbitrary topics manually, or generate drafts when AI is configured. Personal learning paths can be reordered. |
-| Learner, instructor and administrator roles and manuals | Three demonstration workspaces and a [user guide](user-guide.md) are available. Real authentication and server-side permissions are pending. |
-| English by default; English, Simplified Chinese and Traditional Chinese | Available. Custom courses fall back to a language that has actually been authored. |
-| Multiple prototypes, user feedback and iteration | Forma is one member's proposal on `prototype/forma`; SkillForge remains on `main`. The third member's upload, comparisons and user-feedback evidence are team tasks. |
-| Member contributions and public project repository | This branch is in the shared group repository. The team should confirm the course's repository-organization instructions and retain evidence of individual contributions. |
-| Public deployment | [Forma live demo](https://2026comp5241-group11-project.vercel.app/) is available on Vercel. |
-| Progress summaries, video, report, slides, AI Fluency 4D reflection and peer review | These are team deliverables to prepare separately from the application. |
+| Software engineering, AI coding agents, soft/product skills | Three themes, nine mini-courses, and 45 registered lessons. |
+| Varied interactive learning | Narrated illustrations/slides, Git simulation, coding challenges and playground, knowledge checks, Code Quest, and realtime voice interviews. |
+| AI teaching and personalized content | Background/goal-aware AI plans, difficulty and weekly-time selection, and custom course generation from topics and source material. Complete learner-profile context is not explicitly forwarded through every courseware-generation step. |
+| Non-CS beginners and CS learners preparing for work | Introductory explanations, engineering practice, AI-agent workflows, and interview practice. Learning effectiveness still needs user evaluation. |
+| Instructor course customization | Editable copies of official teaching text, manual slides and questions, AI rewriting, and generated narration. Bespoke original animations/audio are not copied; Git, game, and interview rules are not editable in the studio. |
+| AI creation of new mini-courses | Topic, requirements, and source-material inputs; outline and lesson generation; preview, acceptance, editing, save, and publication. |
+| Import students and track engagement | Add registered students to course classrooms; record assigned-course entry, active time, completion, and graded attempts; view/export participation. General game/Git activity is not included in teacher analytics. |
+| Other subjects and self-directed paths | Arbitrary-topic generation, saved plans, and account-owned personal courses. AI content still requires human review. |
+| Integrated final app | Shared learner, teacher, and administrator interface integrating the Forma, SkillForge, and CodeCraft Academy proposals. |
+| Public deployment | Vercel deployment with server-side account/AI APIs and an authenticated voice-interview WebSocket endpoint. Online interviews are limited to four minutes; local sessions to ten. |
+| Meaningful feature variety | Course production, real account permissions, classroom activity, coding runtimes, Git simulation, game progression, and voice interview/review flows. |
+| Team collaboration and contribution | Feature branches, pull requests, and contribution history are evidence; individual contribution claims require team confirmation. |
+| User feedback, video, report, slides, manuals, AI Fluency reflection, peer review | The app provides a user guide and technical records. The remaining submission/process evidence must be checked separately from code. |
 
-## Next steps
+## Verification
 
-The comparison-driven feature upgrade was implemented after the user authorized it on 20 October 2026. See [coverage and verification](feature-upgrade.md). Remaining work is tracked in [future work](future-work.md).
+`npm run verify` runs type checking, linting, tests, and build. Tests cover curriculum registration, planning, code execution, teaching/account permissions, course generation, activity recording, and interview handling. Passing these checks does not establish that all provider calls and multi-account UI flows have been tested on the production service.
 
-1. Ask learners to try the courses and game, then revise the content and interactions using their feedback.
-2. Add authentication and shared storage for users, roles, courses, course versions, classrooms, enrollments, activity events, learning profiles and personal paths. Enforce access rules on the server using account and classroom relationships.
-3. Configure the AI service provided for the course and validate its behavior end to end. Keep credentials on the server.
-4. Extend instructor activity settings, media uploads, learning analytics and human review.
-5. Collect interview notes, test results, contribution records and AI-use evidence for the final submission.
+## Remaining boundaries
+
+- Extend teacher authoring if custom simulations, game levels, or interview activities are required.
+- Browser-held learner records are not fully synchronized across devices or domains.
+- Instructor analytics covers assigned-course activity rather than every activity in the platform.
+- Keep generated teaching content and real-user learning outcomes under human review.
+
+See the [README](../README.md) and [user guide](user-guide.md) for current entry points. Older dated review documents describe earlier prototype versions.
