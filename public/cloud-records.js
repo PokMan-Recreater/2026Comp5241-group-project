@@ -1,6 +1,9 @@
+import {backgroundRequest} from './background-ai.js';
 import {interviewReportHTML} from './interview-report.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export async function cloudAPI(path,body,method){
+export async function cloudAPI(path,body,method,options={}){
+ if(path==='/api/course-ai'&&body?.action==='lesson'&&!body.production)body={...body,production:'lesson-v2'};
+ if(body&&(!method||method==='POST')&&['/api/course-ai','/api/course-narration'].includes(path)&&options.background!==false)return backgroundRequest(path,body);
  let r;try{r=await fetch(path,{method:method||(body?'POST':'GET'),credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});}catch{throw Error('server_connection_failed');}
  let data;try{data=await r.json();}catch{throw Error('invalid_service_response');}if(!r.ok)throw Error(data.error||'database_unavailable');return data;
 }

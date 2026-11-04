@@ -39,6 +39,19 @@ test('one-to-one Supabase job relations normalize to the same list shape as othe
 });
 
 test('browser connection failure is explicit and never reported as a database configuration error',async()=>{
+ const {configureBackgroundAI}=await import('../public/background-ai.js');configureBackgroundAI('network-test','en');
  const {cloudAPI}=await import('../public/cloud-records.js');const old=globalThis.fetch;globalThis.fetch=async()=>{throw new TypeError('Failed to fetch');};
  try{await assert.rejects(()=>cloudAPI('/api/course-ai',{action:'lesson'}),/server_connection_failed/);}finally{globalThis.fetch=old;}
+});
+
+test('all course authoring callers opt into staged lessons without changing outline requests',async()=>{
+ const {cloudAPI}=await import('../public/cloud-records.js');const old=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,options)=>{seen.push(JSON.parse(options.body));return new Response('{}');};
+ try{await cloudAPI('/api/course-ai',{action:'lesson'},'POST',{background:false});await cloudAPI('/api/course-ai',{action:'outline'},'POST',{background:false});assert.equal(seen[0].production,'lesson-v2');assert.equal(seen[1].production,undefined);}finally{globalThis.fetch=old;}
+});
+
+test('an explicit storyboard trial request is forwarded unchanged',async()=>{
+ const {cloudAPI}=await import('../public/cloud-records.js');const old=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,options)=>{seen.push(JSON.parse(options.body));return new Response('{}');};
+ try{await cloudAPI('/api/course-ai',{action:'lesson',production:'storyboard-v1'},'POST',{background:false});assert.equal(seen[0].production,'storyboard-v1');}finally{globalThis.fetch=old;}
 });

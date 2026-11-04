@@ -136,7 +136,7 @@ function qualityArt(step,p,lang){
   ${text(66,140,'不确定','Uncertain',11,'#665e72','middle')}${text(66,260,'较确定','Certain',11,'#665e72','middle')}
   <rect x="104" y="64" width="240" height="118" rx="12" fill="#f9e8e2" stroke="#292535" stroke-width="2"/>${warn(152,110)}${text(128,158,'先做原型与测试','Prototype and test first',11,'#a64e44')}
   <rect x="376" y="64" width="240" height="118" rx="12" fill="#fff4d4" stroke="#292535" stroke-width="2"/>${lens(424,110)}${text(400,158,'小样本先验证','Verify on a small sample',11,'#8a6a25')}
-  <rect x="104" y="204" width="240" height="118" rx="12" fill="#fffefb" stroke="#292535" stroke-width="2"/>${doc(140,234,'#f3eef9')}${text(128,300,'排期即可','Schedule it',11,'#665e72')}
+  <rect x="104" y="204" width="240" height="118" rx="12" fill="#fffefb" stroke="#292535" stroke-width="2"/>${doc(140,222,'#f3eef9',42,52)}${text(128,300,'排期即可','Schedule it',11,'#665e72')}
   <rect x="376" y="204" width="240" height="118" rx="12" fill="#e7f2e7" stroke="#292535" stroke-width="2"/>${ok(424,266)}${text(400,300,'晚一点也没关系','Later is acceptable',11,'#34734b')}
  `;
  if(step===3)body=`

@@ -13,15 +13,25 @@ export function createTeachingHandler(deps={}){
    const call=(path,options={})=>request(config,'/rest/v1/'+path,{...options,token});
    const uuid=v=>{if(!validUUID(v))throw new CloudError('invalid_request',400);return v;};
    const teacher=()=>{if(role!=='teacher')throw new CloudError('teacher_required',403);};
-   const one=async(table,id)=>{const rows=await call(`${table}?id=eq.${uuid(id)}&select=*`);if(!rows.length)throw new CloudError('not_found',404);return rows[0];};
+   const assignmentQuery='select=*,teaching_classrooms!inner(deleted_at),teaching_courses!inner(deleted_at)&teaching_classrooms.deleted_at=is.null&teaching_courses.deleted_at=is.null';
+   const one=async(table,id)=>{const rows=await call(`${table}?id=eq.${uuid(id)}&${table==='teaching_assignments'?assignmentQuery:'select=*'+(['teaching_courses','teaching_classrooms'].includes(table)?'&deleted_at=is.null':'')}`);if(!rows.length)throw new CloudError('not_found',404);return rows[0];};
    const owned=async(table,id)=>{teacher();const row=await one(table,id);if(row.teacher_id!==user.id)throw new CloudError('not_found',404);return row;};
    const rpc=(name,body)=>call('rpc/'+name,{method:'POST',body});
    const send=(value,status=200)=>res.status(status).json(value);
    const id=query.get('id');
+   // Personal courses belong to any signed-in learner. RLS alone would filter
+   // rows; the owner filter here also keeps teacher and student data disjoint.
+   const personalAllowed=()=>{if(!['teacher','student','admin'].includes(role))throw new CloudError('login_required',403);};
+   const personalOne=async courseId=>{const rows=await call(`personal_courses?id=eq.${uuid(courseId)}&owner_id=eq.${user.id}&select=*`);if(!rows.length)throw new CloudError('not_found',404);return rows[0];};
    if(req.method==='GET'){
+    if(resource==='personal-courses'){
+     personalAllowed();
+     if(id)return send({course:await personalOne(id)});
+     return send({courses:await call('personal_courses?owner_id=eq.'+user.id+'&select=*&order=updated_at.desc')});
+    }
     if(resource==='assignments'){
      if(role==='student'){const assignments=await rpc('teaching_student_assignments',{assignment_id:id?uuid(id):null});if(id&&!assignments.length)throw new CloudError('not_found',404);return send(id?{assignment:assignments[0]}:{assignments});}
-     teacher();return id?send({assignment:await one('teaching_assignments',id)}):send({assignments:await call('teaching_assignments?select=*&order=created_at.desc')});
+     teacher();return id?send({assignment:await one('teaching_assignments',id)}):send({assignments:await call('teaching_assignments?'+assignmentQuery+'&order=created_at.desc')});
     }
     if(resource==='courses'&&role==='student'){
      const assignments=await rpc('teaching_student_assignments',{assignment_id:null});
@@ -41,10 +51,10 @@ export function createTeachingHandler(deps={}){
      const students=users.filter(u=>u.app_metadata?.role==='student').map(u=>({id:u.id,username:u.user_metadata?.username||''})).filter(s=>s.id&&s.username).sort((a,b)=>a.username.localeCompare(b.username));
      return send({students});
     }
-    if(resource==='courses')return id?send({course:await owned('teaching_courses',id)}):send({courses:await call('teaching_courses?select=*&order=updated_at.desc')});
-    if(resource==='classrooms')return id?send({classroom:await owned('teaching_classrooms',id),members:await call('teaching_members?classroom_id=eq.'+uuid(id)+'&select=student_id,username')}):send({classrooms:await call('teaching_classrooms?select=*,teaching_members(student_id,username)&order=created_at.desc')});
+    if(resource==='courses')return id?send({course:await owned('teaching_courses',id)}):send({courses:await call('teaching_courses?select=*&deleted_at=is.null&order=updated_at.desc')});
+    if(resource==='classrooms'){await rpc('teaching_sync_course_classrooms',{});return id?send({classroom:await owned('teaching_classrooms',id),members:await call('teaching_members?classroom_id=eq.'+uuid(id)+'&select=student_id,username')}):send({classrooms:await call('teaching_classrooms?select=*,teaching_members(student_id,username)&deleted_at=is.null&order=created_at.desc')});}
     if(resource==='analytics'){
-     const assignments=id?[await one('teaching_assignments',id)]:await call('teaching_assignments?select=*&order=created_at.desc');
+     const assignments=id?[await one('teaching_assignments',id)]:await call('teaching_assignments?'+assignmentQuery+'&order=created_at.desc');
      const rows=[];
      for(const assignment of assignments){
       const classroom=await owned('teaching_classrooms',assignment.classroom_id);
@@ -57,12 +67,24 @@ export function createTeachingHandler(deps={}){
     throw new CloudError('invalid_resource',400);
    }
    if(req.method==='DELETE'){
+    if(resource==='personal-courses'){personalAllowed();await personalOne(id);await call('personal_courses?id=eq.'+uuid(id)+'&owner_id=eq.'+user.id,{method:'DELETE'});return send({deleted:true});}
     teacher();const table=resource==='courses'?'teaching_courses':resource==='classrooms'?'teaching_classrooms':null;if(!table)throw new CloudError('invalid_resource',400);await owned(table,id);
-    if(resource==='courses'){const used=await call('teaching_assignments?course_id=eq.'+uuid(id)+'&select=id&limit=1');if(used.length)throw new CloudError('course_in_use',409);}
-    await call(table+'?id=eq.'+id,{method:'DELETE'});return send({ok:true});
+    return send(await rpc(resource==='courses'?'teaching_delete_course':'teaching_delete_classroom',resource==='courses'?{target_course:uuid(id)}:{target_classroom:uuid(id)}));
    }
    let b;try{b=await readJSON(req,600000);}catch(error){throw new CloudError(error.message==='payload_too_large'?'payload_too_large':'invalid_json',error.message==='payload_too_large'?413:400);}
    if(!b||typeof b!=='object'||Array.isArray(b))throw new CloudError('invalid_request',400);
+   if(resource==='personal-courses'){
+    personalAllowed();if(b.action!=='save')throw new CloudError('invalid_request',400);
+    if(!b.id){
+     const draft=validateCourse(b.course);
+     return send({course:(await call('personal_courses',{method:'POST',body:{owner_id:user.id,title:draft.title,description:draft.description,language:draft.language,source_id:b.sourceId==null?null:text(b.sourceId,160),author_materials:text(b.authorMaterials??'',16000,true),draft},headers:{Prefer:'return=representation'}}))[0]},201);
+    }
+    const current=await personalOne(b.id);if(!Number.isInteger(b.revision)||b.revision!==current.revision)throw new CloudError('revision_conflict',409);
+    const draft=validateCourse(b.course);
+    const rows=await call(`personal_courses?id=eq.${b.id}&owner_id=eq.${user.id}&revision=eq.${b.revision}`,{method:'PATCH',body:{draft,title:draft.title,description:draft.description,language:draft.language,...(b.authorMaterials!==undefined?{author_materials:text(b.authorMaterials,16000,true)}:{}),revision:b.revision+1},headers:{Prefer:'return=representation'}});
+    if(!rows.length)throw new CloudError('revision_conflict',409);
+    return send({course:rows[0]});
+   }
    if(resource==='activity'||resource==='attempts'){
     if(role!=='student')throw new CloudError('student_required',403);
     if('correct'in b||'score'in b)throw new CloudError('invalid_request',400);
@@ -82,15 +104,17 @@ export function createTeachingHandler(deps={}){
    teacher();
    if(resource==='courses'){
     if(!['save','publish'].includes(b.action))throw new CloudError('invalid_request',400);
-    if(!b.id){if(b.action!=='save')throw new CloudError('invalid_request',400);const draft=validateCourse(b.course);return send({course:(await call('teaching_courses',{method:'POST',body:{teacher_id:user.id,title:draft.title,description:draft.description,language:draft.language,source_id:b.sourceId==null?null:text(b.sourceId,160),draft},headers:{Prefer:'return=representation'}}))[0]},201);}
+    if(!b.id){if(b.action!=='save')throw new CloudError('invalid_request',400);const draft=validateCourse(b.course);return send({course:(await call('teaching_courses',{method:'POST',body:{teacher_id:user.id,title:draft.title,description:draft.description,language:draft.language,source_id:b.sourceId==null?null:text(b.sourceId,160),author_materials:text(b.authorMaterials??'',16000,true),draft},headers:{Prefer:'return=representation'}}))[0]},201);}
     const current=await owned('teaching_courses',b.id);if(!Number.isInteger(b.revision)||b.revision!==current.revision)throw new CloudError('revision_conflict',409);
-    const draft=validateCourse(b.action==='save'?b.course:current.draft,b.action==='publish'),patch=b.action==='save'?{draft,title:draft.title,description:draft.description,language:draft.language}:{published:draft};
+    const draft=validateCourse(b.action==='save'?b.course:current.draft,b.action==='publish'),patch=b.action==='save'?{draft,title:draft.title,description:draft.description,language:draft.language,...(b.authorMaterials!==undefined?{author_materials:text(b.authorMaterials,16000,true)}:{})}:{published:draft};
     const rows=await call(`teaching_courses?id=eq.${b.id}&revision=eq.${b.revision}`,{method:'PATCH',body:{...patch,revision:b.revision+1},headers:{Prefer:'return=representation'}});if(!rows.length)throw new CloudError('revision_conflict',409);return send({course:rows[0]});
    }
    if(resource==='import'||(resource==='classrooms'&&b.action==='import')){
     await owned('teaching_classrooms',b.classroomId);if(!Array.isArray(b.usernames)||b.usernames.length>500)throw new CloudError('invalid_request',400);
     return send(await rpc('teaching_import_usernames',{target_classroom:uuid(b.classroomId),usernames:b.usernames.map(n=>text(n,80))}));
    }
+   if(resource==='classrooms'&&b.action==='remove-all-students'){await owned('teaching_classrooms',b.classroomId);return send(await rpc('teaching_remove_all_students',{target_classroom:uuid(b.classroomId)}));}
+   if(resource==='classrooms'&&b.action==='remove-student'){await owned('teaching_classrooms',b.classroomId);return send(await rpc('teaching_remove_student',{target_classroom:uuid(b.classroomId),target_student:uuid(b.studentId)}));}
    if(resource==='classrooms'&&b.action==='rename-class'){await owned('teaching_classrooms',b.id);return send({classroom:(await call('teaching_classrooms?id=eq.'+b.id,{method:'PATCH',body:{name:text(b.name,160)},headers:{Prefer:'return=representation'}}))[0]});}
    if(resource==='classrooms'&&b.action==='create-class')return send({classroom:(await call('teaching_classrooms',{method:'POST',body:{teacher_id:user.id,name:text(b.name,160)},headers:{Prefer:'return=representation'}}))[0]},201);
    if((resource==='classrooms'||resource==='assignments')&&b.action==='assign'){

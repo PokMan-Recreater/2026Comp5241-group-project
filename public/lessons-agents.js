@@ -56,8 +56,8 @@ function boundaryArt(step,p,lang){
  `;
  if(step===1)body=`
   ${db(160,120)}
-  ${face(112,250,'#bad7c2')}${doc(250,236,'#fff4d4',50,62)}
-  ${text(172,298,'同一份记录里可能有个人信息','A record can contain personal data',11,'#665e72','middle')}
+  ${face(112,226,'#bad7c2')}${doc(250,224,'#fff4d4',44,54)}
+  ${text(172,308,'同一份记录里可能有个人信息','A record can contain personal data',11,'#665e72','middle')}
   ${path('M210 140H300')}
   <rect x="320" y="54" width="360" height="190" rx="12" fill="#fffefb" stroke="#292535" stroke-width="2"/>
   ${text(340,84,'按字段划分权限','Split permissions by field',13)}
@@ -110,10 +110,10 @@ function contextArt(step,p,lang){
   ${text(360,312,'上下文决定改动能不能融进代码库','Context decides whether a change fits the codebase',13,'#665e72','middle')}
  `;
  if(step===1)body=`
-  <path d="M92 92h64l14 16h78" fill="#f3eef9" stroke="#292535" stroke-width="2"/>
-  ${text(126,84,'项目根目录','Project root',10,'#665e72','middle')}
-  ${text(120,150,'src/','src/',11)+text(210,150,'components/','components/',11)+text(330,150,'tests/','tests/',11)}
-  ${path('M120 160v16M210 160v16M330 160v16')}
+  <path d="M92 92h64l14 16h178v-40H92z" fill="#f3eef9" stroke="#292535" stroke-width="2"/>
+  ${text(230,91,'项目根目录','Project root',10,'#665e72','middle')}
+  ${text(120,154,'src/','src/',11,'#242032','middle')+text(224,154,'components/','components/',11,'#242032','middle')+text(330,154,'tests/','tests/',11,'#242032','middle')}
+  <path d="M224 110v16M120 138v-12h210v12M224 126v12" fill="none" stroke="#7967ac" stroke-width="2.5" stroke-linecap="round"/>
   ${doc(96,190,'#fff4d4',70,80)}${text(131,288,'README','README',10,'#8a6a25','middle')}
   ${doc(280,190,'#e7f2e7',70,80)}${text(315,288,'约定','Conventions',10,'#34734b','middle')}
   ${group(.35,speech(444,64,220,'先告诉我目录和约定','Show me the layout and rules first'))}
@@ -175,7 +175,7 @@ function checksArt(step,p,lang){
   ${face(430,110,'#bad7c2')}${text(430,190,'人来判断','Human decides',11,'#665e72','middle')}
   ${phone(590,74,0.9)}
   ${path('M148 116H218')}${path('M334 116H392')}
-  ${group(.4,ok(262,232)+text(286,237,'自动项全部通过','Automated checks pass',11,'#34734b'))}
+  ${group(.4,ok(116,240)+text(140,245,'自动项全部通过','Automated checks pass',11,'#34734b'))}
   ${group(.62,speech(402,232,240,'可是这个措辞对吗？','But is this wording right?'))}
   ${text(360,332,'工具报告“通过”，不等于产品“做对”','A green run is not a product decision',13,'#665e72','middle')}
  `;

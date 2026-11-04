@@ -44,11 +44,11 @@ function planFirstArt(step,p,lang){
  `;
  if(step===3)body=`
   ${k.text(360,44,'计划被推翻时','When the plan breaks',14,'#242032','middle')}
-  ${k.bot(112,116)}${k.warn(220,92)}${k.text(244,97,'发现依赖缺失','A missing dependency',11,'#8a6a25')}
-  ${k.group(.3,k.doc(360,58,'#fff4d4',150,112))}${k.text(435,186,'更新计划','Update the plan',11,'#8a6a25','middle')}
-  ${k.group(.52,k.path('M334 138H352'))}
+  ${k.bot(112,116)}${k.warn(220,92)}${k.text(244,97,'发现依赖缺失','A missing dependency',10,'#8a6a25')}
+  ${k.group(.3,k.doc(380,118,'#fff4d4',110,90))}${k.text(435,230,'更新计划','Update the plan',11,'#8a6a25','middle')}
+  ${k.group(.52,k.path('M270 168H366'))}
   ${k.group(.62,k.face(566,96,'#bad7c2')+k.text(566,188,'停下确认','Stop and confirm',11,'#665e72','middle'))}
-  ${k.group(.78,k.chip(452,224,220,'重新确认边界','Re-confirm boundaries','#e7f2e7'))}
+  ${k.group(.78,k.chip(452,244,220,'重新确认边界','Re-confirm boundaries','#e7f2e7'))}
   ${k.text(360,300,'计划变了要说出来，而不是硬做下去','Say the plan changed instead of pushing through',13,'#665e72','middle')}
   ${k.text(360,328,'每次偏离都是一次重新对齐的机会','Every deviation is a chance to realign',11,'#665e72','middle')}
  `;
@@ -62,7 +62,7 @@ function smallBatchArt(step,p,lang){
   ${k.text(360,44,'大跨步与小步走','Big leaps and small steps',14,'#242032','middle')}
   ${k.box(52,72,288,186,'#f9e8e2')}
   ${k.text(74,100,'一次改完','Change everything at once',12,'#a64e44')}
-  ${k.path('M76 162H300','#b96559')}${k.warn(316,120)}
+  ${k.path('M76 162H292','#b96559')}${k.warn(304,124)}
   ${k.text(74,204,'出错时不知道是哪一处','A failure hides among many edits',10,'#665e72')}
   ${k.text(74,232,'回退会丢掉全部进度','Rollback loses all progress',10,'#665e72')}
   ${k.path('M354 162H408')}
@@ -72,7 +72,7 @@ function smallBatchArt(step,p,lang){
   ${k.ok(618,132)}
   ${k.text(442,204,'每步都能单独确认','Each step confirmed alone',10,'#5c7a63')}
   ${k.text(442,232,'出错只回退一小步','A failure rolls back one step',10,'#5c7a63')}
-  ${k.text(360,304,'小批量让错误更贵不起','Small batches keep mistakes cheap',13,'#665e72','middle')}
+  ${k.text(360,304,'小批量让试错成本更低','Small batches keep mistakes cheap',13,'#665e72','middle')}
  `;
  if(step===1)body=`
   ${k.text(360,44,'每一步都要有检查','Every step needs a check',14,'#242032','middle')}
@@ -154,9 +154,9 @@ function agentRolesArt(step,p,lang){
   ${k.bot(300,126)}${k.text(300,196,'实现者','Builder',11,'#665e72','middle')}
   ${k.lens(516,96)}${k.text(516,148,'审查者','Reviewer',11,'#665e72','middle')}
   ${k.path('M148 132H252')}${k.path('M350 132H470')}
-  ${k.group(.3,k.speech(150,228,260,'验收条件是什么？','What are the acceptance criteria?','#fff4d4'))}
-  ${k.group(.56,k.warn(430,214)+k.text(454,219,'审查与实现分开','Keep review separate',11,'#8a6a25'))}
-  ${k.group(.76,k.ok(586,214))}${k.text(586,260,'问题更早暴露','Issues surface earlier',10,'#34734b','middle')}
+  ${k.group(.3,k.speech(64,230,280,'验收条件是什么？','What are the acceptance criteria?','#fff4d4'))}
+  ${k.group(.56,k.warn(430,214)+k.text(464,219,'审查与实现分开','Keep review separate',10,'#8a6a25'))}
+  ${k.group(.76,k.ok(586,260))}${k.text(586,292,'问题更早暴露','Issues surface earlier',10,'#34734b','middle')}
   ${k.text(360,320,'你负责判断，角色负责执行','You judge; the roles execute',12,'#665e72','middle')}
  `;
  return frame(body,['探索、实现与审查的分工','Exploring, building and reviewing roles'],lang);
