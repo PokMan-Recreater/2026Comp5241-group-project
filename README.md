@@ -5,12 +5,12 @@
 Forma is a web learning platform for software development, software engineering and AI tools. It brings courses, study plans, practical exercises and learning records into one consistent interface, supporting both non-CS beginners and CS learners preparing for employment.
 
 <p>
-  <a href="https://forma-learning-lab.vercel.app/">
+  <a href="https://2026comp5241-group11-project.vercel.app/">
     <img src="docs/open-forma.svg" alt="Open Forma website" width="184" height="40">
   </a>
 </p>
 
-[Live demo](https://forma-learning-lab.vercel.app/) · [Team repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
+[Live demo](https://2026comp5241-group11-project.vercel.app/) · [Team repository](https://github.com/PokMan-Recreater/2026Comp5241-group-project)
 
 ## From three prototypes to one application
 
