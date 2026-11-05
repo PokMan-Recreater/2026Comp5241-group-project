@@ -24,6 +24,7 @@ import {studyLabel,readingHTML,workshopHTML,checkpointHTML,caseFileHTML,accessLa
 let KEY='forma.workspace.v1';
 let accountUser=null,accountChecked=false;
 const accountRole=user=>({student:'learner',teacher:'instructor',admin:'admin'}[user?.role]||'learner');
+function adoptAccountName(){if(accountUser?.username&&(!state.profile.name||state.profile.name==='Alex'))state.profile.name=accountUser.username;}
 const fresh=()=>({version:1,lang:'en',role:'learner',profile:{name:'Alex',background:'noCoding',goal:'build',depth:'beginner',learningLanguage:''},courses:[],progress:{},notes:{},code:{},classes:[],people:[],events:[],work:{},checks:{},path:null,game:{selected:[],result:null}});
 let state;try{state={...fresh(),...JSON.parse(localStorage.getItem(KEY)||'null')};}catch{state=fresh();}
 try{const language=localStorage.getItem('forma.interface-language');if(languages[language])state.lang=language;}catch{/* Keep the current language when storage is unavailable. */}
@@ -47,7 +48,7 @@ const workspaceSync=createWorkspaceSync({
  apply:next=>{
   const defaults=fresh();
   for(const key of workspaceFields){if(key==='gitProgress')continue;if(next[key]!==undefined)state[key]=next[key];else if(defaults[key]!==undefined)state[key]=defaults[key];else delete state[key];}
-  state.profile={...defaults.profile,...state.profile};if(next.gitProgress)writeGitProgress(next.gitProgress);
+  state.profile={...defaults.profile,...state.profile};adoptAccountName();if(next.gitProgress)writeGitProgress(next.gitProgress);
   cacheWorkspace();window.dispatchEvent(new Event('forma-workspace-synced'));
   const editing=document.activeElement?.matches('input,textarea,select,[contenteditable=true]');
   if(accountChecked&&!document.hidden&&!editing&&['learning','records','path','profile','explore'].includes(route()[0]))render();
@@ -269,9 +270,10 @@ async function acceptAccount(user,restoreRoute=false){
  workspaceSync.stop();if(accountUser)cacheWorkspace();
  const language=state.lang;KEY='forma.workspace.v1.user.'+user.id;let hasLocalData=false;
  try{const saved=localStorage.getItem(KEY);hasLocalData=!!saved;if(saved)try{const backup='forma.workspace.pre-cloud.v1.user.'+user.id;if(!localStorage.getItem(backup))localStorage.setItem(backup,saved);}catch{/* A full browser cache must not discard existing learning records. */}state={...fresh(),...JSON.parse(saved||'null')};activateGitUser(user.id);}catch{state=fresh();}
- state.lang=language;state.role=accountRole(user);state.profile={...fresh().profile,...state.profile,name:state.profile.name==='Alex'?user.username:state.profile.name};
- accountUser=user;accountChecked=false;editorDraft=null;closeModal();render();
- await workspaceSync.start(user.id,{hasLocalData});accountChecked=true;cacheWorkspace();
+ state.lang=language;state.role=accountRole(user);state.profile={...fresh().profile,...state.profile};accountUser=user;adoptAccountName();
+ accountChecked=false;editorDraft=null;closeModal();render();
+ await workspaceSync.start(user.id,{hasLocalData});adoptAccountName();accountChecked=true;cacheWorkspace();
+ if(state.profile.name===user.username)workspaceSync.changed();
  const teacher=user.role==='teacher',admin=user.role==='admin';
  const keepPage=restoreRoute&&(route()[0]==='courseware-example'||(teacher?['courses','teacher-course','classrooms','engagement','profile'].includes(route()[0]):admin?['overview','users','catalog','admin-learning','profile'].includes(route()[0]):!['login','register'].includes(route()[0])));
  if(!keepPage)location.hash=teacher?'courses':admin?'overview':'learning';
