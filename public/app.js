@@ -55,7 +55,7 @@ const workspaceSync=createWorkspaceSync({
  notify:status=>{document.querySelectorAll('[data-workspace-sync]').forEach(el=>{el.textContent=workspaceSyncLabel(status);el.dataset.status=status;});},
 });
 function workspaceSyncLabel(status=workspaceSync.status()){
- const labels=state.lang==='en'?{syncing:'Syncing…',synced:'Saved to account',pending:'Saving…',offline:'Offline · saved on this device','signed-out':'Sign in to sync'}:{syncing:'正在同步…',synced:'已同步到账户',pending:'正在保存…',offline:'暂未同步 · 已保存在本机','signed-out':'请登录后同步'};return labels[status]||'';
+ const labels=state.lang==='en'?{syncing:'Syncing…',synced:'',pending:'Saving…',offline:'Offline · saved on this device','signed-out':'Sign in to sync'}:{syncing:'正在同步…',synced:'',pending:'正在保存…',offline:'暂未同步 · 已保存在本机','signed-out':'请登录后同步'};return labels[status]||'';
 }
 function save(){cacheWorkspace();if(accountUser)workspaceSync.changed();}
 window.addEventListener('focus',()=>{if(accountUser)void workspaceSync.sync();});
