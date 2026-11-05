@@ -25,7 +25,7 @@ Current code review: **5 November 2026**. This maps the application to the funct
 ## Remaining boundaries
 
 - Extend teacher authoring if custom simulations, game levels, or interview activities are required.
-- Browser-held learner records are not fully synchronized across devices or domains.
+- Account-owned check-ins, progress, bookmarks, profiles, plans, notes, and game/Git completion synchronize with conflict-aware merges. Interface preferences, live Git terminal sessions, and temporary generation tasks stay local.
 - Instructor analytics covers assigned-course activity rather than every activity in the platform.
 - Keep generated teaching content and real-user learning outcomes under human review.
 

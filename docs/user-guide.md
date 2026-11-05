@@ -17,9 +17,9 @@ Register a username and password, or use an existing account. Public registratio
 | Assigned courses | Open a teacher-assigned course, answer its questions, and mark lessons complete. This activity is available to that teacher. |
 | Practice → Knowledge practice | Choose a topic, answer questions, and review feedback. |
 | Practice → Coding practice | Try coding challenges or open free coding. JavaScript and HTML run locally; C/C++/Python use browser runtimes by default. Select remote backup explicitly if needed. |
-| Practice → Git simulator | Complete the command lessons and team project. Use the terminal, file editor, graph, hints, and simulated GitHub. The full-screen option opens the same simulator in another tab. |
+| Practice → Git Simulator | Complete the command lessons and team project. Use the terminal, file editor, graph, hints, and simulated GitHub. The full-screen option opens the same simulator in another tab. |
 | Coding game | Complete Code Quest's five chapters. The game supports a bounded teaching subset of Python, C++, and Java, with hints and execution traces. |
-| AI mock interview | Select a role, difficulty, language, and interviewer style, give consent, and start. Allow microphone access. Camera preview is optional. End the session to view feedback and save/download the transcript. |
+| AI mock interview | Select a role, difficulty, language, and interviewer style, give consent, and start. In the room, tap **Enable microphone and start**, then allow microphone access. Camera preview is optional. End the session to view feedback and save/download the transcript. |
 | My learning / My records | Check in on My learning; review bookmarks, learning history, achievements, and interview records in My records. |
 
 Realtime interviews currently allow **4 minutes online** and **10 minutes locally**. Moving the interview tab to the background ends the call. Refreshing the room requires starting again from preparation. If saving fails, download the transcript or retry before leaving.
@@ -42,6 +42,8 @@ Use the administrator workspace to inspect account/course totals, search users, 
 
 ## What is saved
 
-Courses, accounts, classroom records, and saved interviews use cloud storage. General learning progress, profiles, plans, bookmarks, check-ins, annotations, and game/Git progress are stored in the current browser. Localhost and the online site keep separate browser records.
+Courses, accounts, classroom records, saved interviews, and learning records use cloud storage. Check-ins, learning progress, profiles, plans, bookmarks, annotations, Code Quest, and Git completion merge across signed-in devices. XP and badges follow those records. Existing local data is imported without replacing other devices’ achievements. Visible pages refresh about every 15 seconds and when returning to the tab; the sidebar shows sync status. Offline changes remain locally and retry after reconnecting. Interface language, in-progress Git terminal sessions, and temporary AI-generation tasks stay in the current browser.
 
 AI generation may take several minutes. You can move between app pages while a task runs, but reloading or closing the tab can interrupt it. Generated material and feedback should be reviewed; activity and completion are participation signals, not proof of mastery.
+
+If the phone does not show a microphone prompt, tap the microphone-start button in the room. If access is blocked, allow microphone permission in the browser’s website settings; an in-app browser may require opening the site in Safari or Chrome. Denial or timeout leaves a retry button.

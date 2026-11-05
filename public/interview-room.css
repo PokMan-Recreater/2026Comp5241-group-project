@@ -51,3 +51,5 @@ body{background:var(--canvas);color:var(--ink);font-family:var(--font)}
 @media(max-width:1000px){.ir-footer-hint,.ir-secure{display:none}.ir-footer{justify-content:center}.ir-interviewer{padding:70px 40px 40px 190px}.ir-self{width:165px}.ir-stage{min-height:450px}}
 @media(max-width:600px){.ir-header{height:72px;padding:0 20px;gap:18px}.ir-room-title{font-size:11px}.ir-room-title>span,.ir-room-title i{display:none}.ir-stage{margin:12px 12px 0;border-radius:18px;min-height:570px;align-items:start}.ir-interviewer{padding:170px 20px 38px}.ir-orbit{width:160px;height:160px;margin-top:32px}.ir-orb{width:125px;height:125px;font-size:65px}.ir-orb span{right:36px;bottom:24px;font-size:52px}.ir-self{width:130px;top:15px;left:15px}.ir-footer{padding:18px 12px}.ir-tools{gap:7px}.ir-tools button{padding:12px 11px;font-size:11px}.ir-complete{padding:24px}.ir-complete-card{padding:36px 22px}.ir-result-actions{flex-direction:column}.ir-result-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.ir-connect{margin:18px auto 0;min-height:48px;touch-action:manipulation}.ir-connect[hidden]{display:none}

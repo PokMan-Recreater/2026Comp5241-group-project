@@ -1,7 +1,9 @@
+import {handleWorkspace} from '../scripts/workspace-support.mjs';
 import {supabaseConfig,cloudRequest,authenticatedUser,setAuthCookies,cloudFailure,CloudError,sameOrigin,readJSON,allowRequest} from '../scripts/supabase-support.mjs';
 export const accountIdentity=username=>`${username}@accounts.forma.invalid`;
 export const publicUser=user=>({id:user.id,username:user.user_metadata?.username||user.email?.split('@')[0],role:['student','teacher','admin'].includes(user.app_metadata?.role)?user.app_metadata.role:'student'});
 export default async function handler(req,res){
+ if(new URL(req.url||'/api/account','http://local').searchParams.get('resource')==='learning-state')return handleWorkspace(req,res);
  res.setHeader('Cache-Control','no-store');const config=supabaseConfig();
  if(!config)return res.status(503).json({error:'database_not_configured'});
  try{

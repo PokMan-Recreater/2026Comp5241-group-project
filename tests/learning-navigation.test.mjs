@@ -17,19 +17,21 @@ test('practice keeps three categories and drops the labs and written tabs',()=>{
  assert.match(nav,/#practice\/coding" aria-current="page"/);assert.doesNotMatch(nav,/#practice\/playground/);
  assert.match(views.practiceSections('playground'),/#practice\/playground" aria-current="page"/);
 });
-test('Git simulator is the third practice category and highlights its active tab',()=>{
+test('Git Simulator is the first practice category and highlights its active tab',()=>{
  const nav=views.practiceTabs('git');
  assert.equal((nav.match(/<a /g)||[]).length,3);
  assert.match(nav,/#practice\/git" aria-current="page"/);
  assert.match(nav,/#practice\/checks/);
  assert.match(nav,/#practice\/coding/);
+ assert.ok(nav.indexOf('#practice/git')<nav.indexOf('#practice/coding'));
+ assert.ok(nav.indexOf('#practice/coding')<nav.indexOf('#practice/checks'));
  assert.equal(labs.some(([id])=>id==='git'||/^git-/.test(id)),false,'the old Git lab pages are gone');
  assert.deepEqual(practiceForLesson('git-essentials',0),['git/commit'],'the Git reading course opens the matching simulator lesson');
  for(const route of ['development','requirements','product-decisions'].flatMap(c=>[0,1,2,3,4,5].flatMap(i=>practiceForLesson(c,i))).filter(r=>r.startsWith('git')))
   assert.ok(gitLessonIds.includes(route.split('/')[1]),route+' must name a simulator lesson');
  const L=(en,cn)=>cn,T=x=>x['zh-CN'];
  assert.equal(gitActivity('commit',{L,T}).title,'git commit · 提交快照');
- assert.equal(gitActivity('',{L,T}).title,'Git 模拟练习');
+ assert.equal(gitActivity('',{L,T}).title,'Git 模拟器');
  assert.equal(gitActivity('nope',{L,T}),null);
 });
 test('Knowledge practice asks Git questions and links no practice page',()=>{

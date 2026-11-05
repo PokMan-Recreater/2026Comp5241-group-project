@@ -11,9 +11,9 @@ An AI-assisted learning platform for software engineering, AI coding agents, and
 | Software engineering courses | Study 45 lessons across 9 mini-courses: engineering foundations, AI coding agents, and product and people skills. Lessons include step-by-step illustrations, Mandarin/English narration, notes, and a document view. |
 | Personalized learning | Set your experience, learning goal, and language. Choose a topic, difficulty, and weekly study time; preview a plan or ask AI to propose one. Generate personal courseware for your own subject. |
 | Practice | Complete knowledge checks and coding challenges. Run JavaScript and interactive HTML/CSS previews, or use browser-based C/C++/Python runtimes with an optional remote backup. |
-| Git simulator | Open **Practice → Git simulator** for 31 command lessons and a team project, with a simulated terminal, editor, commit graph, and GitHub workflow. |
+| Git Simulator | Open **Practice → Git Simulator** for 31 command lessons and a team project, with a simulated terminal, editor, commit graph, and GitHub workflow. |
 | Coding game | Work through Code Quest's five chapters with programming tasks, hints, step traces, XP, and badges. |
-| AI mock interview | Choose a role, difficulty, language, and interviewer style. Have a live voice conversation, then save the transcript and review. Camera preview is optional and stays on your device. |
+| AI mock interview | Choose a role, difficulty, language, and interviewer style. Tap **Enable microphone and start**, have a live voice conversation, then save the transcript and review. Camera preview is optional and stays on your device. |
 | Instructor tools | Adapt existing courses or create new ones. Edit slides and questions manually or with AI, generate narration, publish courses, add students, and export participation summaries. |
 | Administrator tools | Manage accounts and roles, inspect courses and classrooms, and review learning activity. Access is checked on the server. |
 | Learning records | Bookmark courses, review progress and achievements, and keep a daily check-in calendar. The interface supports English, Simplified Chinese, and Traditional Chinese. |
@@ -84,11 +84,11 @@ For Vercel, use **Node 22**, framework preset **Other**, build command **`npm ru
 
 ## Storage and scope
 
-- **Cloud:** accounts, teacher/personal courses, classroom membership and assigned-course activity, interview transcripts and reviews.
-- **This browser:** learning profiles, plans, general progress, bookmarks, check-ins, game/Git progress, annotations, and temporary AI results. These do not automatically synchronize between localhost, the live site, or devices.
+- **Cloud:** accounts, courses, classroom activity, interviews, and account-owned learning records: check-ins, progress, achievements, bookmarks, plans, notes, Code Quest, and Git completion. XP is calculated from synchronized activity records.
+- **Synchronization:** signed-in devices merge existing learning records, save changes automatically, and refresh visible records about every 15 seconds or when returning to the tab. Offline changes remain on the device and retry on reconnection. The sidebar shows sync status. Interface language, Git terminal sessions, and temporary AI tasks remain device-local.
 - **Course editing:** instructors can edit teaching text, slides, narration scripts, and multiple-choice questions. Adapting an official course copies its teaching text; original bespoke animations and audio are not copied. Git tasks, game levels, and interview rules are not editable in the course studio.
 - **AI:** generated content needs review. Courseware generation can take several minutes. Navigating within the app preserves running work; refreshing or closing the tab can interrupt it. Provider usage may incur charges.
-- **Execution:** the Git simulator and Code Quest use bounded teaching models. The coding playground uses separate browser runtimes; choosing remote backup sends code and input to Wandbox.
+- **Execution:** the Git Simulator and Code Quest use bounded teaching models. The coding playground uses separate browser runtimes; choosing remote backup sends code and input to Wandbox.
 
 ## Repository
 

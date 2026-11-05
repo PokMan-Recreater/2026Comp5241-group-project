@@ -1,3 +1,6 @@
+import {createWorkspaceSync,requestWorkspace} from './workspace-sync.js';
+import {workspaceFields} from './workspace-state.js';
+import {activeUserKey,activateGitUser,readGitProgress,writeGitProgress} from './git-course/storage.js';
 import {completeStudyLesson} from './study-progress.js';
 import {coursewareExampleHTML,mountCoursewareExample} from './courseware-example.js';
 import {backgroundRequest,configureBackgroundAI,generationNotice,refreshBackgroundAI,backgroundResultHTML} from './background-ai.js';
@@ -36,7 +39,32 @@ const t=k=>academy?.label(k)??tr(k,state.lang);
 const ll=()=>state.profile.learningLanguage||state.lang;
 const text=v=>local(v,state.lang);
 const learnText=v=>local(v,ll());
-function save(){try{localStorage.setItem('forma.interface-language',state.lang);localStorage.setItem(KEY,JSON.stringify(state));}catch{toast(t('localData')+': storage unavailable');}}
+function cacheWorkspace(){try{localStorage.setItem('forma.interface-language',state.lang);localStorage.setItem(KEY,JSON.stringify(state));}catch{toast(t('localData')+': storage unavailable');}}
+const workspaceSync=createWorkspaceSync({
+ storage:localStorage,
+ getState:()=>({...state,gitProgress:readGitProgress()}),
+ request:requestWorkspace,
+ apply:next=>{
+  const defaults=fresh();
+  for(const key of workspaceFields){if(key==='gitProgress')continue;if(next[key]!==undefined)state[key]=next[key];else if(defaults[key]!==undefined)state[key]=defaults[key];else delete state[key];}
+  state.profile={...defaults.profile,...state.profile};if(next.gitProgress)writeGitProgress(next.gitProgress);
+  cacheWorkspace();window.dispatchEvent(new Event('forma-workspace-synced'));
+  const editing=document.activeElement?.matches('input,textarea,select,[contenteditable=true]');
+  if(accountChecked&&!document.hidden&&!editing&&['learning','records','path','profile','explore'].includes(route()[0]))render();
+ },
+ notify:status=>{document.querySelectorAll('[data-workspace-sync]').forEach(el=>{el.textContent=workspaceSyncLabel(status);el.dataset.status=status;});},
+});
+function workspaceSyncLabel(status=workspaceSync.status()){
+ const labels=state.lang==='en'?{syncing:'Syncing…',synced:'Saved to account',pending:'Saving…',offline:'Offline · saved on this device','signed-out':'Sign in to sync'}:{syncing:'正在同步…',synced:'已同步到账户',pending:'正在保存…',offline:'暂未同步 · 已保存在本机','signed-out':'请登录后同步'};return labels[status]||'';
+}
+function save(){cacheWorkspace();if(accountUser)workspaceSync.changed();}
+window.addEventListener('focus',()=>{if(accountUser)void workspaceSync.sync();});
+window.addEventListener('online',()=>{if(accountUser)void workspaceSync.sync();});
+document.addEventListener('visibilitychange',()=>{if(accountUser)void workspaceSync.sync();});
+window.addEventListener('storage',event=>{if(accountUser&&event.key?.startsWith('forma.gitcourse.v1.user.'))workspaceSync.changed();});
+window.addEventListener('message',event=>{if(accountUser&&event.origin===location.origin&&event.data?.type==='forma-git-progress')workspaceSync.changed();});
+setInterval(()=>{if(accountUser&&!document.hidden)void workspaceSync.sync();},15000);
+
 function event(type,courseId='',detail={}){state.events.push({type,courseId,time:new Date().toISOString(),...detail});academy?.recordEvent(type,courseId,detail);if(state.events.length>1000)state.events=state.events.slice(-1000);save();}
 
 function allCourses(){const overrides=new Map(state.courses.map(c=>[c.id,c]));const archived=[...seeds.map(c=>({...c,...overrides.get(c.id)})),...state.courses.filter(c=>!seeds.some(s=>s.id===c.id))].filter(c=>c.id!==storyboardCourse.id).map(c=>({...c,retired:true}));return [storyboardCourse,...archived];}
@@ -53,12 +81,13 @@ function route(){return decodeURIComponent(location.hash.slice(1)||'learning').s
 function go(hash){location.hash=hash;}
 function render(){
  configureBackgroundAI(accountUser?.id,state.lang,state.role);
- // The old Git practice pages and sandbox now live in the Git simulator.
+ // The old Git practice pages and sandbox now live in the Git Simulator.
  if(/^(lab\/git(-[a-z-]+)?|practice\/git(-sandbox|-course)?)$/.test(decodeURIComponent(location.hash.slice(1)))){location.replace('#git');return;}
  stopCloudRecords();
  stopTeaching();
  if(!accountChecked){$('#app').innerHTML='<main class="auth-page"><p role="status">正在连接 / Connecting…</p></main>';return;}
  if(!accountUser||['login','register'].includes(route()[0])){
+  workspaceSync.stop();try{localStorage.removeItem(activeUserKey);}catch{/* Storage unavailable. */}
   stopStoryboard();stopAllLessons();academy?.beforeRender();
   document.title='Forma — '+(state.lang==='en'?'Sign in / Register':state.lang==='zh-TW'?'登入 / 註冊':'登录 / 注册');
   document.documentElement.lang=state.lang;
@@ -77,7 +106,7 @@ function render(){
  const [page,id,index]=route();const role=state.role;document.documentElement.lang=state.lang;document.title='Forma — '+t(['learn','course','module'].includes(page)?'explore':page==='editor'?'editor':page==='game'?'gameLabel':page==='personal-course'?'personal-courses':page);
  const navpage=['personal-course','personal-courses','assigned'].includes(page)?'explore':page==='teacher-course'?'courses':page==='interview-records'?'records':page==='practice'&&id==='interviews'||page==='mock-interview'?'practice/interviews':['game','codequest'].includes(page)?'games':['learn','course','module','tutorial','reference'].includes(page)?'explore':['git','mock-interview','lab','challenge','interview','playground','next'].includes(page)?'practice':page==='plan'?'path':page==='editor'?'courses':page;
  const nav=navs[role]||navs.learner;
- $('#app').innerHTML=`<div class="mobile-shade" data-action="mobile"></div><aside class="sidebar"><a href="#${nav[0][0]}" class="brand" aria-label="Forma"><span class="brand-word">forma<span class="brand-period" aria-hidden="true">.</span></span></a><nav aria-label="${esc(t('workspace'))}">${nav.map(([k,i])=>`<a class="nav-link ${navpage===k?'active':''}" href="#${k}">${ico(i,17)}<span>${t(k)}</span>${navpage===k?'<i class="nav-dot"></i>':''}</a>`).join('')}</nav><div class="sidebar-bottom"><a class="account profile-entry" href="#profile" aria-label="${esc(t('profile'))}" ${page==='profile'?'aria-current="page"':''}><span class="avatar">${esc(state.profile.name.slice(0,2).toUpperCase())}</span><div><strong>${esc(state.profile.name)}</strong></div></a></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" data-action="mobile" aria-label="${esc(t('workspace'))}">${ico('menu')}</button></div><div class="top-tools"><label class="language-wrap">${ico('globe',17)}<select id="language" class="language" aria-label="${t('interfaceLanguage')}">${Object.entries(languages).map(([k,v])=>`<option value="${k}" ${state.lang===k?'selected':''}>${v}</option>`).join('')}</select></label></div></header><div class="content" id="content">${pageContent(page,id,index)}</div></main>`;
+ $('#app').innerHTML=`<div class="mobile-shade" data-action="mobile"></div><aside class="sidebar"><a href="#${nav[0][0]}" class="brand" aria-label="Forma"><span class="brand-word">forma<span class="brand-period" aria-hidden="true">.</span></span></a><nav aria-label="${esc(t('workspace'))}">${nav.map(([k,i])=>`<a class="nav-link ${navpage===k?'active':''}" href="#${k}">${ico(i,17)}<span>${t(k)}</span>${navpage===k?'<i class="nav-dot"></i>':''}</a>`).join('')}</nav><div class="sidebar-bottom"><p class="workspace-sync" data-workspace-sync data-status="${workspaceSync.status()}" role="status">${esc(workspaceSyncLabel())}</p><a class="account profile-entry" href="#profile" aria-label="${esc(t('profile'))}" ${page==='profile'?'aria-current="page"':''}><span class="avatar">${esc(state.profile.name.slice(0,2).toUpperCase())}</span><div><strong>${esc(state.profile.name)}</strong></div></a></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" data-action="mobile" aria-label="${esc(t('workspace'))}">${ico('menu')}</button></div><div class="top-tools"><label class="language-wrap">${ico('globe',17)}<select id="language" class="language" aria-label="${t('interfaceLanguage')}">${Object.entries(languages).map(([k,v])=>`<option value="${k}" ${state.lang===k?'selected':''}>${v}</option>`).join('')}</select></label></div></header><div class="content" id="content">${pageContent(page,id,index)}</div></main>`;
  const c=$('#content');if(['explore','personal-courses','assigned'].includes(page)&&!id)c.insertAdjacentHTML('afterbegin',coursesSectionTabs(page));c.insertAdjacentHTML('beforeend',`<footer class="footer"><span>© 2026 Forma</span></footer>`);
  bindPage(page,id,index);academy?.afterRender(page,id,index);refreshBackgroundAI();window.scrollTo({top:0,behavior:'instant'});
 }
@@ -123,7 +152,7 @@ function bindPage(page,id,index){
  if(page==='explore'&&$('#course-search')){
   const filter=()=>{const query=$('#course-search').value.trim().toLowerCase();const topic=$('#topic-filter').value;const cs=learnerCourses().filter(c=>(text(c.title)+' '+text(c.description)).toLowerCase().includes(query)&&(topic==='allTopics'||c.topic===topic));$('#course-results').innerHTML=cs.length?cs.map(card).join(''):`<div class="empty" style="grid-column:1/-1">${t('noResults')}</div>`;};$('#course-search').addEventListener('input',filter);$('#topic-filter').addEventListener('change',filter);
  }
- if(page==='profile')$('[data-account-logout]')?.addEventListener('click',async()=>{try{await cloudAPI('/api/account',{action:'logout'});save();accountUser=null;closeModal();location.hash='login';render();}catch{toast(state.lang==='en'?'Unable to sign out. Try again.':'退出失败，请重试。');}});
+ if(page==='profile')$('[data-account-logout]')?.addEventListener('click',async()=>{try{await workspaceSync.sync();await cloudAPI('/api/account',{action:'logout'});cacheWorkspace();workspaceSync.stop();accountUser=null;closeModal();location.hash='login';render();}catch{toast(state.lang==='en'?'Unable to sign out. Try again.':'退出失败，请重试。');}});
  if(page==='profile')$('#profile-form').addEventListener('submit',e=>{e.preventDefault();try{state.profile=updatedProfile(state.profile,new FormData(e.target),state.role);save();render();toast(t('saved'));}catch{toast(t('required'));}});
  if(page==='learn'){
   slideIndex=0;
@@ -236,20 +265,21 @@ async function refreshAIConfiguration(){
  return aiCheckPromise;
 }
 
-function acceptAccount(user,restoreRoute=false){
- if(accountUser)save();
- const language=state.lang;KEY='forma.workspace.v1.user.'+user.id;
- try{state={...fresh(),...JSON.parse(localStorage.getItem(KEY)||'null')};}catch{state=fresh();}
+async function acceptAccount(user,restoreRoute=false){
+ workspaceSync.stop();if(accountUser)cacheWorkspace();
+ const language=state.lang;KEY='forma.workspace.v1.user.'+user.id;let hasLocalData=false;
+ try{const saved=localStorage.getItem(KEY);hasLocalData=!!saved;if(saved)try{const backup='forma.workspace.pre-cloud.v1.user.'+user.id;if(!localStorage.getItem(backup))localStorage.setItem(backup,saved);}catch{/* A full browser cache must not discard existing learning records. */}state={...fresh(),...JSON.parse(saved||'null')};activateGitUser(user.id);}catch{state=fresh();}
  state.lang=language;state.role=accountRole(user);state.profile={...fresh().profile,...state.profile,name:state.profile.name==='Alex'?user.username:state.profile.name};
- accountUser=user;accountChecked=true;editorDraft=null;closeModal();save();
+ accountUser=user;accountChecked=false;editorDraft=null;closeModal();render();
+ await workspaceSync.start(user.id,{hasLocalData});accountChecked=true;cacheWorkspace();
  const teacher=user.role==='teacher',admin=user.role==='admin';
  const keepPage=restoreRoute&&(route()[0]==='courseware-example'||(teacher?['courses','teacher-course','classrooms','engagement','profile'].includes(route()[0]):admin?['overview','users','catalog','admin-learning','profile'].includes(route()[0]):!['login','register'].includes(route()[0])));
  if(!keepPage)location.hash=teacher?'courses':admin?'overview':'learning';
  render();
 }
 async function checkAccount(){
- try{const {user}=await cloudAPI('/api/account');if(user){acceptAccount(user,true);return;}accountChecked=true;location.hash='login';render();}
+ try{const {user}=await cloudAPI('/api/account');if(user){await acceptAccount(user,true);return;}accountChecked=true;location.hash='login';render();}
  catch{$('#app').innerHTML='<main class="auth-page"><section class="panel"><p>连接失败，请重试 / Unable to connect</p><button class="btn" id="account-retry">重试 / Retry</button></section></main>';$('#account-retry').onclick=checkAccount;}
 }
 
-window.addEventListener('forma-signed-out',()=>{save();accountUser=null;closeModal();location.hash='login';render();});
+window.addEventListener('forma-signed-out',()=>{cacheWorkspace();workspaceSync.stop();accountUser=null;closeModal();location.hash='login';render();});

@@ -1,3 +1,6 @@
+import {createWorkspaceSync,requestWorkspace} from '../workspace-sync.js';
+import {cloudAPI} from '../cloud-records.js';
+import {gitStoreKey,gitRunPrefix,readGitProgress,activateGitUser} from './storage.js';
 // The Git course page: explorer, editor and terminal on the left, the lesson
 // on the right, GitHub in a tab. Every command runs in the simulated computer
 // and the current task is checked against the repository afterwards.
@@ -7,7 +10,8 @@ import {git,statusOf,tracking} from '../git-engine/git.js';
 import {findRepo,currentBranch,headCommit,ignoreRules,isIgnored,writeFs} from '../git-engine/repo.js';
 import {githubHTML,githubClick,githubChange,defaultGithubView} from './github.js';
 
-const STORE='forma.gitcourse.v1',RUN='forma.gitcourse.run.';
+let gitAccount=null;try{gitAccount=(await cloudAPI('/api/account')).user;if(gitAccount)activateGitUser(gitAccount.id);}catch{/* The unowned simulator remains usable offline. */}
+const STORE=gitStoreKey(),RUN=gitRunPrefix();
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let store=load(STORE)||{progress:{},current:null,lang:null};
@@ -22,7 +26,7 @@ const ui={side:'explorer',expanded:new Set(),tabs:[],active:null,buffers:{},gh:n
 
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch{return null;}}
 function persist(){
- try{localStorage.setItem(STORE,JSON.stringify(store));}catch{/* storage full or blocked */}
+ try{localStorage.setItem(STORE,JSON.stringify(store));gitSync?.changed();if(parent!==window)parent.postMessage({type:'forma-git-progress'},location.origin);}catch{/* storage full or blocked */}
  if(!state)return;
  try{localStorage.setItem(RUN+state.id,JSON.stringify(state));}
  catch{try{for(const k of Object.keys(localStorage))if(k.startsWith(RUN)&&k!==RUN+state.id)localStorage.removeItem(k);localStorage.setItem(RUN+state.id,JSON.stringify(state));}catch{/* keep running without saving */}}
@@ -326,5 +330,13 @@ function wireChrome(){
  split.addEventListener('pointerdown',e=>{split.setPointerCapture(e.pointerId);const move=ev=>{const r=center.getBoundingClientRect();const h=Math.max(140,Math.min(r.height-120,r.bottom-ev.clientY));center.style.setProperty('--term-h',h+'px');};split.addEventListener('pointermove',move);split.addEventListener('pointerup',()=>split.removeEventListener('pointermove',move),{once:true});});
  if(window.self!==window.top){$('#back').target='_top';document.body.classList.add('embedded');}
 }
+const gitSync=createWorkspaceSync({fields:['gitProgress'],namespace:'git',storage:localStorage,getState:()=>({gitProgress:store.progress}),request:requestWorkspace,apply:next=>{store.progress=next.gitProgress||{};try{localStorage.setItem(STORE,JSON.stringify(store));}catch{/* Progress remains in memory. */}if(state)renderAll();}});
+if(gitAccount)await gitSync.start(gitAccount.id,{hasLocalData:!!load(STORE)});
+window.addEventListener('focus',()=>{if(gitAccount)void gitSync.sync();});
+window.addEventListener('online',()=>{if(gitAccount)void gitSync.sync();});
+setInterval(()=>{if(gitAccount&&!document.hidden)void gitSync.sync();},15000);
 wireChrome();
 openLesson(location.hash.slice(1)||store.current||LESSONS[0].id);
+
+window.addEventListener('storage',event=>{if(event.key===STORE){store.progress=readGitProgress();if(state)renderAll();}});
+window.addEventListener('forma-workspace-synced',()=>{store.progress=readGitProgress();if(state)renderAll();});
