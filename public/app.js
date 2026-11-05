@@ -268,7 +268,7 @@ async function refreshAIConfiguration(){
 async function acceptAccount(user,restoreRoute=false){
  workspaceSync.stop();if(accountUser)cacheWorkspace();
  const language=state.lang;KEY='forma.workspace.v1.user.'+user.id;let hasLocalData=false;
- try{const saved=localStorage.getItem(KEY);hasLocalData=!!saved;if(saved&&!localStorage.getItem('forma.workspace.pre-cloud.v1.user.'+user.id))localStorage.setItem('forma.workspace.pre-cloud.v1.user.'+user.id,saved);state={...fresh(),...JSON.parse(saved||'null')};activateGitUser(user.id);}catch{state=fresh();}
+ try{const saved=localStorage.getItem(KEY);hasLocalData=!!saved;if(saved)try{const backup='forma.workspace.pre-cloud.v1.user.'+user.id;if(!localStorage.getItem(backup))localStorage.setItem(backup,saved);}catch{/* A full browser cache must not discard existing learning records. */}state={...fresh(),...JSON.parse(saved||'null')};activateGitUser(user.id);}catch{state=fresh();}
  state.lang=language;state.role=accountRole(user);state.profile={...fresh().profile,...state.profile,name:state.profile.name==='Alex'?user.username:state.profile.name};
  accountUser=user;accountChecked=false;editorDraft=null;closeModal();render();
  await workspaceSync.start(user.id,{hasLocalData});accountChecked=true;cacheWorkspace();
