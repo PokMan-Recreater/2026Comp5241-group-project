@@ -9,6 +9,7 @@ export function createRealtimeInterview(){
  let root,config,socket,stream,camera,context,worklet,source,silent,ready=false,muted=false,active=false,epoch=0,clock,nextTime=0,cameraPending=false,room=false,leaving=false;
  let sources=new Set(),messages=[],currentUser=null,currentAI=null,startedAt=0;
  let cloudCanSave=false,cloudSettings,cloudClientId,cloudEndedAt,cloudSaving=false,cloudSaved=false;
+ let pendingSettings=null;
  let review=null,finishing=false,closingAudio=false,spokenLanguage='zh',drainTimer,closedReason='';
  const node=name=>root?.querySelector(`[data-rt="${name}"]`);
  const status=text=>{if(node('status'))node('status').textContent=t(text);};
@@ -22,9 +23,10 @@ export function createRealtimeInterview(){
   camera?.getTracks().forEach(t=>t.stop());camera=null;const video=node('camera');if(video)video.srcObject=null;
   if(node('camera-toggle'))node('camera-toggle').textContent=t('开启摄像头');
   controls(false);status(reason);
-  if(room&&!leaving){review??=localInterviewReport(messages,spokenLanguage);finishPage(reason);}
+  if(room&&!leaving&&startedAt){review??=localInterviewReport(messages,spokenLanguage);finishPage(reason);}else if(node('connect'))node('connect').hidden=false;
  }
  function controls(running){
+  if(node('connect'))node('connect').disabled=running||!config?.configured;
   root?.querySelectorAll('input,select,textarea').forEach(n=>{n.disabled=running;});
   if(node('start'))node('start').disabled=running||!config?.configured||!node('consent')?.checked;
   for(const name of ['mute','interrupt','end'])if(node(name))node(name).disabled=!running;
@@ -81,12 +83,18 @@ export function createRealtimeInterview(){
  async function start(settings){
   cloudSettings={...settings,context:settings.context||''};cloudClientId=crypto.randomUUID();cloudEndedAt=null;cloudSaving=false;cloudSaved=false;
   if(active||!config.configured)return;
-  active=true;muted=false;const token=++epoch;controls(true);status('请允许麦克风权限…');
+  active=true;muted=false;const token=++epoch;let permissionTimer;controls(true);status('请允许麦克风权限…');
   messages=[];review=null;finishing=false;closingAudio=false;spokenLanguage=settings.language;currentUser=null;currentAI=null;node('mute').textContent=t('麦克风静音');
   try{
-   context=new AudioContext();await context.resume();if(token!==epoch)return;
-   const acquired=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+   if(!navigator.mediaDevices?.getUserMedia)throw Object.assign(Error('microphone_unavailable'),{name:'UnsupportedError'});
+   context=new (window.AudioContext||window.webkitAudioContext)();
+   // Both permission and audio activation start in the explicit tap handler.
+   const microphone=navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+   const resumed=context.resume();resumed.catch(()=>{});
+   microphone.then(acquired=>{if(token!==epoch||!active)acquired.getTracks().forEach(track=>track.stop());}).catch(()=>{});
+   const acquired=await Promise.race([microphone,new Promise((_,reject)=>{permissionTimer=setTimeout(()=>reject(Object.assign(Error('permission_timeout'),{name:'PermissionPromptTimeout'})),20000);})]);clearTimeout(permissionTimer);
    if(token!==epoch){acquired.getTracks().forEach(t=>t.stop());return;}stream=acquired;
+   await resumed;if(token!==epoch)return;
    await context.audioWorklet.addModule('/realtime-pcm-worklet.js');if(token!==epoch)return;
    worklet=new AudioWorkletNode(context,'forma-pcm');source=context.createMediaStreamSource(stream);silent=context.createGain();silent.gain.value=0;source.connect(worklet);worklet.connect(silent);silent.connect(context.destination);
    worklet.port.onmessage=event=>{
@@ -96,11 +104,11 @@ export function createRealtimeInterview(){
     send({type:'input_audio_buffer.append',audio:btoa(binary)});
    };
    status('正在连接豆包实时语音…');socket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/api/realtime`);
-   socket.onopen=()=>{if(token!==epoch)return;send({type:'forma.start',consent:true,settings});startedAt=Date.now();clock=setInterval(()=>{const seconds=Math.floor((Date.now()-startedAt)/1000);if(node('elapsed'))node('elapsed').textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} / ${maxMinutes()}:00`;},1000);};
+   socket.onopen=()=>{if(token!==epoch)return;if(node('connect'))node('connect').hidden=true;send({type:'forma.start',consent:true,settings});startedAt=Date.now();clock=setInterval(()=>{const seconds=Math.floor((Date.now()-startedAt)/1000);if(node('elapsed'))node('elapsed').textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} / ${maxMinutes()}:00`;},1000);};
    socket.onmessage=event=>{if(token!==epoch)return;try{receive(JSON.parse(event.data));}catch{stop('实时语音数据异常，通话已停止。');}};
    socket.onerror=()=>{if(token===epoch)stop('连接失败，请检查登录状态和网络后重试。');};
    socket.onclose=()=>{if(token===epoch)settleClose(closedReason||'连接已断开，麦克风已关闭。');};
-  }catch{if(token===epoch)stop('无法启用语音，请允许麦克风权限，并使用 Chrome 或 Edge 的本地安全页面。');}
+  }catch(error){clearTimeout(permissionTimer);if(token===epoch)stop(microphoneErrorText(error));}
  }
  function releaseMic(){ready=false;if(worklet){worklet.port.onmessage=null;worklet.disconnect();worklet=null;}source?.disconnect();source=null;stream?.getTracks().forEach(track=>track.stop());stream=null;}
  function settleClose(reason){
@@ -126,6 +134,7 @@ export function createRealtimeInterview(){
  }
  function click(event){
   const action=event.target.closest('[data-rt]')?.dataset.rt;
+  if(action==='connect'&&pendingSettings&&!active&&config?.configured){void start(pendingSettings);return;}
   if(action==='start'&&!active&&config.configured&&node('consent')?.checked){
    const settings=Object.fromEntries(new FormData(node('settings')));settings.language=speechLanguage(settings.language);
    try{sessionStorage.setItem('forma-interview-entry',JSON.stringify({settings,uiLocale,consent:true,at:Date.now()}));location.assign('/interview-room.html');}catch{status('无法进入面试室，请允许当前标签页使用本地临时存储。');}
@@ -163,7 +172,7 @@ export function createRealtimeInterview(){
   else if(startedAt)root.querySelector('.ir-complete-card')?.insertAdjacentHTML('beforeend',`<p>${t('没有足够的完整回答生成复盘或评分。')}</p>`);
  }
  async function mountRoom(element){
-  root=element;room=true;leaving=false;let entry;
+  root=element;room=true;leaving=false;startedAt=0;let entry;
   try{entry=JSON.parse(sessionStorage.getItem('forma-interview-entry'));sessionStorage.removeItem('forma-interview-entry');}catch{/* Require a fresh start from preparation. */}
   uiLocale=interviewLocale(entry?.uiLocale);if(document.documentElement)document.documentElement.lang=uiLocale;
   document.title=uiLocale==='en'?'Forma — Interview room':uiLocale==='zh-TW'?'Forma — 面試室':'Forma — 面试室';
@@ -175,7 +184,7 @@ export function createRealtimeInterview(){
   node('direction').textContent=t(labels[entry.settings.role]||labels.developer);
   const badge=root.querySelector('.ir-ai-tag');if(badge)badge.textContent=t('AI 模拟面试官')+' · '+personaLabel(entry.settings.persona,uiLocale);
   const token=epoch;
-  try{const response=await fetch('/api/realtime-status',{signal:AbortSignal.timeout(5000)});if(!response.ok)throw new Error();config=await response.json();if(node('elapsed'))node('elapsed').textContent='0:00 / '+maxMinutes()+':00';if(token!==epoch||leaving)return;if(document.hidden){stop('页面已进入后台，请返回准备页重新开始。');return;}if(!config.configured){stop('语音服务尚未配置，请返回准备页。');return;}await start(entry.settings);}catch{if(token===epoch&&!leaving)stop('无法连接面试服务，请返回后重试。');}
+  try{const response=await fetch('/api/realtime-status',{signal:AbortSignal.timeout(5000)});if(!response.ok)throw new Error();config=await response.json();if(node('elapsed'))node('elapsed').textContent='0:00 / '+maxMinutes()+':00';if(token!==epoch||leaving)return;if(document.hidden){stop('页面已进入后台，请返回准备页重新开始。');return;}if(!config.configured){stop('语音服务尚未配置，请返回准备页。');return;}pendingSettings=entry.settings;controls(false);status('点击下方按钮，开启麦克风并开始面试。');}catch{if(token===epoch&&!leaving)stop('无法连接面试服务，请返回后重试。');}
  }
  function mount(element,options){
   root=element;config=options;room=false;leaving=false;uiLocale=interviewLocale(options.locale);
@@ -188,4 +197,13 @@ export function createRealtimeInterview(){
  return {mount,mountRoom,cleanup};
 }
 
-export function interviewRoomHTML(locale='zh-CN'){return interviewHTML(`<div class="ir-room"><header class="ir-header"><a class="ir-brand" href="/#learning">forma<span>.</span></a><span class="ir-room-title">面试室 <i></i> <span data-rt="direction">软件开发</span></span><span class="ir-timer" data-rt="elapsed">0:00 / 10:00</span></header><main class="ir-stage"><div class="ir-interviewer"><span class="ir-ai-tag">AI 模拟面试官</span><div class="ir-orbit" aria-hidden="true"><div class="ir-orb">f<span>.</span></div></div><h1>Forma 面试官</h1><p data-rt="status" role="status">正在准备面试连接…</p><div class="ir-sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><aside class="ir-self"><video data-rt="camera" autoplay playsinline muted aria-label="你的摄像头预览"></video><div class="ir-self-placeholder" aria-hidden="true">◉</div><span>你 · 画面不上传</span></aside></main><footer class="ir-footer"><span class="ir-secure">语音面试 · 摄像头可选</span><div class="ir-tools"><button type="button" data-rt="mute">麦克风静音</button><button type="button" data-rt="camera-toggle">开启摄像头</button><button type="button" data-rt="interrupt">打断面试官</button><button type="button" data-rt="end" class="ir-end">结束面试</button></div><span class="ir-footer-hint">请在安静的环境中作答</span></footer></div>`,locale);}
+export function interviewRoomHTML(locale='zh-CN'){return interviewHTML(`<div class="ir-room"><header class="ir-header"><a class="ir-brand" href="/#learning">forma<span>.</span></a><span class="ir-room-title">面试室 <i></i> <span data-rt="direction">软件开发</span></span><span class="ir-timer" data-rt="elapsed">0:00 / 10:00</span></header><main class="ir-stage"><div class="ir-interviewer"><span class="ir-ai-tag">AI 模拟面试官</span><div class="ir-orbit" aria-hidden="true"><div class="ir-orb">f<span>.</span></div></div><h1>Forma 面试官</h1><p data-rt="status" role="status">正在准备面试连接…</p><button type="button" class="ir-primary ir-connect" data-rt="connect" disabled>开启麦克风并开始</button><div class="ir-sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><aside class="ir-self"><video data-rt="camera" autoplay playsinline muted aria-label="你的摄像头预览"></video><div class="ir-self-placeholder" aria-hidden="true">◉</div><span>你 · 画面不上传</span></aside></main><footer class="ir-footer"><span class="ir-secure">语音面试 · 摄像头可选</span><div class="ir-tools"><button type="button" data-rt="mute">麦克风静音</button><button type="button" data-rt="camera-toggle">开启摄像头</button><button type="button" data-rt="interrupt">打断面试官</button><button type="button" data-rt="end" class="ir-end">结束面试</button></div><span class="ir-footer-hint">请在安静的环境中作答</span></footer></div>`,locale);}
+
+export function microphoneErrorText(error){
+ if(error?.name==='PermissionPromptTimeout')return '浏览器尚未返回麦克风权限。如果没有弹窗，请在网站设置中允许麦克风，或用 Safari、Chrome 打开后重试。';
+ if(['NotAllowedError','PermissionDeniedError','SecurityError'].includes(error?.name))return '麦克风权限被阻止。请在浏览器的网站设置中允许麦克风，再点击按钮重试；微信等内置浏览器可改用 Safari 或 Chrome 打开。';
+ if(['NotFoundError','DevicesNotFoundError'].includes(error?.name))return '没有找到麦克风，请连接麦克风后重试。';
+ if(['NotReadableError','TrackStartError'].includes(error?.name))return '麦克风被其他应用占用，请关闭通话或录音应用后重试。';
+ if(error?.name==='UnsupportedError')return '当前浏览器无法使用麦克风。请通过 HTTPS 地址，用 Safari 或 Chrome 打开网站。';
+ return '语音未能启动，请再点击一次开启麦克风；如仍失败，请使用 Safari 或 Chrome 打开。';
+}

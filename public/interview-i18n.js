@@ -2,6 +2,15 @@ export const interviewLocale=value=>value==='en'?'en':value==='zh-TW'?'zh-TW':'z
 export const speechLanguage=value=>value==='en'?'en':'zh';
 // Interface language and spoken interview language are intentionally independent.
 const copy=[
+ ['浏览器尚未返回麦克风权限。如果没有弹窗，请在网站设置中允许麦克风，或用 Safari、Chrome 打开后重试。','The browser has not returned microphone permission. If no prompt appeared, allow the microphone in site settings or retry in Safari or Chrome.','瀏覽器尚未回傳麥克風權限。如果沒有彈出視窗，請在網站設定中允許麥克風，或用 Safari、Chrome 開啟後重試。'],
+ ['开启麦克风并开始','Enable microphone and start','開啟麥克風並開始'],
+ ['点击下方按钮，开启麦克风并开始面试。','Tap below to enable your microphone and start the interview.','點擊下方按鈕，開啟麥克風並開始面試。'],
+ ['麦克风权限被阻止。请在浏览器的网站设置中允许麦克风，再点击按钮重试；微信等内置浏览器可改用 Safari 或 Chrome 打开。','Microphone access is blocked. Allow it in this browser’s site settings, then tap to retry. If using an in-app browser, open the site in Safari or Chrome.','麥克風權限被阻擋。請在瀏覽器的網站設定中允許麥克風，再點擊按鈕重試；微信等內建瀏覽器可改用 Safari 或 Chrome 開啟。'],
+ ['没有找到麦克风，请连接麦克风后重试。','No microphone was found. Connect a microphone and retry.','沒有找到麥克風，請連接麥克風後重試。'],
+ ['麦克风被其他应用占用，请关闭通话或录音应用后重试。','The microphone is in use. Close other calling or recording apps and retry.','麥克風被其他應用程式佔用，請關閉通話或錄音應用程式後重試。'],
+ ['当前浏览器无法使用麦克风。请通过 HTTPS 地址，用 Safari 或 Chrome 打开网站。','This browser cannot access a microphone. Open the HTTPS site in Safari or Chrome.','目前瀏覽器無法使用麥克風。請透過 HTTPS 網址，用 Safari 或 Chrome 開啟網站。'],
+ ['语音未能启动，请再点击一次开启麦克风；如仍失败，请使用 Safari 或 Chrome 打开。','Audio did not start. Tap to enable the microphone again, or open the site in Safari or Chrome.','語音未能啟動，請再點擊一次開啟麥克風；如仍失敗，請使用 Safari 或 Chrome 開啟。'],
+
  ['面试中不显示实时文字。','Live transcripts are hidden during the interview.','面試中不顯示即時文字。'],
  ['无法连接面试服务，请返回后重试。','Cannot connect to the interview service. Return to setup and retry.','無法連接面試服務，請返回後重試。'],
  ['连接失败，请检查登录状态和网络后重试。','Connection failed. Check your sign-in status and network, then retry.','連線失敗，請檢查登入狀態和網路後重試。'],

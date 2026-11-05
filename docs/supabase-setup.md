@@ -87,3 +87,11 @@ CRON_SECRET=本地已生成的随机后台口令
 本机开发后台需独立持续运行；停止后台会让已打开的静态网页无法发送请求。连接失败、AI 超时、AI 拥堵和生成格式错误现已分别提示，课节按钮附近显示请求状态。主模型返回 HTTP429 时仅对智谱免费模型使用固定免费备用模型，不扩大到其他供应商或付费模型；返回值标记实际模型与 fallbackUsed，教师仍需预览采纳。
 
 分镜生成试验新增可选迁移 `202611050004_storyboard_courseware.sql`，用于保存 `slides[].art.story`。它兼容旧课件并保留 objectives、misconceptions、sourceNotes、script、notes 及扩展插画模板；实验状态和实测限制见 [分镜生成试验](course-generation-trial.md)。
+
+## 学习记录跨设备同步（2026-11-05）
+
+执行 `supabase/migrations/202611050006_learner_workspace_sync.sql`。它新增本人可读的 `learner_workspaces` 表及 `sync_learner_workspace` 原子合并函数，所有权由 `auth.uid()` 决定；浏览器不能指定他人的用户 ID。`/api/account?resource=learning-state` 复用现有函数，未增加 Vercel 函数数量。
+
+打卡、课节完成、经验所依赖的练习记录、收藏、计划、笔记、Code Quest 和 Git 完成进度会合并。首次登录将已有本机数据迁入；后续按字段和集合增量保存，不以手机空记录覆盖电脑进度。有效学习记录决定经验值，重复同步不重复加经验。页面约15秒拉取一次，也在回到页面、恢复网络时重试。数据库行锁保护同时更新，批次 ID 防止同一批重复执行。
+
+界面语言、Git 模拟终端的进行中工作区与 AI 生成任务缓存仍保存在本机。同步失败时侧栏提示“暂未同步 · 已保存在本机”，不会假称已经入库。
