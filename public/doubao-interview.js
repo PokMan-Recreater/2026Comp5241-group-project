@@ -20,7 +20,7 @@ export function createRealtimeInterview(){
   if(socket){socket.onclose=null;socket.onerror=null;if(socket.readyState===WebSocket.OPEN)send({type:'session.close'});socket.close();socket=null;}
   if(worklet){worklet.port.onmessage=null;worklet.disconnect();worklet=null;}source?.disconnect();source=null;silent?.disconnect();silent=null;
   stream?.getTracks().forEach(t=>t.stop());stream=null;stopPlayback();context?.close().catch(()=>{});context=null;
-  camera?.getTracks().forEach(t=>t.stop());camera=null;const video=node('camera');if(video)video.srcObject=null;
+  camera?.getTracks().forEach(t=>t.stop());camera=null;const video=node('camera');if(video)video.srcObject=null;if(node('camera-caption'))node('camera-caption').hidden=false;
   if(node('camera-toggle'))node('camera-toggle').textContent=t('开启摄像头');
   controls(false);status(reason);
   if(room&&!leaving&&startedAt){review??=localInterviewReport(messages,spokenLanguage);finishPage(reason);}else if(node('connect'))node('connect').hidden=false;
@@ -128,9 +128,9 @@ export function createRealtimeInterview(){
  }
  async function toggleCamera(){
   if(cameraPending)return;
-  if(camera){camera.getTracks().forEach(t=>t.stop());camera=null;node('camera').srcObject=null;node('camera-toggle').textContent=t('开启摄像头');return;}
+  if(camera){camera.getTracks().forEach(t=>t.stop());camera=null;node('camera').srcObject=null;if(node('camera-caption'))node('camera-caption').hidden=false;node('camera-toggle').textContent=t('开启摄像头');return;}
   const token=epoch;cameraPending=true;
-  try{const acquired=await navigator.mediaDevices.getUserMedia({video:true,audio:false});if(token!==epoch||!root){acquired.getTracks().forEach(t=>t.stop());return;}camera=acquired;node('camera').srcObject=camera;node('camera-toggle').textContent=t('关闭摄像头');}catch{if(token===epoch)status('摄像头不可用，不影响语音面试。');}finally{cameraPending=false;}
+  try{const acquired=await navigator.mediaDevices.getUserMedia({video:true,audio:false});if(token!==epoch||!root){acquired.getTracks().forEach(t=>t.stop());return;}camera=acquired;node('camera').srcObject=camera;if(node('camera-caption'))node('camera-caption').hidden=true;node('camera-toggle').textContent=t('关闭摄像头');}catch{if(token===epoch)status('摄像头不可用，不影响语音面试。');}finally{cameraPending=false;}
  }
  function click(event){
   const action=event.target.closest('[data-rt]')?.dataset.rt;
@@ -197,7 +197,7 @@ export function createRealtimeInterview(){
  return {mount,mountRoom,cleanup};
 }
 
-export function interviewRoomHTML(locale='zh-CN'){return interviewHTML(`<div class="ir-room"><header class="ir-header"><a class="ir-brand" href="/#learning">forma<span>.</span></a><span class="ir-room-title">面试室 <i></i> <span data-rt="direction">软件开发</span></span><span class="ir-timer" data-rt="elapsed">0:00 / 10:00</span></header><main class="ir-stage"><div class="ir-interviewer"><span class="ir-ai-tag">AI 模拟面试官</span><div class="ir-orbit" aria-hidden="true"><div class="ir-orb">f<span>.</span></div></div><h1>Forma 面试官</h1><p data-rt="status" role="status">正在准备面试连接…</p><button type="button" class="ir-primary ir-connect" data-rt="connect" disabled>开启麦克风并开始</button><div class="ir-sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><aside class="ir-self"><video data-rt="camera" autoplay playsinline muted aria-label="你的摄像头预览"></video><div class="ir-self-placeholder" aria-hidden="true">◉</div><span>你 · 画面不上传</span></aside></main><footer class="ir-footer"><span class="ir-secure">语音面试 · 摄像头可选</span><div class="ir-tools"><button type="button" data-rt="mute">麦克风静音</button><button type="button" data-rt="camera-toggle">开启摄像头</button><button type="button" data-rt="interrupt">打断面试官</button><button type="button" data-rt="end" class="ir-end">结束面试</button></div><span class="ir-footer-hint">请在安静的环境中作答</span></footer></div>`,locale);}
+export function interviewRoomHTML(locale='zh-CN'){return interviewHTML(`<div class="ir-room"><header class="ir-header"><a class="ir-brand" href="/#learning">forma<span>.</span></a><span class="ir-room-title">面试室 <i></i> <span data-rt="direction">软件开发</span></span><span class="ir-timer" data-rt="elapsed">0:00 / 10:00</span></header><main class="ir-stage"><div class="ir-interviewer"><span class="ir-ai-tag">AI 模拟面试官</span><div class="ir-orbit" aria-hidden="true"><div class="ir-orb">f<span>.</span></div></div><h1>Forma 面试官</h1><p data-rt="status" role="status">正在准备面试连接…</p><button type="button" class="ir-primary ir-connect" data-rt="connect" disabled>开启麦克风并开始</button><div class="ir-sound" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><aside class="ir-self"><video data-rt="camera" autoplay playsinline muted aria-label="你的摄像头预览"></video><div class="ir-self-placeholder" aria-hidden="true">◉</div><span data-rt="camera-caption">你 · 画面不上传</span></aside></main><footer class="ir-footer"><span class="ir-secure">语音面试 · 摄像头可选</span><div class="ir-tools"><button type="button" data-rt="mute">麦克风静音</button><button type="button" data-rt="camera-toggle">开启摄像头</button><button type="button" data-rt="interrupt">打断面试官</button><button type="button" data-rt="end" class="ir-end">结束面试</button></div><span class="ir-footer-hint">请在安静的环境中作答</span></footer></div>`,locale);}
 
 export function microphoneErrorText(error){
  if(error?.name==='PermissionPromptTimeout')return '浏览器尚未返回麦克风权限。如果没有弹窗，请在网站设置中允许麦克风，或用 Safari、Chrome 打开后重试。';
