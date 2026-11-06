@@ -379,7 +379,7 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
     const targetIndex=lessonIndex,instruction=root.querySelector('#tc-instruction')?.value||'';
     const started=Date.now(),progress=()=>alive&&aiStatus(L(`Generating in background; may take about 5 minutes. ${Math.round((Date.now()-started)/1000)}s`,`后台生成中，可能需要约 5 分钟，可切换站内页面。已等待 ${Math.round((Date.now()-started)/1000)} 秒`,`背景產生中，可能需要約 5 分鐘，可切換站內頁面。已等待 ${Math.round((Date.now()-started)/1000)} 秒`));
     progress();const poll=setInterval(progress,1000);
-    let result;try{result=await cloudAPI('/api/course-ai',{action:aiAction==='ai-outline'?'outline':'lesson',language:draft.language,topic:draft.title,requirements:draft.authorMaterials||draft.description,instruction,courseId:record?.id,...(aiAction==='ai-lesson'?{lesson:draft.lessons[lessonIndex],production:'storyboard-v1'}:{})});}finally{clearInterval(poll);}
+    let result;try{result=await cloudAPI('/api/course-ai',{action:aiAction==='ai-outline'?'outline':'lesson',language:draft.language,topic:draft.title,requirements:draft.authorMaterials||draft.description,instruction,courseId:record?.id,...(aiAction==='ai-lesson'?{lesson:draft.lessons[lessonIndex],production:'lesson-draft'}:{})});}finally{clearInterval(poll);}
     if(aiAction==='ai-lesson'&&!hasCompleteCourseware(result.lesson))throw Error('invalid_ai_result');
     candidate={kind:aiAction,index:targetIndex,value:aiAction==='ai-lesson'?result.lesson:result.course,taskId:backgroundAI.candidate(record.id,(personal?'#personal-course/':'#teacher-course/')+record.id)?.id};
     if(!alive){try{const current=JSON.parse(localStorage.getItem(backupKey())||'null');localStorage.setItem(backupKey(),JSON.stringify({...current,candidate}));}catch{backup();}return;}

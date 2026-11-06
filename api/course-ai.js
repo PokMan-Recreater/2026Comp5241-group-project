@@ -35,13 +35,15 @@ export default async function handler(req,res){
   const endpoint=new URL((process.env.AI_BASE_URL||'https://open.bigmodel.cn/api/paas/v4').replace(/\/$/,'')+'/chat/completions');if(endpoint.protocol!=='https:')throw new CloudError('invalid_provider',503);
   const primaryModel=process.env.AI_MODEL||'glm-4.7-flash';let usedModel=primaryModel;
   const isOutline=body.action==='outline';
-  const outlineFallback=isOutline&&endpoint.hostname==='open.bigmodel.cn'
+  const isLessonDraft=body.action==='lesson'&&body.production==='lesson-draft';
+  const fastFallback=(isOutline||isLessonDraft)&&endpoint.hostname==='open.bigmodel.cn'
    ?(primaryModel==='glm-4-flash-250414'?'glm-4-flash':'glm-4-flash-250414')
    :null;
-  const startedAt=Date.now(),budget=isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
+  const startedAt=Date.now(),budget=isLessonDraft?165000:isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
   const remaining=()=>budget-(Date.now()-startedAt);
-  const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,...(body.production==='storyboard-v1'&&body.action==='lesson'?{production:'storyboard-v1',teachingBrief:null}:{})};
-  const providerRequest=(model,messages,timeout,maxTokens=body.action==='outline'?2000:6500)=>fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.AI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(endpoint.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{})}),signal:AbortSignal.timeout(timeout)});
+  const production=body.action==='lesson'&&body.production==='storyboard-v1'?'storyboard-v1':isLessonDraft?'lesson-draft':null;
+  const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,production,teachingBrief:null};
+  const providerRequest=(model,messages,timeout,maxTokens=isOutline?2000:isLessonDraft?3000:6500)=>fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.AI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(endpoint.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{})}),signal:AbortSignal.timeout(timeout)});
   if(body.production==='lesson-v2'&&body.action==='lesson'){
    const ask=async(messages,maxTokens)=>{
     const timeout=()=>{const limit=Math.min(35000,remaining()-2000);if(limit<3000)throw new CloudError('provider_timeout',502);return limit;};
@@ -86,14 +88,14 @@ export default async function handler(req,res){
   const attempt=model=>{
    const limit=remaining()-25000;
    if(limit<3000)throw new CloudError('provider_timeout',502);
-   const timeout=isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
+   const timeout=isLessonDraft?60000:isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
    return requestProvider(model,Math.min(timeout,limit));
   };
   let result;try{
    if(usedModel===primaryModel){
     try{result=await attempt(primaryModel);}catch(error){if(!(error.name==='TimeoutError'||error.name==='AbortError'))throw error;result=null;}
     if(!result||!result.ok){
-     if(outlineFallback)usedModel=outlineFallback;
+     if(fastFallback)usedModel=fastFallback;
      else if(endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash')usedModel='glm-4-flash-250414';
      else if(result)await new Promise(resolve=>setTimeout(resolve,1500));
     }
