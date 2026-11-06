@@ -270,9 +270,9 @@ test('outline tries Groq first and switches to Gemini when its result is invalid
  process.env.GROQ_API_KEY='groq-test';
  process.env.OPENROUTER_API_KEY='router-test';
  process.env.GEMINI_API_KEY='gemini-test';
- const course={title:'DeFi',description:'Introductory course',language:'en',lessons:[
-  {id:'lesson-1',title:'Wallets',objectives:['Describe wallets','Explain signing'],body:'Start with a transfer.',scene:'flow',sceneItems:['Wallet','Transfer'],questions:[]}
- ]};
+ const course={title:'DeFi',description:'Introductory course',language:'en',lessons:['Wallets','Signing','Contracts','Transfers','Confirmation','Risks'].map((title,index)=>({
+  id:'lesson-'+(index+1),title,objectives:['Describe wallets','Explain signing'],body:'Start with a transfer.',scene:'flow',sceneItems:['Wallet','Transfer'],questions:[],
+ }))};
  const calls=[];
  globalThis.fetch=async(url,options)=>{
   if(String(url).includes('/auth/v1/user'))return Response.json({id:'priority-outline-teacher',app_metadata:{role:'teacher'}});
@@ -281,7 +281,7 @@ test('outline tries Groq first and switches to Gemini when its result is invalid
   assert.equal(options.headers['x-goog-api-key'],'gemini-test');
   const input=JSON.parse(options.body);
   assert.equal(input.generationConfig.responseMimeType,'application/json');
-  assert.ok(input.systemInstruction.parts[0].text.includes('3–5'));
+  assert.ok(input.systemInstruction.parts[0].text.includes('4–6'));
   return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(course)}]}}]});
  };
  const res=response();
