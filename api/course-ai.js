@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {produceLesson} from '../scripts/course-production.mjs';
 import {planningMessages,validTeachingBrief,fallbackTeachingBrief,coerceTeachingBrief,storyboardRepairMessages,lessonReviewMessages,validLessonReview,contentRepairMessages} from '../scripts/course-storyboard-prompts.mjs';
+import {hasCompleteCourseware} from '../public/courseware-contract.js';
 import {validStoryboard,storyboardProblems} from '../public/course-storyboard.js';
 import {supabaseConfig,authenticatedUser,cloudRequest,cloudFailure,CloudError,sameOrigin,readJSON,allowRequest} from '../scripts/supabase-support.mjs';
 import {languages,providerMessages,repairMessages} from '../scripts/course-ai-prompts.mjs';
@@ -39,7 +40,7 @@ export default async function handler(req,res){
   const fastFallback=(isOutline||isLessonDraft)&&endpoint.hostname==='open.bigmodel.cn'
    ?(primaryModel==='glm-4-flash-250414'?'glm-4-flash':'glm-4-flash-250414')
    :null;
-  const startedAt=Date.now(),budget=isLessonDraft?165000:isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
+  const startedAt=Date.now(),budget=isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
   const remaining=()=>budget-(Date.now()-startedAt);
   const production=body.action==='lesson'&&body.production==='storyboard-v1'?'storyboard-v1':isLessonDraft?'lesson-draft':null;
   const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,production,teachingBrief:null};
@@ -83,12 +84,42 @@ export default async function handler(req,res){
    if(primaryUnavailable&&usedModel===primaryModel&&endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash')usedModel='glm-4-flash-250414';
    payload.teachingBrief=brief||fallbackTeachingBrief({language:body.language,topic:body.topic,current:body.lesson});
   }
+  if(isLessonDraft){
+   const messages=providerMessages(payload);
+   const models=fastFallback?[primaryModel,fastFallback]:[primaryModel,primaryModel];
+   let failure=new CloudError('provider_unavailable',502);
+   for(const model of models){
+    try{
+     const response=await providerRequest(model,messages,60000);
+     if(!response.ok){
+      failure=response.status===429?new CloudError('provider_rate_limited',429):new CloudError('provider_unavailable',502);
+      continue;
+     }
+     const data=await response.json();
+     const raw=parseAIContent(data?.choices?.[0]?.message?.content);
+     const lesson=salvageLesson(canonicalAIResult(raw,'lesson',body.lesson?.id));
+     const issues=salvageProblems(lesson);
+     if(!issues.length){
+      const draft=diversifyLessonScenes(normalizeLesson(lesson));
+      if(hasCompleteCourseware(draft))return res.status(200).json({lesson:draft,model,fallbackUsed:model!==primaryModel});
+     }
+     console.warn('[forma] lesson draft rejected',model,lesson?.slides?.length??0,issues.join('; '));
+     failure=new CloudError('invalid_ai_result',502);
+    }catch(error){
+     const timedOut=['TimeoutError','AbortError'].includes(error.name);
+     const malformed=error instanceof SyntaxError||error.message==='missing_json_content';
+     failure=new CloudError(timedOut?'provider_timeout':malformed?'invalid_ai_result':'provider_unavailable',502);
+     console.warn('[forma] lesson draft attempt failed',model,failure.message);
+    }
+   }
+   throw failure;
+  }
   const requestProvider=(model,timeout)=>providerRequest(model,providerMessages(payload),timeout);
   // Reserve time for schema repair instead of letting fallback consume the whole request.
   const attempt=model=>{
    const limit=remaining()-25000;
    if(limit<3000)throw new CloudError('provider_timeout',502);
-   const timeout=isLessonDraft?60000:isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
+   const timeout=isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
    return requestProvider(model,Math.min(timeout,limit));
   };
   let result;try{

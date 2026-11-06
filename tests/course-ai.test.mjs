@@ -191,6 +191,24 @@ test('a playable lesson draft with blank optional notes needs no second provider
  assert.ok(res.data.lesson.slides.every(slide=>!Object.hasOwn(slide,'notes')));
 }));
 
+test('a malformed lesson draft gets a fresh request to the other model',()=>scenario(async()=>{
+ process.env.AI_MODEL='glm-4-flash';
+ const calls=[];
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'fresh-draft-teacher',app_metadata:{role:'teacher'}});
+  const request=JSON.parse(options.body);
+  calls.push(request);
+  const content=calls.length===1?'{"slides":[':JSON.stringify(slideLesson);
+  return Response.json({choices:[{message:{content}}]});
+ };
+ const res=response();
+ await handler(request({...body,production:'lesson-draft'}),res);
+ assert.equal(res.statusCode,200);
+ assert.deepEqual(calls.map(call=>call.model),['glm-4-flash','glm-4-flash-250414']);
+ assert.deepEqual(calls[0].messages,calls[1].messages);
+ assert.equal(res.data.lesson.slides.length,slideLesson.slides.length);
+}));
+
 test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
  process.env.AI_MODEL='glm-4-flash';
  const models=[];
