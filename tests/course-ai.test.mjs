@@ -174,6 +174,26 @@ test('outline suggestions are normalized so the accepted draft can be saved',()=
  assert.deepEqual(validateCourse(normalized),normalized);
 }));
 
+test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
+ process.env.AI_MODEL='glm-4-flash';
+ const models=[];
+ const course={title:'DeFi',description:'入门课',language:'zh-CN',lessons:[
+  {id:'lesson-1',title:'钱包与签名',objectives:['解释钱包的作用','区分签名和授权'],body:'从钱包签名理解链上交易。',scene:'flow',sceneItems:['钱包','交易'],questions:[]}
+ ]};
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'outline-timeout-teacher',app_metadata:{role:'teacher'}});
+  models.push(JSON.parse(options.body).model);
+  if(models.length===1)throw new DOMException('timed out','TimeoutError');
+  return Response.json({choices:[{message:{content:JSON.stringify(course)}}]});
+ };
+ const res=response();
+ await handler(request({...body,action:'outline',topic:'Introduction to DeFi'}),res);
+ assert.equal(res.statusCode,200);
+ assert.deepEqual(models,['glm-4-flash','glm-4-flash-250414']);
+ assert.equal(res.data.fallbackUsed,true);
+ assert.deepEqual(validateCourse(res.data.course),res.data.course);
+}));
+
 test('outlines that repeat one lesson title are deduplicated instead of rejected',()=>scenario(async()=>{
  const lesson={id:'lesson-1',title:'What are DApps?',objectives:['解释 DApp 的组成','区分 DApp 与普通网页'],body:'大纲摘要。',scene:'flow',sceneItems:['定义','合约'],questions:[]};
  const course={title:'DApp 深度解析',description:'面向新生',language:'zh-CN',lessons:[lesson,{...lesson,id:'lesson-2'},{...lesson,id:'lesson-3'}]};

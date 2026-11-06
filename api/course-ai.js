@@ -34,7 +34,11 @@ export default async function handler(req,res){
   const current=body.lesson===undefined?'':JSON.stringify(body.lesson);if(current.length>18000)throw new CloudError('invalid_request',400);
   const endpoint=new URL((process.env.AI_BASE_URL||'https://open.bigmodel.cn/api/paas/v4').replace(/\/$/,'')+'/chat/completions');if(endpoint.protocol!=='https:')throw new CloudError('invalid_provider',503);
   const primaryModel=process.env.AI_MODEL||'glm-4.7-flash';let usedModel=primaryModel;
-  const startedAt=Date.now(),budget=['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
+  const isOutline=body.action==='outline';
+  const outlineFallback=isOutline&&endpoint.hostname==='open.bigmodel.cn'
+   ?(primaryModel==='glm-4-flash-250414'?'glm-4-flash':'glm-4-flash-250414')
+   :null;
+  const startedAt=Date.now(),budget=isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
   const remaining=()=>budget-(Date.now()-startedAt);
   const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,...(body.production==='storyboard-v1'&&body.action==='lesson'?{production:'storyboard-v1',teachingBrief:null}:{})};
   const providerRequest=(model,messages,timeout,maxTokens=body.action==='outline'?2000:6500)=>fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.AI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(endpoint.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{})}),signal:AbortSignal.timeout(timeout)});
@@ -79,12 +83,18 @@ export default async function handler(req,res){
   }
   const requestProvider=(model,timeout)=>providerRequest(model,providerMessages(payload),timeout);
   // Reserve time for schema repair instead of letting fallback consume the whole request.
-  const attempt=model=>{const limit=remaining()-25000;if(limit<3000)throw new CloudError('provider_timeout',502);return requestProvider(model,Math.min(payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000,limit));};
+  const attempt=model=>{
+   const limit=remaining()-25000;
+   if(limit<3000)throw new CloudError('provider_timeout',502);
+   const timeout=isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
+   return requestProvider(model,Math.min(timeout,limit));
+  };
   let result;try{
    if(usedModel===primaryModel){
     try{result=await attempt(primaryModel);}catch(error){if(!(error.name==='TimeoutError'||error.name==='AbortError'))throw error;result=null;}
     if(!result||!result.ok){
-     if(endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash')usedModel='glm-4-flash-250414';
+     if(outlineFallback)usedModel=outlineFallback;
+     else if(endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash')usedModel='glm-4-flash-250414';
      else if(result)await new Promise(resolve=>setTimeout(resolve,1500));
     }
    }
