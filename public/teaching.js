@@ -80,7 +80,7 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
   if(!task||candidate?.taskId===task.id)return;
   const selected=task.lessonId?draft.lessons.findIndex(l=>l.id===task.lessonId):0;
   if(selected<0)return;
-  candidate={kind:task.action==='outline'?'ai-outline':'ai-lesson',index:selected,value:task.action==='outline'?task.result.course:task.result.lesson,taskId:task.id};
+  candidate={kind:task.action==='outline'?'ai-outline':'ai-lesson',index:selected,value:task.action==='outline'?task.result.course:task.result.lesson,source:task.result.source,taskId:task.id};
   lessonIndex=selected;backup();
  };
  const mergeGeneratedLesson=(current,generated)=>{const lessonId=current.id;return {...ensureScene(generated),id:lessonId,questions:(generated.questions||[]).map((q,i)=>({...q,id:lessonId+'-q-'+(i+1)}))};};
@@ -143,7 +143,9 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
  const candidatePanel=()=>{
   if(!candidate||candidate.index!==lessonIndex)return '';
   const actions=`<div class="row">${button('accept',L('Accept suggestion','采纳建议','採納建議'),false)}${button('regenerate',L('Not satisfied? Regenerate','不满意？重新生成','不滿意？重新產生'))}${button('discard',L('Discard','不采用','不採用'))}</div><p class="small muted">${L('Saved on this device until you accept or discard it.','在你采纳或不采用前，这份候选内容会保存在本机。','在你採納或不採用前，這份候選內容會儲存在本機。')}</p>`;
-  if(candidate.kind==='ai-lesson')return `<section class="tc-candidate"><h3>${L('Preview AI suggestion','预览 AI 建议','預覽 AI 建議')}</h3><details><summary>${L('Current lesson','修改前','修改前')}</summary><div class="tc-reading">${e(draft.lessons[lessonIndex].body)}</div></details>${preview(candidate.value)}${actions}</section>`;
+  const fromOutline=candidate.source==='outline';
+  const outlineNote=fromOutline?`<p class="small muted">${L('The AI service could not finish. This editable draft uses your outline; review it and add examples and quiz questions before publishing.','AI 未能完成生成。这份可编辑初稿来自已采纳的大纲，发布前请补充案例和选择题。','AI 未能完成產生。這份可編輯初稿來自已採納的大綱，發佈前請補充案例和選擇題。')}</p>`:'';
+  if(candidate.kind==='ai-lesson')return `<section class="tc-candidate"><h3>${fromOutline?L('Outline-based draft','大纲初稿','大綱初稿'):L('Preview AI suggestion','预览 AI 建议','預覽 AI 建議')}</h3>${outlineNote}<details><summary>${L('Current lesson','修改前','修改前')}</summary><div class="tc-reading">${e(draft.lessons[lessonIndex].body)}</div></details>${preview(candidate.value)}${actions}</section>`;
   return `<section class="tc-candidate"><h3>${L('Preview AI outline','预览 AI 大纲','預覽 AI 大綱')}</h3><ol class="tc-outline-preview">${candidate.value.lessons.map((l,i)=>`<li><article><h4><span>${i+1}.</span> ${e(l.title)}</h4>${l.body?`<p>${e(l.body)}</p>`:''}</article></li>`).join('')}</ol><p>${L('Accepting replaces the draft outline. Each lesson body is an outline summary; generate full content for each lesson.','采纳后会替换草稿目录，每节课正文为大纲摘要，可逐节生成完整内容。')}</p>${actions}</section>`;
  };
  const previewQuestions=lesson=>lesson.questions.map(q=>`<details class="tc-preview-question"><summary>${e(q.prompt)}</summary><ol type="A">${q.options.map((o,i)=>`<li>${e(o)}${i===q.correctIndex?' ✓':''}</li>`).join('')}</ol>${answerHTML(q)}</details>`).join('');
@@ -381,11 +383,11 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
     progress();const poll=setInterval(progress,1000);
     let result;try{result=await cloudAPI('/api/course-ai',{action:aiAction==='ai-outline'?'outline':'lesson',language:draft.language,topic:draft.title,requirements:draft.authorMaterials||draft.description,instruction,courseId:record?.id,...(aiAction==='ai-lesson'?{lesson:draft.lessons[lessonIndex],production:'lesson-draft'}:{})});}finally{clearInterval(poll);}
     if(aiAction==='ai-lesson'&&!hasCompleteCourseware(result.lesson))throw Error('invalid_ai_result');
-    candidate={kind:aiAction,index:targetIndex,value:aiAction==='ai-lesson'?result.lesson:result.course,taskId:backgroundAI.candidate(record.id,(personal?'#personal-course/':'#teacher-course/')+record.id)?.id};
+    candidate={kind:aiAction,index:targetIndex,value:aiAction==='ai-lesson'?result.lesson:result.course,source:result.source,taskId:backgroundAI.candidate(record?.id,(personal?'#personal-course/':'#teacher-course/')+record?.id)?.id};
     if(!alive){try{const current=JSON.parse(localStorage.getItem(backupKey())||'null');localStorage.setItem(backupKey(),JSON.stringify({...current,candidate}));}catch{backup();}return;}
     backup();editor();
     const reviewNote=result.qualityReview&&result.qualityReview.pass===false?L(' Automated review still has open questions; check the content before accepting.','自动复核仍有疑问，请检查内容后再采纳。','自動複核仍有疑問，請檢查內容後再採納。'):'';
-    aiStatus((result.fallbackUsed?L('The main model was busy. A free backup model generated this suggestion; it is saved on this device until you accept or discard it.','主模型繁忙，已使用免费备用模型生成候选内容；在采纳或不采用前会保存在本机。','主模型繁忙，已使用免費備用模型產生候選內容；在採納或不採用前會儲存在本機。'):L('Suggestion ready and saved on this device. Review before accepting.','候选内容已生成并保存在本机，请检查后再采纳。','候選內容已產生並儲存在本機，請檢查後再採納。'))+reviewNote);
+    aiStatus((result.source==='outline'?L('Outline draft ready.','已生成可编辑的大纲初稿。','已產生可編輯的大綱初稿。'):result.fallbackUsed?L('The main model was busy. A free backup model generated this suggestion; it is saved on this device until you accept or discard it.','主模型繁忙，已使用免费备用模型生成候选内容；在采纳或不采用前会保存在本机。','主模型繁忙，已使用免費備用模型產生候選內容；在採納或不採用前會儲存在本機。'):L('Suggestion ready and saved on this device. Review before accepting.','候选内容已生成并保存在本机，请检查后再采纳。','候選內容已產生並儲存在本機，請檢查後再採納。'))+reviewNote);
    }
    if(action==='accept'&&candidate){
     const acceptedOutline=candidate.kind==='ai-outline';if(candidate.taskId)backgroundAI.used(candidate.taskId);

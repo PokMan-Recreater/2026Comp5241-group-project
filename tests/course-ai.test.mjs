@@ -10,7 +10,7 @@ const fixtureSlides=()=>['记录输入','验证规则','网络广播','状态确
 const response=()=>({headers:{},statusCode:0,data:null,setHeader(k,v){this.headers[k]=v;},status(n){this.statusCode=n;return this;},json(data){this.data=data;return this;}});
 const request=body=>({method:'POST',url:'/api/course-ai',headers:{host:'local',origin:'http://local',cookie:'forma_access=teacher-test'},body});
 const body={action:'lesson',language:'zh-CN',topic:'测试',requirements:'解释边界测试',instruction:'用具体例子说明'};
-async function scenario(fn){const saved={...process.env},fetch=globalThis.fetch;Object.assign(process.env,{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public',SUPABASE_SECRET_KEY:'private',AI_BASE_URL:'https://open.bigmodel.cn/api/paas/v4',AI_MODEL:'glm-4.7-flash',AI_API_KEY:'test-private-key'});try{await fn();}finally{globalThis.fetch=fetch;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}}
+async function scenario(fn){const saved={...process.env},fetch=globalThis.fetch;delete process.env.GROQ_API_KEY;delete process.env.OPENROUTER_API_KEY;Object.assign(process.env,{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public',SUPABASE_SECRET_KEY:'private',AI_BASE_URL:'https://open.bigmodel.cn/api/paas/v4',AI_MODEL:'glm-4.7-flash',AI_API_KEY:'test-private-key'});try{await fn();}finally{globalThis.fetch=fetch;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}}
 test('students can spend AI quota on their own course material',()=>scenario(async()=>{const calls=[],lesson={id:'l1',title:'边界',objectives:['理解空输入','识别单元素边界'],misconceptions:['空输入不需要测试。正确做法是把它当作合法输入。'],slides:fixtureSlides(),body:'检查空数组。',scene:'compare',sceneItems:['空数组','单元素'],questions:[{id:'q1',prompt:'哪个测试覆盖空输入？',options:['[]','[1]'],correctIndex:0,explanation:'空数组验证没有元素的情况。'}]};globalThis.fetch=async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'student-ai',app_metadata:{role:'student'}}:{choices:[{message:{content:JSON.stringify(lesson)}}]}));};const res=response();await handler(request(body),res);assert.equal(res.statusCode,200);assert.deepEqual(res.data.lesson,lesson);assert.equal(calls.length,2);}));
 test('course AI refuses a course owned by someone else',()=>scenario(async()=>{let provider=0;globalThis.fetch=async url=>{const value=String(url);if(value.includes('/auth/v1/user'))return new Response(JSON.stringify({id:'student-ai',app_metadata:{role:'student'}}));if(value.includes('/rest/v1/teaching_courses')||value.includes('/rest/v1/personal_courses'))return new Response('[]');provider++;return new Response('{}');};const res=response();await handler(request({...body,courseId:'11111111-1111-4111-8111-111111111111'}),res);assert.equal(res.statusCode,404);assert.equal(res.data.error,'course_not_found');assert.equal(provider,0);}));
 test('teacher lesson generation validates JSON and never exposes provider credentials',()=>scenario(async()=>{const calls=[],lesson={id:'l1',title:'边界',objectives:['理解空输入','识别单元素边界'],misconceptions:['空输入等于不需要测试。正确做法是把空输入当作合法但无元素的输入。'],slides:fixtureSlides(),body:'检查空数组和单元素。',scene:'compare',sceneItems:['空数组','单元素'],questions:[{id:'q1',prompt:'哪个测试覆盖空输入？',options:['[]','[1]'],correctIndex:0,explanation:'空数组验证没有元素的情况。'}]};globalThis.fetch=async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'teacher-1',app_metadata:{role:'teacher'}}:{choices:[{message:{content:JSON.stringify(lesson)}}]}));};const res=response();await handler(request(body),res);assert.equal(res.statusCode,200);assert.deepEqual(res.data.lesson,lesson);assert.equal(calls.length,2);assert.equal(JSON.parse(calls[1].options.body).thinking.type,'disabled');assert(!JSON.stringify(res.data).includes('test-private-key'));}));
@@ -207,6 +207,51 @@ test('a malformed lesson draft gets a fresh request to the other model',()=>scen
  assert.deepEqual(calls.map(call=>call.model),['glm-4-flash','glm-4-flash-250414']);
  assert.deepEqual(calls[0].messages,calls[1].messages);
  assert.equal(res.data.lesson.slides.length,slideLesson.slides.length);
+}));
+
+test('courseware switches from the configured model to Groq and OpenRouter',()=>scenario(async()=>{
+ process.env.GROQ_API_KEY='groq-test';
+ process.env.OPENROUTER_API_KEY='router-test';
+ const calls=[];
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'provider-chain-teacher',app_metadata:{role:'teacher'}});
+  calls.push([new URL(url).hostname,options.headers.Authorization]);
+  if(calls.length<3)return Response.json({}, {status:429});
+  return Response.json({choices:[{message:{content:JSON.stringify(slideLesson)}}]});
+ };
+ const res=response();
+ await handler(request({...body,production:'lesson-draft'}),res);
+ assert.equal(res.statusCode,200);
+ assert.equal(res.data.model,'openrouter/free');
+ assert.deepEqual(calls,[
+  ['open.bigmodel.cn','Bearer test-private-key'],
+  ['api.groq.com','Bearer groq-test'],
+  ['openrouter.ai','Bearer router-test'],
+ ]);
+}));
+
+test('both model failures still return a playable, saveable draft from the accepted outline',()=>scenario(async()=>{
+ const selected={id:'lesson-1',title:'What is DeFi?',body:'Compare decentralized finance with traditional finance.',objectives:['Define DeFi','Identify a trade-off']};
+ let calls=0;
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'outline-draft-teacher',app_metadata:{role:'teacher'}});
+  calls++;
+  if(calls===1)throw new DOMException('timed out','TimeoutError');
+  return Response.json({choices:[{message:{content:'{"slides":[]}'}}]});
+ };
+ const res=response();
+ await handler(request({...body,language:'en',production:'lesson-draft',lesson:selected}),res);
+ assert.equal(calls,2);
+ assert.equal(res.statusCode,200);
+ assert.equal(res.data.source,'outline');
+ const lesson=res.data.lesson;
+ assert.equal(lesson.id,selected.id);
+ assert.equal(lesson.body,selected.body);
+ assert.deepEqual(lesson.objectives,selected.objectives);
+ assert.equal(lesson.slides.length,4);
+ assert.ok(lesson.slides.every(slide=>slide.script.length&&slide.art.items.length===2));
+ assert.deepEqual(lesson.questions,[]);
+ assert.doesNotThrow(()=>validateCourse({title:'DeFi',description:'',language:'en',lessons:[lesson]}));
 }));
 
 test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
