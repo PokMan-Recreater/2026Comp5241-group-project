@@ -1,5 +1,5 @@
 import {courseBookmarkButton} from './course-bookmark.js';
-import {backgroundAI,runBackgroundWork,generationNotice} from './background-ai.js';
+import {backgroundAI,backgroundRequest,runBackgroundWork,generationNotice} from './background-ai.js';
 import {hasCompleteCourseware,isNarratableLesson,narrationScriptText} from './courseware-contract.js';
 import {createDraftAutosave} from './draft-autosave.js';
 import {cloudAPI} from './cloud-records.js';
@@ -50,7 +50,10 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
  const button=(action,label,secondary=true,attrs='')=>`<button type="button" class="btn ${secondary?'secondary':''}" data-teach="${action}" ${attrs}>${label}</button>`;
  const heading=(title,sub='')=>`<div class="page-heading"><h1>${e(title)}</h1>${sub?`<p>${e(sub)}</p>`:''}</div>`;
  const status=message=>{root.querySelectorAll('[data-teach-status],[data-ai-status]').forEach(el=>{el.textContent=message;});};
- const aiStatus=message=>{const el=root.querySelector('[data-ai-status]');if(!el)return;el.textContent=message;el.scrollIntoView({block:'nearest',behavior:'smooth'});};
+ const aiStatus=message=>{
+  const el=root.querySelector('[data-ai-status]');
+  if(el)el.textContent=message;
+ };
  const errors={teacher_required:L('A teacher account is required.','请使用教师账号。','請使用教師帳號。'),revision_conflict:L('The course changed in another window. Copy your edits and reload.','课程已在其他窗口修改，请保留当前内容后刷新。'),provider_rate_limited:L('The free model is busy. Your draft is safe; try again shortly.','免费模型暂时限流，草稿已保留，请稍后重试。'),ai_not_configured:L('The AI service is not configured.','AI 服务尚未配置。'),invalid_course:L('Check lesson content, question answers and scene labels before publishing.','请检查课文、选择题答案和场景标签后再发布。'),invalid_request:L('Please check the required fields.','请检查必填内容。'),login_required:L('Please sign in again.','请重新登录。')};
  Object.assign(errors,{
  narration_not_configured:L('The speech service is not configured.','语音服务尚未配置。','語音服務尚未設定。'),narration_timeout:L('Narration timed out. Completed recordings are saved; click again to continue.','配音生成超时，已完成部分已保存，再点按钮可继续。','配音產生逾時，已完成部分已儲存，再點按鈕可繼續。'),narration_too_long:L('This step is too long. Split its narration and retry.','这一页讲稿过长，请拆分讲解后再生成配音。','這一頁講稿過長，請拆分講解後再產生配音。'),narration_provider_failed:L('The speech service failed. Completed recordings are saved; retry to continue.','语音服务暂时未返回录音，已完成部分已保存，可重试继续。','語音服務暫時未回傳錄音，已完成部分已儲存，可重試繼續。'),
@@ -376,14 +379,25 @@ const api=(resource,body)=>cloudAPI('/api/teaching?resource='+resource,body);
     const aiAction=action==='regenerate'?lastAIAction:action;if(!aiAction)return;lastAIAction=aiAction;
     if(aiAction==='ai-lesson'&&!(draft.lessons.length>1||draft.lessons[0]?.body.trim())){aiStatus(L('Generate and accept a course outline in step 1 first.','请先在“第 1 步”生成并采纳课程大纲。','請先在「第 1 步」產生並採納課程大綱。'));return;}
     if(!draft.title.trim()){aiStatus(L('Enter a course title first.','请先填写课程标题。','請先填寫課程標題。'));return;}
+    const targetIndex=lessonIndex;
+    const routePrefix=personal?'#personal-course/':'#teacher-course/';
+    const requestBody={
+     action:aiAction==='ai-outline'?'outline':'lesson',
+     language:draft.language,topic:draft.title,requirements:draft.authorMaterials||draft.description,
+     instruction:root.querySelector('#tc-instruction')?.value||'',
+     ...(aiAction==='ai-lesson'?{lesson:structuredClone(draft.lessons[targetIndex]),production:'storyboard-v1'}:{}),
+    };
     // The draft is already backed up locally; a failed sync must not block AI.
     changed();try{await autosaver.flush();}catch{/* Retried by the autosave schedule. */}
-    const targetIndex=lessonIndex,instruction=root.querySelector('#tc-instruction')?.value||'';
+    if(!backgroundAI.owns(user.id))return;
+    const courseId=record?.id,route=routePrefix+(courseId||'new');
     const started=Date.now(),progress=()=>alive&&aiStatus(L(`Generating in background; may take about 5 minutes. ${Math.round((Date.now()-started)/1000)}s`,`后台生成中，可能需要约 5 分钟，可切换站内页面。已等待 ${Math.round((Date.now()-started)/1000)} 秒`,`背景產生中，可能需要約 5 分鐘，可切換站內頁面。已等待 ${Math.round((Date.now()-started)/1000)} 秒`));
     progress();const poll=setInterval(progress,1000);
-    let result;try{result=await cloudAPI('/api/course-ai',{action:aiAction==='ai-outline'?'outline':'lesson',language:draft.language,topic:draft.title,requirements:draft.authorMaterials||draft.description,instruction,courseId:record?.id,...(aiAction==='ai-lesson'?{lesson:draft.lessons[lessonIndex],production:'storyboard-v1'}:{})});}finally{clearInterval(poll);}
+    let result;
+    try{result=await backgroundRequest('/api/course-ai',{...requestBody,courseId},{route});}
+    finally{clearInterval(poll);}
     if(aiAction==='ai-lesson'&&!hasCompleteCourseware(result.lesson))throw Error('invalid_ai_result');
-    candidate={kind:aiAction,index:targetIndex,value:aiAction==='ai-lesson'?result.lesson:result.course,source:result.source,taskId:backgroundAI.candidate(record?.id,(personal?'#personal-course/':'#teacher-course/')+record?.id)?.id};
+    candidate={kind:aiAction,index:targetIndex,value:aiAction==='ai-lesson'?result.lesson:result.course,source:result.source,taskId:backgroundAI.candidate(courseId,route)?.id};
     if(!alive){try{const current=JSON.parse(localStorage.getItem(backupKey())||'null');localStorage.setItem(backupKey(),JSON.stringify({...current,candidate}));}catch{backup();}return;}
     backup();editor();
     const reviewNote=result.qualityReview&&result.qualityReview.pass===false?L(' Automated review still has open questions; check the content before accepting.','自动复核仍有疑问，请检查内容后再采纳。','自動複核仍有疑問，請檢查內容後再採納。'):'';
