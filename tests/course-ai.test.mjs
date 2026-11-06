@@ -254,6 +254,18 @@ test('both model failures still return a playable, saveable draft from the accep
  assert.doesNotThrow(()=>validateCourse({title:'DeFi',description:'',language:'en',lessons:[lesson]}));
 }));
 
+test('storyboard generation failure still returns an editable outline draft',()=>scenario(async()=>{
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'storyboard-recovery-teacher',app_metadata:{role:'teacher'}});
+  throw new DOMException('timed out','TimeoutError');
+ };
+ const res=response();
+ await handler(request({...body,production:'storyboard-v1',lesson:{id:'lesson-1',title:'Boundary tests',body:'Start with an empty input.'}}),res);
+ assert.equal(res.statusCode,200);
+ assert.equal(res.data.source,'outline');
+ assert.equal(res.data.lesson.slides.length,4);
+}));
+
 test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
  process.env.AI_MODEL='glm-4-flash';
  const models=[];

@@ -12,6 +12,7 @@ import {outlineProblems,fullLessonProblems,normalizeLesson,normalizeOutline,cano
 const productionCheckpoints=new Map();
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
+ let recoverLesson=null;
  try{
   const config=supabaseConfig();if(!config)throw new CloudError('database_not_configured',503);
   const {user,token}=await authenticatedUser(req,res,config);
@@ -38,11 +39,10 @@ export default async function handler(req,res){
    lesson:lessonDraftFromOutline(body.lesson,body.topic,body.language),
    source:'outline',
   });
-  if(!isLessonDraft&&!process.env.AI_API_KEY)throw new CloudError('ai_not_configured',503);
   const endpoint=new URL((process.env.AI_BASE_URL||'https://open.bigmodel.cn/api/paas/v4').replace(/\/$/,'')+'/chat/completions');if(endpoint.protocol!=='https:')throw new CloudError('invalid_provider',503);
   const primaryModel=process.env.AI_MODEL||'glm-4.7-flash';let usedModel=primaryModel;
   const isOutline=body.action==='outline';
-  const fastFallback=(isOutline||isLessonDraft)&&endpoint.hostname==='open.bigmodel.cn'
+  const fastFallback=endpoint.hostname==='open.bigmodel.cn'
    ?(primaryModel==='glm-4-flash-250414'?'glm-4-flash':'glm-4-flash-250414')
    :null;
   const startedAt=Date.now(),budget=isOutline?125000:['storyboard-v1','lesson-v2'].includes(body.production)?275000:110000;
@@ -55,6 +55,55 @@ export default async function handler(req,res){
    body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(url.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{}),...options}),
    signal:AbortSignal.timeout(timeout),
   });
+  const generateDraft=async(recovering=false)=>{
+   const messages=providerMessages({...payload,production:'lesson-draft',teachingBrief:null});
+   const providers=[];
+   if(!recovering&&process.env.AI_API_KEY)providers.push({model:primaryModel,timeout:60000});
+   if(process.env.GROQ_API_KEY)providers.push({
+    model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
+    key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
+   });
+   if(process.env.OPENROUTER_API_KEY)providers.push({
+    model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
+    key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
+   });
+   if(!recovering&&providers.length===1&&process.env.AI_API_KEY)providers.push({model:fastFallback||primaryModel,timeout:60000});
+   let failure=new CloudError('ai_not_configured',503);
+   for(const {model,timeout,...provider} of providers){
+    const attemptTimeout=recovering?Math.min(timeout,remaining()-2000):timeout;
+    if(attemptTimeout<3000)break;
+    try{
+     const response=await providerRequest(model,messages,attemptTimeout,3000,provider);
+     if(!response.ok){
+      failure=response.status===429?new CloudError('provider_rate_limited',429):new CloudError('provider_unavailable',502);
+      continue;
+     }
+     const data=await response.json();
+     const raw=parseAIContent(data?.choices?.[0]?.message?.content);
+     const lesson=salvageLesson(canonicalAIResult(raw,'lesson',body.lesson?.id));
+     const issues=salvageProblems(lesson);
+     if(!issues.length){
+      const draft=diversifyLessonScenes(normalizeLesson(lesson));
+      if(hasCompleteCourseware(draft))return res.status(200).json({lesson:draft,model,fallbackUsed:model!==primaryModel});
+     }
+     console.warn('[forma] lesson draft rejected',model,lesson?.slides?.length??0,issues.join('; '));
+     failure=new CloudError('invalid_ai_result',502);
+    }catch(error){
+     const timedOut=['TimeoutError','AbortError'].includes(error.name);
+     const malformed=error instanceof SyntaxError||error.message==='missing_json_content';
+     failure=new CloudError(timedOut?'provider_timeout':malformed?'invalid_ai_result':'provider_unavailable',502);
+     console.warn('[forma] lesson draft attempt failed',model,failure.message);
+    }
+   }
+   console.warn('[forma] using outline draft after model failure',failure.message);
+   return outlineDraft();
+  };
+  if(isLessonDraft)return generateDraft();
+  if(production==='storyboard-v1')recoverLesson=()=>generateDraft(true);
+  if(!process.env.AI_API_KEY){
+   if(recoverLesson)return recoverLesson();
+   throw new CloudError('ai_not_configured',503);
+  }
   if(body.production==='lesson-v2'&&body.action==='lesson'){
    const ask=async(messages,maxTokens)=>{
     const timeout=()=>{const limit=Math.min(35000,remaining()-2000);if(limit<3000)throw new CloudError('provider_timeout',502);return limit;};
@@ -93,47 +142,6 @@ export default async function handler(req,res){
    // on the same overloaded primary model for the lesson itself.
    if(primaryUnavailable&&usedModel===primaryModel&&endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash')usedModel='glm-4-flash-250414';
    payload.teachingBrief=brief||fallbackTeachingBrief({language:body.language,topic:body.topic,current:body.lesson});
-  }
-  if(isLessonDraft){
-   const messages=providerMessages(payload);
-   const providers=[];
-   if(process.env.AI_API_KEY)providers.push({model:primaryModel,timeout:60000});
-   if(process.env.GROQ_API_KEY)providers.push({
-    model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
-    key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
-   });
-   if(process.env.OPENROUTER_API_KEY)providers.push({
-    model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
-    key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
-   });
-   if(providers.length===1&&process.env.AI_API_KEY)providers.push({model:fastFallback||primaryModel,timeout:60000});
-   let failure=new CloudError('ai_not_configured',503);
-   for(const {model,timeout,...provider} of providers){
-    try{
-     const response=await providerRequest(model,messages,timeout,3000,provider);
-     if(!response.ok){
-      failure=response.status===429?new CloudError('provider_rate_limited',429):new CloudError('provider_unavailable',502);
-      continue;
-     }
-     const data=await response.json();
-     const raw=parseAIContent(data?.choices?.[0]?.message?.content);
-     const lesson=salvageLesson(canonicalAIResult(raw,'lesson',body.lesson?.id));
-     const issues=salvageProblems(lesson);
-     if(!issues.length){
-      const draft=diversifyLessonScenes(normalizeLesson(lesson));
-      if(hasCompleteCourseware(draft))return res.status(200).json({lesson:draft,model,fallbackUsed:model!==primaryModel});
-     }
-     console.warn('[forma] lesson draft rejected',model,lesson?.slides?.length??0,issues.join('; '));
-     failure=new CloudError('invalid_ai_result',502);
-    }catch(error){
-     const timedOut=['TimeoutError','AbortError'].includes(error.name);
-     const malformed=error instanceof SyntaxError||error.message==='missing_json_content';
-     failure=new CloudError(timedOut?'provider_timeout':malformed?'invalid_ai_result':'provider_unavailable',502);
-     console.warn('[forma] lesson draft attempt failed',model,failure.message);
-    }
-   }
-   console.warn('[forma] using outline draft after model failure',failure.message);
-   return outlineDraft();
   }
   const requestProvider=(model,timeout)=>providerRequest(model,providerMessages(payload),timeout);
   // Reserve time for schema repair instead of letting fallback consume the whole request.
@@ -249,7 +257,15 @@ export default async function handler(req,res){
   if(body.action==='outline'){
    value={...value,lessons:dedupeLessonTitles(value.lessons)};
    value=normalizeOutline(value,body.language);
-  }else value=diversifyLessonScenes(normalizeLesson(value));
+  }else{
+   value=diversifyLessonScenes(normalizeLesson(value));
+   if(recoverLesson&&!hasCompleteCourseware(value))throw new CloudError('invalid_ai_result',502);
+  }
   return res.status(200).json({[body.action==='outline'?'course':'lesson']:value,model:usedModel,fallbackUsed:usedModel!==primaryModel,...(payload.teachingBrief?{production:'storyboard-v1',teachingBrief:payload.teachingBrief,qualityReview}:{})});
- }catch(error){return cloudFailure(res,error);}
+ }catch(error){
+  if(recoverLesson&&['provider_timeout','provider_rate_limited','provider_unavailable','invalid_ai_result'].includes(error.message)){
+   return recoverLesson();
+  }
+  return cloudFailure(res,error);
+ }
 }
