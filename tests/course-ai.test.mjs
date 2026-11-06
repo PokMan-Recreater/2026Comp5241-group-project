@@ -10,7 +10,7 @@ const fixtureSlides=()=>['记录输入','验证规则','网络广播','状态确
 const response=()=>({headers:{},statusCode:0,data:null,setHeader(k,v){this.headers[k]=v;},status(n){this.statusCode=n;return this;},json(data){this.data=data;return this;}});
 const request=body=>({method:'POST',url:'/api/course-ai',headers:{host:'local',origin:'http://local',cookie:'forma_access=teacher-test'},body});
 const body={action:'lesson',language:'zh-CN',topic:'测试',requirements:'解释边界测试',instruction:'用具体例子说明'};
-async function scenario(fn){const saved={...process.env},fetch=globalThis.fetch;delete process.env.GROQ_API_KEY;delete process.env.OPENROUTER_API_KEY;Object.assign(process.env,{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public',SUPABASE_SECRET_KEY:'private',AI_BASE_URL:'https://open.bigmodel.cn/api/paas/v4',AI_MODEL:'glm-4.7-flash',AI_API_KEY:'test-private-key'});try{await fn();}finally{globalThis.fetch=fetch;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}}
+async function scenario(fn){const saved={...process.env},fetch=globalThis.fetch;delete process.env.GROQ_API_KEY;delete process.env.OPENROUTER_API_KEY;delete process.env.GEMINI_API_KEY;Object.assign(process.env,{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public',SUPABASE_SECRET_KEY:'private',AI_BASE_URL:'https://open.bigmodel.cn/api/paas/v4',AI_MODEL:'glm-4.7-flash',AI_API_KEY:'test-private-key'});try{await fn();}finally{globalThis.fetch=fetch;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}}
 test('students can spend AI quota on their own course material',()=>scenario(async()=>{const calls=[],lesson={id:'l1',title:'边界',objectives:['理解空输入','识别单元素边界'],misconceptions:['空输入不需要测试。正确做法是把它当作合法输入。'],slides:fixtureSlides(),body:'检查空数组。',scene:'compare',sceneItems:['空数组','单元素'],questions:[{id:'q1',prompt:'哪个测试覆盖空输入？',options:['[]','[1]'],correctIndex:0,explanation:'空数组验证没有元素的情况。'}]};globalThis.fetch=async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'student-ai',app_metadata:{role:'student'}}:{choices:[{message:{content:JSON.stringify(lesson)}}]}));};const res=response();await handler(request(body),res);assert.equal(res.statusCode,200);assert.deepEqual(res.data.lesson,lesson);assert.equal(calls.length,2);}));
 test('course AI refuses a course owned by someone else',()=>scenario(async()=>{let provider=0;globalThis.fetch=async url=>{const value=String(url);if(value.includes('/auth/v1/user'))return new Response(JSON.stringify({id:'student-ai',app_metadata:{role:'student'}}));if(value.includes('/rest/v1/teaching_courses')||value.includes('/rest/v1/personal_courses'))return new Response('[]');provider++;return new Response('{}');};const res=response();await handler(request({...body,courseId:'11111111-1111-4111-8111-111111111111'}),res);assert.equal(res.statusCode,404);assert.equal(res.data.error,'course_not_found');assert.equal(provider,0);}));
 test('teacher lesson generation validates JSON and never exposes provider credentials',()=>scenario(async()=>{const calls=[],lesson={id:'l1',title:'边界',objectives:['理解空输入','识别单元素边界'],misconceptions:['空输入等于不需要测试。正确做法是把空输入当作合法但无元素的输入。'],slides:fixtureSlides(),body:'检查空数组和单元素。',scene:'compare',sceneItems:['空数组','单元素'],questions:[{id:'q1',prompt:'哪个测试覆盖空输入？',options:['[]','[1]'],correctIndex:0,explanation:'空数组验证没有元素的情况。'}]};globalThis.fetch=async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify(String(url).includes('/auth/v1/user')?{id:'teacher-1',app_metadata:{role:'teacher'}}:{choices:[{message:{content:JSON.stringify(lesson)}}]}));};const res=response();await handler(request(body),res);assert.equal(res.statusCode,200);assert.deepEqual(res.data.lesson,lesson);assert.equal(calls.length,2);assert.equal(JSON.parse(calls[1].options.body).thinking.type,'disabled');assert(!JSON.stringify(res.data).includes('test-private-key'));}));
@@ -266,23 +266,29 @@ test('storyboard generation failure still returns an editable outline draft',()=
  assert.equal(res.data.lesson.slides.length,4);
 }));
 
-test('outline tries Groq first and switches to OpenRouter when its result is invalid',()=>scenario(async()=>{
+test('outline tries Groq first and switches to Gemini when its result is invalid',()=>scenario(async()=>{
  process.env.GROQ_API_KEY='groq-test';
  process.env.OPENROUTER_API_KEY='router-test';
+ process.env.GEMINI_API_KEY='gemini-test';
  const course={title:'DeFi',description:'Introductory course',language:'en',lessons:[
   {id:'lesson-1',title:'Wallets',objectives:['Describe wallets','Explain signing'],body:'Start with a transfer.',scene:'flow',sceneItems:['Wallet','Transfer'],questions:[]}
  ]};
  const calls=[];
- globalThis.fetch=async url=>{
+ globalThis.fetch=async(url,options)=>{
   if(String(url).includes('/auth/v1/user'))return Response.json({id:'priority-outline-teacher',app_metadata:{role:'teacher'}});
   calls.push(new URL(url).hostname);
-  return Response.json({choices:[{message:{content:JSON.stringify(calls.length===1?{}:course)}}]});
+  if(calls.length===1)return Response.json({choices:[{message:{content:'{}'}}]});
+  assert.equal(options.headers['x-goog-api-key'],'gemini-test');
+  const input=JSON.parse(options.body);
+  assert.equal(input.generationConfig.responseMimeType,'application/json');
+  assert.ok(input.systemInstruction.parts[0].text.includes('3–5'));
+  return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(course)}]}}]});
  };
  const res=response();
  await handler(request({...body,language:'en',action:'outline'}),res);
  assert.equal(res.statusCode,200);
- assert.deepEqual(calls,['api.groq.com','openrouter.ai']);
- assert.equal(res.data.model,'openrouter/free');
+ assert.deepEqual(calls,['api.groq.com','generativelanguage.googleapis.com']);
+ assert.equal(res.data.model,'gemini-3.1-flash-lite');
  assert.deepEqual(res.data.course,course);
 }));
 
@@ -430,8 +436,10 @@ test('storyboard production plans a concrete case first and preserves animated s
  const brief={audience:'Beginners',goal:'Trace a transfer',case:'Alice sends five tokens to Bob',steps:['Sign','Broadcast','Validate','Confirm'].map(heading=>({heading,purpose:'Show what changes',layout:'process'}))};
  const story={layout:'process',context:'Alice sends five tokens',actors:[{kind:'phone',label:'Alice wallet'},{kind:'network',label:'Peer nodes'}],events:[{from:0,to:1,action:'Sign and broadcast',result:'Peers receive the signed request',status:'normal'},{from:1,to:0,action:'Validate the request',result:'Wallet shows a pending transaction',status:'success'}],takeaway:'The private key stays in the wallet'};
  const lesson={id:'story-test',title:'Wallet transfer',objectives:['Explain signing','Trace validation'],misconceptions:['A signature alone guarantees a valid transfer. It does not: other transaction rules must also pass.'],slides:fixtureSlides().slice(0,4).map(s=>({...s,art:{...s.art,story}})),questions:[{id:'q1',prompt:'What is shared?',options:['Signature','Private key'],correctIndex:0,explanation:'The private key stays local.'}]};
- const requests=[];globalThis.fetch=async(url,options)=>{if(String(url).includes('/auth/v1/user'))return new Response(JSON.stringify({id:'story-teacher',app_metadata:{role:'teacher'}}));const b=JSON.parse(options.body);requests.push(b);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(requests.length===1?brief:requests.length===2?lesson:{pass:true,issues:[]})}}]}));};
- const res=response();await handler(request({...body,production:'storyboard-v1'}),res);assert.equal(res.statusCode,200);assert.equal(requests.length,3);assert.match(requests[0].messages[0].content,/plan one self-study lesson/);assert.deepEqual(JSON.parse(requests[1].messages[1].content).teachingBrief,brief);assert.equal(res.data.production,'storyboard-v1');assert.deepEqual(res.data.lesson.slides[0].art.story,story);assert.doesNotThrow(()=>validateCourse({title:'Course',description:'',language:'en',lessons:[res.data.lesson]}));
+ process.env.GEMINI_API_KEY='gemini-test';
+ process.env.GROQ_API_KEY='groq-test';
+ const requests=[];globalThis.fetch=async(url,options)=>{if(String(url).includes('/auth/v1/user'))return new Response(JSON.stringify({id:'story-teacher',app_metadata:{role:'teacher'}}));assert.equal(new URL(url).hostname,'generativelanguage.googleapis.com');const b=JSON.parse(options.body);requests.push(b);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(requests.length===1?brief:requests.length===2?lesson:{pass:true,issues:[]})}]}}]});};
+ const res=response();await handler(request({...body,production:'storyboard-v1'}),res);assert.equal(res.statusCode,200);assert.equal(requests.length,3);assert.match(requests[0].systemInstruction.parts[0].text,/plan one self-study lesson/);assert.deepEqual(JSON.parse(requests[1].contents[0].parts[0].text).teachingBrief,brief);assert.equal(res.data.production,'storyboard-v1');assert.equal(res.data.model,'gemini-3.1-flash-lite');assert.deepEqual(res.data.lesson.slides[0].art.story,story);assert.doesNotThrow(()=>validateCourse({title:'Course',description:'',language:'en',lessons:[res.data.lesson]}));
 }));
 
 test('content review repairs the flagged slide and stays advisory when doubts remain',()=>scenario(async()=>{
