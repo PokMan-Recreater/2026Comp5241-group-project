@@ -55,25 +55,26 @@ export default async function handler(req,res){
    body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(url.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{}),...options}),
    signal:AbortSignal.timeout(timeout),
   });
-  const generateDraft=async(recovering=false)=>{
-   const messages=providerMessages({...payload,production:'lesson-draft',teachingBrief:null});
-   const providers=[];
-   if(!recovering&&process.env.AI_API_KEY)providers.push({model:primaryModel,timeout:60000});
-   if(process.env.GROQ_API_KEY)providers.push({
+  const preferredProviders=[];
+   if(process.env.GROQ_API_KEY)preferredProviders.push({
     model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
     key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
    });
-   if(process.env.OPENROUTER_API_KEY)providers.push({
+   if(process.env.OPENROUTER_API_KEY)preferredProviders.push({
     model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
     key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
    });
-   if(!recovering&&providers.length===1&&process.env.AI_API_KEY)providers.push({model:fastFallback||primaryModel,timeout:60000});
+  let activeProvider;
+  const requestModel=(model,messages,timeout,maxTokens=undefined)=>providerRequest(model,messages,timeout,maxTokens,activeProvider);
+  const generateDraft=async()=>{
+   const messages=providerMessages({...payload,production:'lesson-draft',teachingBrief:null});
+   const providers=[...preferredProviders];
+   if(process.env.AI_API_KEY)providers.push({model:primaryModel,timeout:60000});
+   if(providers.length===1&&process.env.AI_API_KEY)providers.push({model:fastFallback||primaryModel,timeout:60000});
    let failure=new CloudError('ai_not_configured',503);
    for(const {model,timeout,...provider} of providers){
-    const attemptTimeout=recovering?Math.min(timeout,remaining()-2000):timeout;
-    if(attemptTimeout<3000)break;
     try{
-     const response=await providerRequest(model,messages,attemptTimeout,3000,provider);
+     const response=await providerRequest(model,messages,timeout,3000,provider);
      if(!response.ok){
       failure=response.status===429?new CloudError('provider_rate_limited',429):new CloudError('provider_unavailable',502);
       continue;
@@ -84,7 +85,7 @@ export default async function handler(req,res){
      const issues=salvageProblems(lesson);
      if(!issues.length){
       const draft=diversifyLessonScenes(normalizeLesson(lesson));
-      if(hasCompleteCourseware(draft))return res.status(200).json({lesson:draft,model,fallbackUsed:model!==primaryModel});
+      if(hasCompleteCourseware(draft))return res.status(200).json({lesson:draft,model,fallbackUsed:model!==providers[0]?.model});
      }
      console.warn('[forma] lesson draft rejected',model,lesson?.slides?.length??0,issues.join('; '));
      failure=new CloudError('invalid_ai_result',502);
@@ -99,8 +100,42 @@ export default async function handler(req,res){
    return outlineDraft();
   };
   if(isLessonDraft)return generateDraft();
-  if(production==='storyboard-v1')recoverLesson=()=>generateDraft(true);
-  if(!process.env.AI_API_KEY){
+  if(production==='storyboard-v1')recoverLesson=outlineDraft;
+  let result;
+  if(isOutline||production==='storyboard-v1'){
+   for(const {model,timeout,...provider} of preferredProviders){
+    try{
+     let brief=null;
+     if(production==='storyboard-v1'){
+      try{
+       const plan=await providerRequest(model,planningMessages(payload),15000,1400,provider);
+       if(plan.ok){
+        const data=await plan.json();
+        const parsed=parseAIContent(data?.choices?.[0]?.message?.content);
+        const coerced=coerceTeachingBrief(parsed,{language:body.language,topic:body.topic,current:body.lesson});
+        if(validTeachingBrief(coerced))brief=coerced;
+       }
+      }catch{/* Build a local teaching brief if planning fails. */}
+      brief??=fallbackTeachingBrief({language:body.language,topic:body.topic,current:body.lesson});
+     }
+     const response=await providerRequest(model,providerMessages({...payload,teachingBrief:brief}),isOutline?Math.min(timeout,22000):40000,undefined,provider);
+     if(!response.ok){
+      console.warn('[forma] preferred course provider rejected request',model,response.status);
+      continue;
+     }
+     const data=await response.clone().json();
+     const value=canonicalAIResult(parseAIContent(data?.choices?.[0]?.message?.content),body.action,body.lesson?.id);
+     const issues=isOutline?outlineProblems(value):salvageProblems(salvageLesson(value));
+     if(issues.length)continue;
+     activeProvider=provider;
+     usedModel=model;
+     payload.teachingBrief=brief;
+     result=response;
+     break;
+    }catch(error){console.warn('[forma] preferred course provider failed',model,error.name);}
+   }
+  }
+  if(!result&&!process.env.AI_API_KEY){
    if(recoverLesson)return recoverLesson();
    throw new CloudError('ai_not_configured',503);
   }
@@ -124,7 +159,7 @@ export default async function handler(req,res){
    const generated=await produceLesson(payload,ask,entry.data);productionCheckpoints.delete(cacheKey);
    return res.status(200).json({...generated,model:usedModel,fallbackUsed:usedModel!==primaryModel});
   }
-  if(payload.production==='storyboard-v1'){
+  if(payload.production==='storyboard-v1'&&!result){
    // A plan is helpful, never mandatory: coerce what the model returned and
    // otherwise use a localized deterministic brief so lesson writing never
    // fails just because the planning call was slow or malformed.
@@ -151,8 +186,8 @@ export default async function handler(req,res){
    const timeout=isOutline?45000:payload.production==='storyboard-v1'?65000:model===primaryModel?15000:55000;
    return requestProvider(model,Math.min(timeout,limit));
   };
-  let result;try{
-   if(usedModel===primaryModel){
+  try{
+   if(!result&&usedModel===primaryModel){
     try{result=await attempt(primaryModel);}catch(error){if(!(error.name==='TimeoutError'||error.name==='AbortError'))throw error;result=null;}
     if(!result||!result.ok){
      if(fastFallback)usedModel=fastFallback;
@@ -173,8 +208,8 @@ export default async function handler(req,res){
    if(payload.production!=='storyboard-v1'||!Array.isArray(lesson?.slides))return lesson;
    const smallRequest=async messages=>{
     const timeout=Math.min(20000,remaining()-15000);if(timeout<3000)throw new CloudError('provider_timeout',502);
-    let response=await providerRequest(usedModel,messages,timeout,1800);
-    if(response.status===429&&endpoint.hostname==='open.bigmodel.cn'&&usedModel!=='glm-4-flash-250414'){usedModel='glm-4-flash-250414';response=await providerRequest(usedModel,messages,Math.min(20000,remaining()-15000),1800);}
+    let response=await requestModel(usedModel,messages,timeout,1800);
+    if(response.status===429&&!activeProvider&&endpoint.hostname==='open.bigmodel.cn'&&usedModel!=='glm-4-flash-250414'){usedModel='glm-4-flash-250414';response=await requestModel(usedModel,messages,Math.min(20000,remaining()-15000),1800);}
     if(!response.ok)throw new CloudError('provider_unavailable',502);
     const data=await response.json();return parseAIContent(data?.choices?.[0]?.message?.content);
    };
@@ -204,15 +239,15 @@ export default async function handler(req,res){
    // One best-effort repair, then a deterministic downgrade for lessons. A
    // failed repair call must not discard an otherwise usable result.
    try{
-    if(endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash'&&usedModel===primaryModel)usedModel='glm-4-flash-250414';
+    if(!activeProvider&&endpoint.hostname==='open.bigmodel.cn'&&primaryModel==='glm-4.7-flash'&&usedModel===primaryModel)usedModel='glm-4-flash-250414';
     const hints=parseFailed?['Return one complete valid JSON object; the previous response was not parseable JSON']:repairHintsFor(value);
     const repair=async model=>{
      const timeout=Math.min(payload.production==='storyboard-v1'?65000:55000,remaining()-1500);
      if(timeout<3000)throw new CloudError('provider_timeout',502);
-     return providerRequest(model,repairMessages(payload,rawContent,hints),timeout);
+     return requestModel(model,repairMessages(payload,rawContent,hints),timeout);
     };
     let repaired=await repair(usedModel);
-    if(repaired.status===429&&endpoint.hostname==='open.bigmodel.cn'&&usedModel!=='glm-4-flash-250414'){
+    if(repaired.status===429&&!activeProvider&&endpoint.hostname==='open.bigmodel.cn'&&usedModel!=='glm-4-flash-250414'){
      usedModel='glm-4-flash-250414';
      repaired=await repair(usedModel);
     }
@@ -229,7 +264,7 @@ export default async function handler(req,res){
   if(payload.production==='storyboard-v1'){
    const review=async lesson=>{
     const timeout=Math.min(25000,remaining()-10000);if(timeout<3000)throw new CloudError('provider_timeout',502);
-    const response=await providerRequest(usedModel,lessonReviewMessages(lesson,payload),timeout,1400);if(!response.ok)throw new CloudError('quality_review_failed',502);
+    const response=await requestModel(usedModel,lessonReviewMessages(lesson,payload),timeout,1400);if(!response.ok)throw new CloudError('quality_review_failed',502);
     const data=await response.json();const result=parseAIContent(data?.choices?.[0]?.message?.content);if(!validLessonReview(result,lesson.slides.length))throw new CloudError('quality_review_failed',502);return result;
    };
    // Review is advisory: an unavailable or unhappy reviewer must not erase a
@@ -238,7 +273,7 @@ export default async function handler(req,res){
    if(qualityReview&&!qualityReview.pass){
     try{
      const timeout=Math.min(65000,remaining()-25000);if(timeout<3000)throw new CloudError('provider_timeout',502);
-     const response=await providerRequest(usedModel,contentRepairMessages(value,qualityReview.issues,payload),timeout);if(!response.ok)throw new CloudError('quality_review_failed',502);
+     const response=await requestModel(usedModel,contentRepairMessages(value,qualityReview.issues,payload),timeout);if(!response.ok)throw new CloudError('quality_review_failed',502);
      const data=await response.json(),patch=parseAIContent(data?.choices?.[0]?.message?.content),allowed=new Set(qualityReview.issues.map(i=>i.slide));
      if(!Array.isArray(patch.corrections)||patch.corrections.length>value.slides.length)throw new CloudError('quality_review_failed',502);
      const changed=new Set(),next=structuredClone(value);let valid=true;
@@ -261,7 +296,7 @@ export default async function handler(req,res){
    value=diversifyLessonScenes(normalizeLesson(value));
    if(recoverLesson&&!hasCompleteCourseware(value))throw new CloudError('invalid_ai_result',502);
   }
-  return res.status(200).json({[body.action==='outline'?'course':'lesson']:value,model:usedModel,fallbackUsed:usedModel!==primaryModel,...(payload.teachingBrief?{production:'storyboard-v1',teachingBrief:payload.teachingBrief,qualityReview}:{})});
+  return res.status(200).json({[body.action==='outline'?'course':'lesson']:value,model:usedModel,fallbackUsed:activeProvider?usedModel!==preferredProviders[0]?.model:preferredProviders.length>0||usedModel!==primaryModel,...(payload.teachingBrief?{production:'storyboard-v1',teachingBrief:payload.teachingBrief,qualityReview}:{})});
  }catch(error){
   if(recoverLesson&&['provider_timeout','provider_rate_limited','provider_unavailable','invalid_ai_result'].includes(error.message)){
    return recoverLesson();
