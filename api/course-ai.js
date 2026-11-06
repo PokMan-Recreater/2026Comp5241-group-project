@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {lessonDraftFromOutline} from '../scripts/course-outline-draft.mjs';
 import {produceLesson} from '../scripts/course-production.mjs';
 import {planningMessages,validTeachingBrief,fallbackTeachingBrief,coerceTeachingBrief,storyboardRepairMessages,lessonReviewMessages,validLessonReview,contentRepairMessages} from '../scripts/course-storyboard-prompts.mjs';
 import {hasCompleteCourseware} from '../public/courseware-contract.js';
@@ -31,12 +32,16 @@ export default async function handler(req,res){
     if(!personalRows.some(row=>row.owner_id===user.id))throw new CloudError('course_not_found',404);
    }
   }
-  if(!process.env.AI_API_KEY)throw new CloudError('ai_not_configured',503);
   const current=body.lesson===undefined?'':JSON.stringify(body.lesson);if(current.length>18000)throw new CloudError('invalid_request',400);
+  const isLessonDraft=body.action==='lesson'&&body.production==='lesson-draft';
+  const outlineDraft=()=>res.status(200).json({
+   lesson:lessonDraftFromOutline(body.lesson,body.topic,body.language),
+   source:'outline',
+  });
+  if(!isLessonDraft&&!process.env.AI_API_KEY)throw new CloudError('ai_not_configured',503);
   const endpoint=new URL((process.env.AI_BASE_URL||'https://open.bigmodel.cn/api/paas/v4').replace(/\/$/,'')+'/chat/completions');if(endpoint.protocol!=='https:')throw new CloudError('invalid_provider',503);
   const primaryModel=process.env.AI_MODEL||'glm-4.7-flash';let usedModel=primaryModel;
   const isOutline=body.action==='outline';
-  const isLessonDraft=body.action==='lesson'&&body.production==='lesson-draft';
   const fastFallback=(isOutline||isLessonDraft)&&endpoint.hostname==='open.bigmodel.cn'
    ?(primaryModel==='glm-4-flash-250414'?'glm-4-flash':'glm-4-flash-250414')
    :null;
@@ -44,7 +49,12 @@ export default async function handler(req,res){
   const remaining=()=>budget-(Date.now()-startedAt);
   const production=body.action==='lesson'&&body.production==='storyboard-v1'?'storyboard-v1':isLessonDraft?'lesson-draft':null;
   const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,production,teachingBrief:null};
-  const providerRequest=(model,messages,timeout,maxTokens=isOutline?2000:isLessonDraft?3000:6500)=>fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.AI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(endpoint.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{})}),signal:AbortSignal.timeout(timeout)});
+  const providerRequest=(model,messages,timeout,maxTokens=isOutline?2000:isLessonDraft?3000:6500,{url=endpoint,key=process.env.AI_API_KEY,options={}}={})=>fetch(url,{
+   method:'POST',
+   headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+   body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(url.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{}),...options}),
+   signal:AbortSignal.timeout(timeout),
+  });
   if(body.production==='lesson-v2'&&body.action==='lesson'){
    const ask=async(messages,maxTokens)=>{
     const timeout=()=>{const limit=Math.min(35000,remaining()-2000);if(limit<3000)throw new CloudError('provider_timeout',502);return limit;};
@@ -86,11 +96,21 @@ export default async function handler(req,res){
   }
   if(isLessonDraft){
    const messages=providerMessages(payload);
-   const models=fastFallback?[primaryModel,fastFallback]:[primaryModel,primaryModel];
-   let failure=new CloudError('provider_unavailable',502);
-   for(const model of models){
+   const providers=[];
+   if(process.env.AI_API_KEY)providers.push({model:primaryModel,timeout:60000});
+   if(process.env.GROQ_API_KEY)providers.push({
+    model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
+    key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
+   });
+   if(process.env.OPENROUTER_API_KEY)providers.push({
+    model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
+    key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
+   });
+   if(providers.length===1&&process.env.AI_API_KEY)providers.push({model:fastFallback||primaryModel,timeout:60000});
+   let failure=new CloudError('ai_not_configured',503);
+   for(const {model,timeout,...provider} of providers){
     try{
-     const response=await providerRequest(model,messages,60000);
+     const response=await providerRequest(model,messages,timeout,3000,provider);
      if(!response.ok){
       failure=response.status===429?new CloudError('provider_rate_limited',429):new CloudError('provider_unavailable',502);
       continue;
@@ -112,7 +132,8 @@ export default async function handler(req,res){
      console.warn('[forma] lesson draft attempt failed',model,failure.message);
     }
    }
-   throw failure;
+   console.warn('[forma] using outline draft after model failure',failure.message);
+   return outlineDraft();
   }
   const requestProvider=(model,timeout)=>providerRequest(model,providerMessages(payload),timeout);
   // Reserve time for schema repair instead of letting fallback consume the whole request.
