@@ -209,7 +209,7 @@ test('a malformed lesson draft gets a fresh request to the other model',()=>scen
  assert.equal(res.data.lesson.slides.length,slideLesson.slides.length);
 }));
 
-test('courseware switches from the configured model to Groq and OpenRouter',()=>scenario(async()=>{
+test('courseware tries Groq, OpenRouter, and the configured model in that order',()=>scenario(async()=>{
  process.env.GROQ_API_KEY='groq-test';
  process.env.OPENROUTER_API_KEY='router-test';
  const calls=[];
@@ -222,11 +222,11 @@ test('courseware switches from the configured model to Groq and OpenRouter',()=>
  const res=response();
  await handler(request({...body,production:'lesson-draft'}),res);
  assert.equal(res.statusCode,200);
- assert.equal(res.data.model,'openrouter/free');
+ assert.equal(res.data.model,'glm-4.7-flash');
  assert.deepEqual(calls,[
-  ['open.bigmodel.cn','Bearer test-private-key'],
   ['api.groq.com','Bearer groq-test'],
   ['openrouter.ai','Bearer router-test'],
+  ['open.bigmodel.cn','Bearer test-private-key'],
  ]);
 }));
 
@@ -264,6 +264,26 @@ test('storyboard generation failure still returns an editable outline draft',()=
  assert.equal(res.statusCode,200);
  assert.equal(res.data.source,'outline');
  assert.equal(res.data.lesson.slides.length,4);
+}));
+
+test('outline tries Groq first and switches to OpenRouter when its result is invalid',()=>scenario(async()=>{
+ process.env.GROQ_API_KEY='groq-test';
+ process.env.OPENROUTER_API_KEY='router-test';
+ const course={title:'DeFi',description:'Introductory course',language:'en',lessons:[
+  {id:'lesson-1',title:'Wallets',objectives:['Describe wallets','Explain signing'],body:'Start with a transfer.',scene:'flow',sceneItems:['Wallet','Transfer'],questions:[]}
+ ]};
+ const calls=[];
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'priority-outline-teacher',app_metadata:{role:'teacher'}});
+  calls.push(new URL(url).hostname);
+  return Response.json({choices:[{message:{content:JSON.stringify(calls.length===1?{}:course)}}]});
+ };
+ const res=response();
+ await handler(request({...body,language:'en',action:'outline'}),res);
+ assert.equal(res.statusCode,200);
+ assert.deepEqual(calls,['api.groq.com','openrouter.ai']);
+ assert.equal(res.data.model,'openrouter/free');
+ assert.deepEqual(res.data.course,course);
 }));
 
 test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
