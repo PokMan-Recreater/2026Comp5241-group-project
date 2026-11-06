@@ -49,21 +49,45 @@ export default async function handler(req,res){
   const remaining=()=>budget-(Date.now()-startedAt);
   const production=body.action==='lesson'&&body.production==='storyboard-v1'?'storyboard-v1':isLessonDraft?'lesson-draft':null;
   const payload={action:body.action,language:body.language,topic:body.topic,requirements:body.requirements,instruction:body.instruction,current,production,teachingBrief:null};
-  const providerRequest=(model,messages,timeout,maxTokens=isOutline?2000:isLessonDraft?3000:6500,{url=endpoint,key=process.env.AI_API_KEY,options={}}={})=>fetch(url,{
-   method:'POST',
-   headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
-   body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(url.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{}),...options}),
-   signal:AbortSignal.timeout(timeout),
-  });
+  const providerRequest=async(model,messages,timeout,maxTokens=isOutline?2000:isLessonDraft?3000:6500,{url=endpoint,key=process.env.AI_API_KEY,options={},gemini=false}={})=>{
+   const signal=AbortSignal.timeout(timeout);
+   if(gemini){
+    const systemInstruction={parts:messages.filter(message=>message.role==='system').map(message=>({text:message.content}))};
+    const contents=messages.filter(message=>message.role!=='system').map(message=>({
+     role:message.role==='assistant'?'model':'user',parts:[{text:message.content}],
+    }));
+    const response=await fetch(url,{
+     method:'POST',headers:{'x-goog-api-key':key,'Content-Type':'application/json'},signal,
+     body:JSON.stringify({systemInstruction,contents,generationConfig:{responseMimeType:'application/json',maxOutputTokens:maxTokens}}),
+    });
+    if(!response.ok)return response;
+    const data=await response.json();
+    const content=data.candidates?.[0]?.content?.parts?.filter(part=>!part.thought).map(part=>part.text||'').join('');
+    return Response.json({choices:[{message:{content}}]});
+   }
+   return fetch(url,{
+    method:'POST',
+    headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+    body:JSON.stringify({model,messages,response_format:{type:'json_object'},max_tokens:maxTokens,...(url.hostname==='open.bigmodel.cn'&&model==='glm-4.7-flash'?{thinking:{type:'disabled'}}:{}),...options}),
+    signal,
+   });
+  };
   const preferredProviders=[];
-   if(process.env.GROQ_API_KEY)preferredProviders.push({
-    model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
-    key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
-   });
-   if(process.env.OPENROUTER_API_KEY)preferredProviders.push({
-    model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
-    key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
-   });
+  const geminiModel='gemini-3.1-flash-lite';
+  const geminiProvider=process.env.GEMINI_API_KEY?{
+   model:geminiModel,timeout:30000,gemini:true,key:process.env.GEMINI_API_KEY,
+   url:new URL('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent'),
+  }:null;
+  if(!isOutline&&geminiProvider)preferredProviders.push(geminiProvider);
+  if(process.env.GROQ_API_KEY)preferredProviders.push({
+   model:'openai/gpt-oss-20b',timeout:25000,url:new URL('https://api.groq.com/openai/v1/chat/completions'),
+   key:process.env.GROQ_API_KEY,options:{reasoning_effort:'low'},
+  });
+  if(isOutline&&geminiProvider)preferredProviders.push(geminiProvider);
+  if(process.env.OPENROUTER_API_KEY)preferredProviders.push({
+   model:'openrouter/free',timeout:30000,url:new URL('https://openrouter.ai/api/v1/chat/completions'),
+   key:process.env.OPENROUTER_API_KEY,options:{provider:{require_parameters:true}},
+  });
   let activeProvider;
   const requestModel=(model,messages,timeout,maxTokens=undefined)=>providerRequest(model,messages,timeout,maxTokens,activeProvider);
   const generateDraft=async()=>{
@@ -104,11 +128,12 @@ export default async function handler(req,res){
   let result;
   if(isOutline||production==='storyboard-v1'){
    for(const {model,timeout,...provider} of preferredProviders){
+    if(remaining()<8000)break;
     try{
      let brief=null;
      if(production==='storyboard-v1'){
       try{
-       const plan=await providerRequest(model,planningMessages(payload),15000,1400,provider);
+       const plan=await providerRequest(model,planningMessages(payload),Math.min(15000,remaining()-4000),1400,provider);
        if(plan.ok){
         const data=await plan.json();
         const parsed=parseAIContent(data?.choices?.[0]?.message?.content);
@@ -118,7 +143,9 @@ export default async function handler(req,res){
       }catch{/* Build a local teaching brief if planning fails. */}
       brief??=fallbackTeachingBrief({language:body.language,topic:body.topic,current:body.lesson});
      }
-     const response=await providerRequest(model,providerMessages({...payload,teachingBrief:brief}),isOutline?Math.min(timeout,22000):40000,undefined,provider);
+     const attemptTimeout=Math.min(isOutline?Math.min(timeout,22000):40000,remaining()-4000);
+     if(attemptTimeout<3000)break;
+     const response=await providerRequest(model,providerMessages({...payload,teachingBrief:brief}),attemptTimeout,undefined,provider);
      if(!response.ok){
       console.warn('[forma] preferred course provider rejected request',model,response.status);
       continue;
