@@ -179,7 +179,7 @@ export function canonicalAIResult(value,action,currentId){
    if(!slide||typeof slide!=='object')return slide;
    const s={...slide};
    for(const key of ['script','notes'])if(typeof s[key]==='string'&&s[key].trim())s[key]=[s[key]];
-   if(Array.isArray(s.notes)&&s.notes.length===0)delete s.notes;
+   if((typeof s.notes==='string'&&!s.notes.trim())||(Array.isArray(s.notes)&&s.notes.length===0))delete s.notes;
    if(s.art){s.art={...s.art,...(s.art.story?{story:structuredClone(s.art.story)}:{})};s.art.scene=({process:'flow','before-after':'compare'})[s.art.scene]||s.art.scene;if(s.art.story?.layout==='network')s.art.story.layout='process';s.art=fitSceneToLabels(s.art,s);}
    return s;
   });
