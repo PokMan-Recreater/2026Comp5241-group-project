@@ -51,7 +51,7 @@ export const outlineProblems=value=>{
  if(!value||typeof value!=='object')return ['course is not an object'];
  if(!text(value.title,180))problems.push('title must be a string of at most 180 characters');
  if(!text(value.description,3000))problems.push('description must be a string of at most 3000 characters');
- if(!Array.isArray(value.lessons)||value.lessons.length<1||value.lessons.length>5)return [...problems,'lessons must be an array of 1-5 lessons'];
+ if(!Array.isArray(value.lessons)||value.lessons.length<1||value.lessons.length>6)return [...problems,'lessons must be an array of 1-6 lessons'];
  for(const [i,l] of value.lessons.entries())for(const problem of lessonProblems(l))problems.push('lessons['+i+'].'+problem);
  return problems;
 };
