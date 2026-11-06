@@ -174,6 +174,23 @@ test('outline suggestions are normalized so the accepted draft can be saved',()=
  assert.deepEqual(validateCourse(normalized),normalized);
 }));
 
+test('a playable lesson draft with blank optional notes needs no second provider call',()=>scenario(async()=>{
+ const lesson=structuredClone(slideLesson);
+ for(const slide of lesson.slides)slide.notes=' ';
+ let calls=0;
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/auth/v1/user'))return Response.json({id:'fast-draft-teacher',app_metadata:{role:'teacher'}});
+  calls++;
+  return Response.json({choices:[{message:{content:JSON.stringify(lesson)}}]});
+ };
+ const res=response();
+ await handler(request({...body,production:'lesson-draft'}),res);
+ assert.equal(res.statusCode,200);
+ assert.equal(calls,1);
+ assert.equal(res.data.lesson.slides.length,lesson.slides.length);
+ assert.ok(res.data.lesson.slides.every(slide=>!Object.hasOwn(slide,'notes')));
+}));
+
 test('outline timeout on glm-4-flash switches to a different free model',()=>scenario(async()=>{
  process.env.AI_MODEL='glm-4-flash';
  const models=[];
