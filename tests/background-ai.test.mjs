@@ -32,6 +32,14 @@ test('using the latest candidate does not resurrect an older rejected generation
  const candidate=jobs.candidate('c','#personal-course/c');assert.equal(candidate.result.lesson.title,'New');jobs.used(candidate.id);assert.equal(jobs.candidate('c','#personal-course/c'),undefined);
 });
 
+test('clearing finished tasks keeps running work and persists the removal',async()=>{
+ const {jobs,storage}=harness();await jobs.start({key:'done'},()=>({ok:true}));
+ const failed=jobs.start({key:'failed'},()=>{throw Error('boom');}).catch(()=>{});
+ void jobs.start({key:'slow'},()=>new Promise(()=>{}));await failed;
+ assert.equal(jobs.list().length,3);assert.equal(jobs.clearFinished(),2);
+ assert.equal(jobs.list().length,1);assert.equal(jobs.active(),true);
+ const reloaded=createBackgroundAI({storage});reloaded.account('alice');assert.equal(reloaded.list().length,1);
+});
 test('view result routes to native destinations and ignores external result links',async()=>{
  assert.equal(await taskDestination({kind:'plan'}),'#path');
  assert.equal(await taskDestination({kind:'plan',resultRoute:'#plan/p'}),'#plan/p');
