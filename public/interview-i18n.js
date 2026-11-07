@@ -36,6 +36,7 @@ const copy=[
  ['面试室','Interview room','面試室'],['AI 模拟面试官','AI interviewer','AI 模擬面試官'],['Forma 面试官','Forma interviewer','Forma 面試官'],['正在准备面试连接…','Preparing your interview…','正在準備面試連線…'],
  ['你的摄像头预览','Your camera preview','你的攝影機預覽'],['你 · 画面不上传','You · Video stays local','你 · 畫面不上傳'],['语音面试 · 摄像头可选','Voice interview · Camera optional','語音面試 · 攝影機選用'],
  ['麦克风静音','Mute microphone','麥克風靜音'],['恢复麦克风','Unmute microphone','恢復麥克風'],['开启摄像头','Enable camera','開啟攝影機'],['关闭摄像头','Disable camera','關閉攝影機'],['打断面试官','Interrupt interviewer','打斷面試官'],['结束面试','End interview','結束面試'],['请在安静的环境中作答','Find a quiet place to answer','請在安靜的環境中作答'],
+ ['我的面试记录','My interviews','我的面試紀錄'],['返回首页','Back to home','返回首頁'],
  ['本次面试已结束','Interview ended','本次面試已結束'],['尚未开始面试','Interview not started','尚未開始面試'],['重新准备面试','Set up another interview','重新準備面試'],['下载文字记录','Download transcript','下載文字紀錄'],['返回练习中心','Back to practice','返回練習中心'],
  ['通话已结束，麦克风已关闭。','The call has ended. Your microphone is off.','通話已結束，麥克風已關閉。'],
  ['已连接豆包 · 可以直接说话，也可以打断面试官','Connected · Speak naturally and interrupt when needed','已連接豆包 · 可以直接說話，也可以打斷面試官'],
