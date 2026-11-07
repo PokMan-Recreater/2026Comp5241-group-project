@@ -21,6 +21,7 @@ body{background:var(--canvas);color:var(--ink);font-family:var(--font)}
 .ir-orb span{position:absolute;right:47px;bottom:31px;font-size:67px;color:#efbc16}
 .ir-interviewer h1{font-size:23px;font-weight:650;letter-spacing:-.4px;margin:0 0 14px}
 .ir-interviewer p{font-size:13px;color:var(--muted);line-height:1.8;min-height:24px;margin:0 auto;max-width:450px}
+.ir-interviewer .ir-mic-state{font-size:12px;margin:8px 0 0}
 .ir-sound{display:flex;align-items:center;justify-content:center;gap:5px;height:26px;margin-top:20px}
 .ir-sound i{width:3px;height:6px;background:#9480af;border-radius:4px}
 .ir-sound i:nth-child(2n){height:14px}.ir-sound i:nth-child(3){height:22px}
