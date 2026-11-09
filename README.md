@@ -38,7 +38,7 @@ An AI-assisted learning platform for software engineering, AI coding agents, and
 
 ### Administrators
 
-Sign in with an administrator account to manage users, roles, courses, and learning summaries. Teacher and administrator roles are assigned by an authorized administrator; they cannot be selected during public registration.
+Sign in with an administrator account to view account roles and learning summaries, manage courses, and disable or re-enable accounts. Public registration creates student accounts.
 
 ## Run locally
 

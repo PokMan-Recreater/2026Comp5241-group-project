@@ -38,7 +38,7 @@ Official-course adaptation copies teaching text into an editable course. Origina
 
 ## Administrators
 
-Use the administrator workspace to inspect account/course totals, search users, assign roles, ban or unban accounts, manage courses, and review learning summaries. The server verifies administrator access.
+Use the administrator workspace to inspect account/course totals, search users, view roles, ban or unban accounts, manage courses, and review learning summaries. The server verifies administrator access.
 
 ## What is saved
 
