@@ -29,20 +29,12 @@ test('a second page is requested only while a full page is returned',async()=>{
  const f=fixture('admin',[{users:first},{users:[]}]);await f.run('users');
  assert.equal(f.calls.length,2);assert.match(f.calls[1].path,/page=2/);
 });
-test('set-role refuses self-demotion and preserves other app metadata keys',async()=>{
- const self=fixture('admin');assert.equal((await self.run('overview',{action:'set-role',userId:uid,role:'student'})).status,400);assert.equal(self.calls.length,0);
- const current={id:aid,app_metadata:{role:'student',provider:'email'},user_metadata:{username:'bob'}};
- const f=fixture('admin',[current,{...current,app_metadata:{role:'teacher',provider:'email'}}]);
- const r=await f.run('overview',{action:'set-role',userId:aid,role:'teacher'});
- assert.equal(r.status,200);assert.equal(r.body.user.role,'teacher');
- assert.deepEqual(f.calls[1].body,{app_metadata:{role:'teacher',provider:'email'}});assert.equal(f.calls[1].method,'PUT');assert.equal(f.calls[1].admin,true);
- assert.equal((await fixture('admin').run('overview',{action:'set-role',userId:aid,role:'owner'})).status,400);
-});
-test('the last admin cannot be demoted',async()=>{
- const current={id:aid,app_metadata:{role:'admin'},user_metadata:{username:'root'}};
- const f=fixture('admin',[current,{users:[current]}]);
- const r=await f.run('overview',{action:'set-role',userId:aid,role:'teacher'});
- assert.equal(r.status,400);assert.equal(r.body.error,'last_admin');assert.equal(f.calls.length,2);
+test('the administrator API rejects role changes without writing to the database',async()=>{
+ const f=fixture('admin');
+ const result=await f.run('overview',{action:'set-role',userId:aid,role:'teacher'});
+ assert.equal(result.status,400);
+ assert.equal(result.body.error,'invalid_request');
+ assert.equal(f.calls.length,0);
 });
 test('ban and unban use GoTrue ban_duration and cannot ban the session admin',async()=>{
  const self=fixture('admin');assert.equal((await self.run('overview',{action:'ban',userId:uid,banned:true})).status,400);

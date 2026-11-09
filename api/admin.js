@@ -83,15 +83,6 @@ export function createAdminHandler(deps={}){
    if(!allowRequest(req,'admin',40))throw new CloudError('rate_limited',429);
    let b;try{b=await readJSON(req,8000);}catch(error){throw new CloudError(error.message==='payload_too_large'?'payload_too_large':'invalid_json',error.message==='payload_too_large'?413:400);}
    if(!b||typeof b!=='object'||Array.isArray(b))throw new CloudError('invalid_request',400);
-   if(b.action==='set-role'){
-    const target=uuid(b.userId);if(!ROLES.includes(b.role))throw new CloudError('invalid_request',400);
-    if(target===user.id&&b.role!=='admin')throw new CloudError('cannot_change_own_role',400);
-    const current=await request(config,'/auth/v1/admin/users/'+target,{admin:true});
-    if(!current?.id)throw new CloudError('not_found',404);
-    if(current.app_metadata?.role==='admin'&&b.role!=='admin'&&(await directory()).filter(u=>u.app_metadata?.role==='admin').length<=1)throw new CloudError('last_admin',400);
-    const updated=await request(config,'/auth/v1/admin/users/'+target,{method:'PUT',admin:true,body:{app_metadata:{...(current.app_metadata||{}),role:b.role}}});
-    return send({user:publicUser(updated||{...current,app_metadata:{...(current.app_metadata||{}),role:b.role}})});
-   }
    if(b.action==='ban'){
     const target=uuid(b.userId);if(typeof b.banned!=='boolean')throw new CloudError('invalid_request',400);
     if(target===user.id&&b.banned)throw new CloudError('cannot_ban_self',400);

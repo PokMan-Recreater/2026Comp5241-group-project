@@ -5,7 +5,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pick=(locale,en,cn,tw)=>locale==='en'?en:locale==='zh-TW'?tw:cn;
 const pages={
  overview:['Platform overview','平台概览','平台概覽','Real accounts, courses and learning activity shared by the whole platform.','真实的账号、课程与全平台学习数据。','真實的帳號、課程與全平台學習資料。'],
- users:['People & roles','用户与角色','使用者與角色','Read real accounts, change roles or disable an account.','查看真实账号，调整角色或停用账号。','查看真實帳號，調整角色或停用帳號。'],
+ users:['People & roles','用户与角色','使用者與角色','View accounts and roles, or disable an account.','查看账号和角色，或停用账号。','查看帳號和角色，或停用帳號。'],
  catalog:['Course management','课程管理','課程管理','Teacher courses and private learner drafts across the platform.','全平台教师课程与学员私有草稿。','全平台教師課程與學員私有草稿。'],
  'admin-learning':['Learning overview','学习情况','學習情況','Learning events summarised across all teachers and classrooms.','跨教师、跨班级汇总真实学习事件。','跨教師、跨班級彙總真實學習事件。']
 };
@@ -32,8 +32,6 @@ export function mountAdmin({page,locale='zh-CN',user=null}={}){
   database_not_configured:L('The database is not configured yet.','数据库尚未配置。','資料庫尚未設定。'),
   rate_limited:L('Too many requests. Try again later.','操作较频繁，请稍后再试。','操作較頻繁，請稍後再試。'),
   revision_conflict:L('This course changed elsewhere. Reload and try again.','该课程刚刚被修改，请刷新后重试。','該課程剛剛被修改，請重新整理後再試。'),
-  last_admin:L('The last administrator cannot be demoted.','不能降级最后一名管理员。','不能降級最後一名管理員。'),
-  cannot_change_own_role:L('You cannot change your own administrator role.','不能修改自己的管理员角色。','不能修改自己的管理員角色。'),
   cannot_ban_self:L('You cannot disable your own account.','不能停用自己的账号。','不能停用自己的帳號。'),
   not_found:L('The account or course no longer exists.','账号或课程已不存在。','帳號或課程已不存在。'),
   invalid_request:L('The request was not valid. Reload and try again.','请求无效，请刷新后重试。','請求無效，請重新整理後再試。')
@@ -72,17 +70,10 @@ export function mountAdmin({page,locale='zh-CN',user=null}={}){
     const data=await cloudAPI('/api/admin?resource=users'+(query?'&search='+encodeURIComponent(query):''));
     if(!alive)return;
     root.querySelector('[data-admin-count]').textContent=`${number(data.users.length)} ${L('accounts','个账号','個帳號')}`;
-    table.innerHTML=data.users.length?`<div class="table-wrap"><table><thead><tr><th>${L('Username','用户名','使用者名稱')}</th><th>${L('Email','邮箱','電郵')}</th><th>${L('Role','身份','身分')}</th><th>${L('Status','状态','狀態')}</th><th>${L('Last sign-in','最近登录','最近登入')}</th><th></th></tr></thead><tbody>${data.users.map(u=>{const self=u.id===user?.id;return `<tr><td><strong>${esc(u.username||'—')}</strong>${self?` <span class="small muted">(${L('you','你','你')})</span>`:''}</td><td class="small muted">${esc(u.email||'—')}</td><td><select data-admin-role="${esc(u.id)}" aria-label="${esc(L('Role','身份','身分'))}" ${self?'disabled':''}>${Object.keys(roles).map(role=>`<option value="${role}" ${role===u.role?'selected':''}>${esc(roleText(role,locale))}</option>`).join('')}</select></td><td><span class="pill ${u.banned?'':'green'}">${u.banned?esc(L('Disabled','已停用','已停用')):esc(L('Active','正常','正常'))}</span></td><td class="small muted">${esc(when(u.last_sign_in_at))}</td><td>${self?'' : `<button class="btn secondary small-btn" data-admin-ban="${esc(u.id)}" data-banned="${u.banned}">${u.banned?esc(L('Enable','启用','啟用')):esc(L('Disable','停用','停用'))}</button>`}</td></tr>`;}).join('')}</tbody></table></div>`:`<div class="empty">${esc(L('No matching accounts.','没有匹配的账号。','沒有符合的帳號。'))}</div>`;
+    table.innerHTML=data.users.length?`<div class="table-wrap"><table><thead><tr><th>${L('Username','用户名','使用者名稱')}</th><th>${L('Email','邮箱','電郵')}</th><th>${L('Role','身份','身分')}</th><th>${L('Status','状态','狀態')}</th><th>${L('Last sign-in','最近登录','最近登入')}</th><th></th></tr></thead><tbody>${data.users.map(u=>{const self=u.id===user?.id;return `<tr><td><strong>${esc(u.username||'—')}</strong>${self?` <span class="small muted">(${L('you','你','你')})</span>`:''}</td><td class="small muted">${esc(u.email||'—')}</td><td>${esc(roleText(u.role,locale))}</td><td><span class="pill ${u.banned?'':'green'}">${u.banned?esc(L('Disabled','已停用','已停用')):esc(L('Active','正常','正常'))}</span></td><td class="small muted">${esc(when(u.last_sign_in_at))}</td><td>${self?'' : `<button class="btn secondary small-btn" data-admin-ban="${esc(u.id)}" data-banned="${u.banned}">${u.banned?esc(L('Enable','启用','啟用')):esc(L('Disable','停用','停用'))}</button>`}</td></tr>`;}).join('')}</tbody></table></div>`:`<div class="empty">${esc(L('No matching accounts.','没有匹配的账号。','沒有符合的帳號。'))}</div>`;
    }catch(error){if(alive)table.innerHTML=`<div class="callout warning">${esc(errorText(error?.message))}</div>`;}
   };
   const refresh=()=>load(search.value.trim());
-  table.addEventListener('change',async event=>{
-   const select=event.target.closest('[data-admin-role]');
-   if(!select)return;
-   select.disabled=true;
-   try{await cloudAPI('/api/admin',{action:'set-role',userId:select.dataset.adminRole,role:select.value});notice(saved());await refresh();}
-   catch(error){notice(errorText(error?.message));select.disabled=false;select.value=[...select.options].find(o=>o.defaultSelected)?.value||select.value;}
-  });
   table.addEventListener('click',async event=>{
    const button=event.target.closest('[data-admin-ban]');
    if(!button)return;
